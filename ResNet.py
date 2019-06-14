@@ -3,7 +3,7 @@ import numpy as np
 from tensorflow.contrib.gan.python.eval import preprocess_image
 
 from tensorflow.python.tools import inspect_checkpoint as chkp
-import ReadXray as rxr
+import load_data as rxr
 
 
 

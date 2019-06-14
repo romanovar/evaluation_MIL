@@ -1,5 +1,10 @@
 import pandas as pd
 import numpy as np
+from keras.preprocessing import image
+import os
+from pathlib import Path
+from keras.applications.resnet50 import preprocess_input
+
 
 FINDINGS = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 'Emphysema',
             'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 'Nodule', 'Pleural_Thickening',
@@ -32,6 +37,7 @@ def get_ann_list(df):
     return df['Image Index']
 
 
+## TODO: to remove - not used currently
 def converto_3_color_channels(img):
     stacked_img = np.stack((img,) * 3, axis=-1)
     return stacked_img
@@ -86,6 +92,52 @@ def get_classification_labels(label_dir="C:/Users/s161590/Desktop/Data/X_Ray/Dat
 
     Y = Y.iloc[:, [0, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]]
     return Y
+
+
+def process_image(img_path):
+    img = image.load_img(img_path, target_size=(512, 512))
+    x = image.img_to_array(img)
+    print(x.shape)
+    return preprocess_input(x)
+
+
+def load_process_png(label_df, path_to_png="C:/Users/s161590/Desktop/Data/X_Ray/images"):
+    """
+    Searches recursively for png files starting from the common parent dir
+    When png files is found, it is loaded and added to the final list
+    :param path_to_png: common parent directory path for all dicom files
+    :return: list with all loaded dicom files found
+    """
+    png_files = []
+    labels = []
+    for src_path in Path(path_to_png).glob('**/*.png'):
+        image_ind = os.path.basename(src_path)
+
+        Y = get_label_by_imageind(label_df, image_ind)
+        png_files.append(process_image(src_path))
+        # drop column with img ind in Y
+        Y = Y.iloc[:, 1:15]
+        labels.append(np.array(Y.values))
+    return np.array(png_files), np.array(labels)
+
+
+def get_process_annotated_png(ann_list, path_to_png="C:/Users/s161590/Desktop/Data/X_Ray/images"):
+    """
+    Searches recursively for png files starting from the common parent dir
+    When png files is found, it is loaded and added to the final list
+    :param path_to_png: common parent directory path for all dicom files
+    :return: list with all loaded dicom files found
+    """
+    png_files = []
+    for src_path in Path(path_to_png).glob('**/*.png'):
+        image_ind = os.path.basename(src_path)
+        for img in ann_list:
+            #tODO: should NOT only load these files --> currently is a test purpose
+            if img == image_ind:
+                png_files.append(process_image(src_path))
+    print("Annotated images found: " + str(np.array(png_files).shape))
+    return np.array(png_files)
+
 
 bbox = load_csv("C:/Users/s161590/Desktop/Data/X_Ray/BBox_List_2017.csv")
 
