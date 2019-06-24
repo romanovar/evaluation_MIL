@@ -1,9 +1,4 @@
-import model
-import load_data as ld
-import tensorflow as tf
-from tensorflow.python.framework import ops
 from keras.applications import ResNet50V2
-from keras.layers import Input
 import tensorflow as tf
 from tensorflow.python.ops.nn_ops import max_pool
 import numpy as np
@@ -11,8 +6,7 @@ import matplotlib.pyplot as plt
 from tensorflow.python.framework import ops
 from keras import backend as K
 import pandas as pd
-
-
+from custom_loss import loss_L2
 
 
 def get_feature_extraction(images, labels, batch_size, seed=0):
@@ -49,11 +43,6 @@ def slice_image_to_patches(output_fe, P=16):
         return MP
 
 
-# ## PATCH SLICE of 16x16
-# P1 = max_pool(x_fe, ksize=[1, 1, 1, 1], strides=[1, 1, 1, 1], padding='VALID')
-# # PATCH SLICE of 12x12
-# P2 = max_pool(x_fe, ksize=[1, 5, 5, 1], strides=[1, 1, 1, 1], padding='VALID')
-#
 def initialize_weights():
     tf.set_random_seed(0)
 
@@ -141,7 +130,6 @@ def random_mini_batches(X, Y, mini_batch_size=5, seed=0):
     num_complete_minibatches = tf.cast(tf.floor(m / mini_batch_size), tf.int32)
     for k in range(0, num_complete_minibatches.eval()):
         start_idx = k * mini_batch_size
-        print(start_idx)
         end_idx = (k + 1) * mini_batch_size
         # mini_batch_X = shuffled_X[:, start_idx: end_idx]
         # mini_batch_Y = shuffled_Y[:, start_idx: end_idx]
@@ -153,10 +141,6 @@ def random_mini_batches(X, Y, mini_batch_size=5, seed=0):
     # Handling the end case (last mini-batch < mini_batch_size)
     if m % mini_batch_size != 0:
         start_idx = mini_batch_size * num_complete_minibatches.eval()
-        print(start_idx)
-        print(mini_batch_size)
-        print(num_complete_minibatches.eval())
-        print(m)
         mini_batch_X = np.take(shuffled_X, range(start_idx, m), axis=0)
         mini_batch_Y = np.take(shuffled_Y, range(start_idx, m), axis=0)
         # mini_batch_X = shuffled_X[:, (mini_batch_size * num_complete_minibatches):m]
@@ -168,39 +152,6 @@ def random_mini_batches(X, Y, mini_batch_size=5, seed=0):
     return mini_batches
 
 
-def compute_image_label_classification(nn_output, P):
-    subtracted_prob = 1 - nn_output
-    ### KEEP the dimension for observations and for the classes
-    flat_mat = tf.reshape(subtracted_prob, (-1, P* P, 14))
-    min_val = tf.reshape(tf.reduce_min(flat_mat, axis=1), (-1, 1, 14))
-    max_val = tf.reshape(tf.reduce_max(flat_mat, axis=1), (-1, 1, 14))
-    ## Normalization between [a, b]
-    ### ( (b-a) (X - MIN(x)))/ (MAX(x) - Min(x)) + a
-
-    normalized_mat = ((1 - 0.98) * (flat_mat - min_val) /
-                      (max_val - min_val)) + 0.98
-
-    element_product = tf.reduce_prod(normalized_mat, axis=1)
-    return (tf.cast(1, tf.float32) - element_product)
-
-
-def compute_loss(nn_output, y_true, P):
-    epsilon = tf.pow(tf.cast(10, tf.float32), -7)
-    y_hat = compute_image_label_classification(nn_output, P)
-
-    ## IF image does not have bounding box
-    loss_classification = - (y_hat * (tf.log(y_true+epsilon))) - ((1-y_hat)*(tf.log(1-y_true+epsilon)))
-
-    return loss_classification, y_hat
-
-
-def loss_L2(Y_hat,Y, P, L2_rate=0.01):
-    normal_loss, image_prob = compute_loss(Y_hat, Y, P)
-    # normal_loss = compute_image_label_classification_v2(Y_hat, Y, P)
-
-    reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-    return normal_loss + L2_rate * sum(reg_losses), image_prob
-
 
 # TODO: 1) batch size of 5 - DONE
 # TODO: 2) train the model with 500k iterations of minibatch - DONE
@@ -209,22 +160,24 @@ def loss_L2(Y_hat,Y, P, L2_rate=0.01):
 # TODO: 5) optimize the model by Adam - DONE
 # todo: 6) with asynchronous training
 # TODO: to change number of iterations
-def model(X_train, Y_train, X_test, Y_test, P=16, start_learning_rate = 0.001,
-          num_epochs=200, num_iter=500000,  minibatch_size=5, print_cost=True):
+def build_model(X_train, Y_train, X_test, Y_test, P=16, start_learning_rate = 0.000001,
+                num_epochs=200, num_iter=500000, minibatch_size=5, print_cost=True):
     ops.reset_default_graph()
     tf.set_random_seed(1)
     seed = 3
     costs = []
 
     X = tf.placeholder(tf.float32, shape=(None, P, P, 2048))
-    Y = tf.placeholder(tf.float32, shape=(None, 14))
+    Y = tf.placeholder(tf.float32, shape=(None, P, P, 14))
     weights = initialize_weights()
 
     Z3 = forward_propagation(X, weights, P)
-
-    loss_Test, image_prob = loss_L2(Z3, Y, P)
-    cost = tf.reduce_mean((Y, loss_Test))
-
+    total_loss, total_loss_class, y_hat, y_true = loss_L2(Z3, Y, P)
+    cost = tf.reduce_mean(total_loss_class, 1)
+    # cost = tf.reduce_mean()
+    # cost = tf.reduce_mean((y_true, y_hat))
+    print("total loss")
+    print(total_loss)
     global_step = tf.Variable(0, trainable=False)
     learning_rate = tf.train.exponential_decay(start_learning_rate, global_step,
                                                10, 0.1, staircase=True)
@@ -249,7 +202,9 @@ def model(X_train, Y_train, X_test, Y_test, P=16, start_learning_rate = 0.001,
                 # Select a minibatch
                 (minibatch_X, minibatch_Y) = minibatch
                 for iter in range(num_iter):
-                    _, temp_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                    test, temp_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                    print(test)
+                    print(temp_cost)
                     minibatch_cost += temp_cost / (num_minibatches*num_iter)
 
             # Print the cost every epoch
@@ -265,8 +220,8 @@ def model(X_train, Y_train, X_test, Y_test, P=16, start_learning_rate = 0.001,
         plt.show()
 
         # Calculate the correct predictions
-        predict_op = tf.argmax(image_prob, 1)
-        correct_prediction = tf.equal(predict_op, tf.argmax(Y, 1))
+        predict_op = tf.argmax(y_hat, 1)
+        correct_prediction = tf.equal(predict_op, tf.argmax(y_true, 1))
 
         # Calculate accuracy on the test set
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
@@ -278,36 +233,36 @@ def model(X_train, Y_train, X_test, Y_test, P=16, start_learning_rate = 0.001,
 
         return train_accuracy, test_accuracy, weights
 
+#
+# label_df = ld.get_classification_labels(label_dir="C:/Users/s161590/Desktop/Data/X_Ray/test.csv")
+# # loads Y as a list
+# # X, Y = ld.load_process_png(label_df)
+# # loads as df
+# X, Y = ld.load_process_png_v2(label_df)
+#
+# X_tr, X_t, Y_tr, Y_t = ld.split_test_train(X, Y)
+# print("*********************SPLIT")
+# print((X_tr.shape))
+# print(type(Y_tr))
+# print((X_t.shape))
+# print((Y_t.shape))
+#
+#
+# X_train, Y_train_df= get_feature_extraction(X_tr,Y_tr, batch_size=2, seed=0)
+# X_test, Y_test_df  = get_feature_extraction(X_t,Y_t, batch_size=2, seed=0)
+#
+# print("*********************FE")
+# print((X_train.shape))
+# print(type(Y_train_df))
+# print((X_test.shape))
+# print((Y_test_df.shape))
+#
+# Y_train, Y_test = Y_train_df.to_numpy(), Y_test_df.to_numpy()
+# print("*********************x train shape")
+# print((X_train.shape))
+# print((X_test.shape))
+# print(type(Y_train))
+# print((Y_test.shape))
 
-label_df = ld.get_classification_labels(label_dir="C:/Users/s161590/Desktop/Data/X_Ray/test.csv")
-# loads Y as a list
-# X, Y = ld.load_process_png(label_df)
-# loads as df
-X, Y = ld.load_process_png_v2(label_df)
-
-X_tr, X_t, Y_tr, Y_t = ld.split_test_train(X, Y)
-print("*********************SPLIT")
-print((X_tr.shape))
-print((Y_tr.shape))
-print((X_t.shape))
-print((Y_t.shape))
-
-
-X_train, Y_train_df= get_feature_extraction(X_tr,Y_tr, batch_size=2, seed=0)
-X_test, Y_test_df  = get_feature_extraction(X_t,Y_t, batch_size=2, seed=0)
-
-print("*********************FE")
-print((X_train.shape))
-print((Y_train_df.shape))
-print((X_test.shape))
-print((Y_test_df.shape))
-
-Y_train, Y_test = Y_train_df.to_numpy(), Y_test_df.to_numpy()
-print("*********************x train shape")
-print((X_train.shape))
-print((X_test.shape))
-print((Y_train.shape))
-print((Y_test.shape))
-
-model(X_train, Y_train, X_test, Y_test, P=16, start_learning_rate = 0.001,
-          num_epochs=20, num_iter=5,  minibatch_size=5, print_cost=True)
+# model(X_train, Y_train, X_test, Y_test, P=16, start_learning_rate = 0.001,
+#           num_epochs=20, num_iter=5,  minibatch_size=5, print_cost=True)

@@ -250,7 +250,6 @@ def couple_location_labels(Y_loc_dir, Y_class, P):
     Y_loc = rename_columns(load_csv(Y_loc_dir), False)
 
     for diagnosis in FINDINGS:
-
         Y_class[[diagnosis + '_loc','Bbox']]= Y_class.apply(lambda x: pd.Series(integrate_annotations(x, Y_loc, diagnosis, P)), axis=1)
 
     Y_class.to_csv("C:/Users/s161590/Desktop/Data/X_Ray/processed_Y.csv")
@@ -455,10 +454,15 @@ def keep_only_diagnose_columns(Y):
 
 def reshape_Y(Y):
     newarr = []
-    for i in range(Y.shape[0]):  # (14)
+    for i in range(0, Y.shape[0]):  # (14)
+        # print((Y.iloc[i]).shape)
         single_obs = []
         for j in range(Y.shape[1]):  # 1 -> (16, 16)
-            single_obs.append(Y[i, j])
+            # print(Y.iloc[i,j].shape)
+            single_obs.append(Y.iloc[i,j])
         newarr.append(single_obs)
+    # return newarr
+    print("NEW ARRAY HAS FORM")
+    print(np.asarray(newarr).shape)
     reshaped_Y = np.asarray(newarr).reshape((21, 16, 16, 14))
-    return (reshaped_Y.shape)
+    return (reshaped_Y)
