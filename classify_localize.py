@@ -1,5 +1,7 @@
 # import tensorflow as tf
 import load_data as ld
+import model
+import os
 import numpy as np
 
 
@@ -7,7 +9,6 @@ import numpy as np
 #############################################
 ######## CODE FOR classification ############
 #############################################
-import model
 #
 #
 # label_df = ld.get_classification_labels("C:/Users/s161590/Desktop/Data/X_Ray/Data_Entry_2017.csv", False)
@@ -52,9 +53,25 @@ import model
 # #############################################
 # ######## CODE FOR bounding boxes ############
 # #############################################
-label_df = ld.get_classification_labels("C:/Users/s161590/Desktop/Data/X_Ray/Data_Entry_2017.csv", False)
-X, Y = ld.load_process_png_v2(label_df)
-Y = ld.couple_location_labels("C:/Users/s161590/Desktop/Data/X_Ray/Bbox_List_2017.csv", Y, ld.PATCH_SIZE)
+SERVER_PATH_C ="/home/rnromanova/scripts/Data_Entry_2017.csv"
+SERVER_PATH_L ="/home/rnromanova/scripts/Bbox_List_2017.csv"
+SERVER_PATH_I = "/home/rnromanova/XRay14/images/batch1"
+SERVER_OUT = "/home/rnromanova/scripts/out"
+
+LOCAL_PATH_C = "C:/Users/s161590/Desktop/Data/X_Ray/Data_Entry_2017.csv"
+LOCAL_PATH_L = "C:/Users/s161590/Desktop/Data/X_Ray/Bbox_List_2017.csv"
+LOCAL_PATH_I = "C:/Users/s161590/Desktop/Data/X_Ray/images"
+LOCAL_OUT = "C:/Users/s161590/Desktop/Data/X_Ray/out"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+# label_df = ld.get_classification_labels(SERVER_PATH_C, False)
+# X, Y = ld.load_process_png_v2(label_df, SERVER_PATH_I)
+# Y = ld.couple_location_labels(SERVER_PATH_L , Y, ld.PATCH_SIZE, SERVER_OUT)
+#
+
+label_df = ld.get_classification_labels(LOCAL_PATH_C, False)
+X, Y = ld.load_process_png_v2(label_df, LOCAL_PATH_I)
+Y = ld.couple_location_labels(LOCAL_PATH_L , Y, ld.PATCH_SIZE, LOCAL_OUT)
 
 
 # separate classification and localization
@@ -62,6 +79,7 @@ Y = ld.couple_location_labels("C:/Users/s161590/Desktop/Data/X_Ray/Bbox_List_201
 Y_class, Y_loc = ld.separate_localization_classification_labels(Y)
 
 Y_new = ld.keep_only_diagnose_columns(Y)
+print(X.shape)
 
 X_train, Y_train_df= model.get_feature_extraction(X,Y_new, batch_size=2, seed=0)
 Y_train = ld.reshape_Y(Y_train_df)

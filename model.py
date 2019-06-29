@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from tensorflow.python.framework import ops
 from keras import backend as K
 import pandas as pd
-from custom_loss import loss_L2
+from custom_loss import loss_L2, compute_loss
 
 
 def get_feature_extraction(images, labels, batch_size, seed=0):
@@ -19,6 +19,7 @@ def get_feature_extraction(images, labels, batch_size, seed=0):
     X = np.empty((0, 16, 16, 2048))
 
     model = ResNet50V2(include_top=False, weights='imagenet',  input_shape=(512, 512, 3))
+    # model.summary()
     model._make_predict_function()
     minibatches = mini_batches(images, labels, batch_size, seed)
 
@@ -63,7 +64,8 @@ def recognition_network(P, weights):
     BN1 = tf.layers.batch_normalization(C1)
     A1 = tf.nn.relu(BN1)
     C2 = tf.nn.conv2d(A1, W2, strides=[1, 1, 1, 1], padding='SAME')
-    return C2
+    A2 = tf.nn.sigmoid(C2)
+    return A2
 
 
 def forward_propagation(X, weights, P):
@@ -75,15 +77,12 @@ def forward_propagation(X, weights, P):
 def mini_batches(X, Y, mini_batch_size=5, seed=0, random=False):
     np.random.seed(seed)
     m = X.shape[0]  # number of training examples
-    print("m: ")
-    print(type(m))
     mini_batches = []
 
     if random:
         permutation = list(np.random.permutation(m))
     else:
         permutation = list(range(0, m))
-        print(permutation)
     shuffled_X = np.take(X, permutation, axis=0)
     shuffled_Y = np.take(Y, permutation, axis=0)
 
@@ -92,8 +91,6 @@ def mini_batches(X, Y, mini_batch_size=5, seed=0, random=False):
 
     num_complete_minibatches = (np.floor(m / mini_batch_size)).astype(int)
 
-    print("# batches:")
-    print(num_complete_minibatches)
     for k in range(0, num_complete_minibatches):
         mini_batch_X = np.take(shuffled_X, range( k * mini_batch_size, (k + 1) * mini_batch_size), axis=0)
         mini_batch_Y = np.take(shuffled_Y, range( k * mini_batch_size, (k + 1) * mini_batch_size), axis=0)
@@ -160,8 +157,8 @@ def random_mini_batches(X, Y, mini_batch_size=5, seed=0):
 # TODO: 5) optimize the model by Adam - DONE
 # todo: 6) with asynchronous training
 # TODO: to change number of iterations
-def build_model(X_train, Y_train, X_test, Y_test, P=16, start_learning_rate = 0.000001,
-                num_epochs=200, num_iter=500000, minibatch_size=5, print_cost=True):
+def build_model(X_train, Y_train, X_test, Y_test, minibatch_size, P=16, start_learning_rate = 0.000001,
+                num_epochs=200, num_iter=500000, print_cost=True):
     ops.reset_default_graph()
     tf.set_random_seed(1)
     seed = 3
@@ -172,12 +169,15 @@ def build_model(X_train, Y_train, X_test, Y_test, P=16, start_learning_rate = 0.
     weights = initialize_weights()
 
     Z3 = forward_propagation(X, weights, P)
-    total_loss, total_loss_class, y_hat, y_true = loss_L2(Z3, Y, P)
-    cost = tf.reduce_mean(total_loss_class, 1)
-    # cost = tf.reduce_mean()
+    # total_loss, total_loss_class, y_hat, y_true = loss_L2(Z3, Y, P)
+    loss_classification, loss_classification_keras, prob_class, image_true_prob = compute_loss(Z3, Y, P)
+    # cost = tf.reduce_mean(total_loss_class, 0)
+    # cost = tf.reduce_mean(loss_classification)
+    # cost = tf.reduce_mean(tf.sqrt(y_true, y_hat))
+    # cost  = tf.reduce_mean((y_true, y_hat), 0)
     # cost = tf.reduce_mean((y_true, y_hat))
-    print("total loss")
-    print(total_loss)
+    cost = loss_classification_keras
+
     global_step = tf.Variable(0, trainable=False)
     learning_rate = tf.train.exponential_decay(start_learning_rate, global_step,
                                                10, 0.1, staircase=True)
@@ -195,21 +195,36 @@ def build_model(X_train, Y_train, X_test, Y_test, P=16, start_learning_rate = 0.
             num_minibatches = int(X_train.shape[0] / minibatch_size)  # number of minibatches of size minibatch_size in the train set
             seed = seed + 1
             # minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
-            minibatches = mini_batches(X_train, Y_train, minibatch_size, seed, random=True)
+            minibatches = mini_batches(X_train, Y_train, minibatch_size, seed, random=False)
 
 
             for minibatch in minibatches:
                 # Select a minibatch
                 (minibatch_X, minibatch_Y) = minibatch
-                for iter in range(num_iter):
-                    test, temp_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
-                    print(test)
-                    print(temp_cost)
-                    minibatch_cost += temp_cost / (num_minibatches*num_iter)
+                # print(loss_class_tf, loss_class)
+                _, temp_cost,  prob_class, image_true_prob  = sess.run([optimizer, cost,  prob_class, image_true_prob ], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                print("temp loss")
+                print(temp_cost)
+                # print(lcl) , lcl, lcltf, y_hat, y_true
+                # print(lcltf)
+                print("prob class")
+                print(prob_class)
+                print("image true prob")
+                print(image_true_prob)
+                # print(y_true)
+                minibatch_cost += temp_cost / (num_minibatches)
+                # for iter in range(num_iter):
+                #     _, temp_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                #     print("Temporary cost is: ")
+                #     print(temp_cost)
+                #     minibatch_cost += temp_cost / (num_minibatches*num_iter)
 
             # Print the cost every epoch
             if print_cost == True and epoch % 5 == 0:
-                print("Cost after epoch %i: %f" % (epoch, minibatch_cost))
+                # print("Cost after epoch %i: %f" % (epoch, minibatch_cost))
+                print("Cost after epoch: ")
+
+                print(minibatch_cost)
             if print_cost == True and epoch % 1 == 0:
                 costs.append(minibatch_cost)
 

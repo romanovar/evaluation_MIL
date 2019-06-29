@@ -125,7 +125,6 @@ def get_input_df(df):
 def process_image(img_path):
     img = image.load_img(img_path, target_size=(512, 512))
     x = image.img_to_array(img)
-    print(type(preprocess_input(x)))
     return preprocess_input(x)
 
 
@@ -154,7 +153,7 @@ def add_reorder_indx(df, image_ind, reord_idx):
     return df, reord_idx
 
 
-def load_process_png(label_df, path_to_png="C:/Users/s161590/Desktop/Data/X_Ray/images"):
+def load_process_png(label_df, path_to_png):
     """
     Searches recursively for png files starting from the common parent dir
     When png files is found, it is loaded and added to the final list
@@ -175,7 +174,7 @@ def load_process_png(label_df, path_to_png="C:/Users/s161590/Desktop/Data/X_Ray/
     return np.array(png_files), np.array(labels)
 
 
-def load_process_png_v2(Yclass, path_to_png="C:/Users/s161590/Desktop/Data/X_Ray/images"):
+def load_process_png_v2(Yclass, path_to_png):
     xy_df = Yclass.copy(deep=True)
     xy_df['Image Found'] = None
     xy_df['Reorder Index'] = None
@@ -192,8 +191,6 @@ def load_process_png_v2(Yclass, path_to_png="C:/Users/s161590/Desktop/Data/X_Ray
         # img_data = process_image(src_path)
         xy_df, reord_ind = add_reorder_indx(xy_df, image_ind, reord_idx=reord_ind)
 
-        # print(xy_df.shape)
-        # Y = get_label_by_imageind(label_df, image_ind)
         png_files.append(process_image(src_path))
         # todo: DECIDE WHETHER TO DROP IMAGE ID here or later
         # drop column with img ind in Y
@@ -219,7 +216,6 @@ def build_label_matrices(Y_):
 def bind_location_labels(Y_loc_dir, Y_class, P):
     Y_loc = load_csv(Y_loc_dir)
     Y_bbox = rename_columns(Y_loc, False)
-    print(Y_bbox)
     for ind, row in Y_bbox.iterrows():
         Y_class.loc[Y_class['Image Index']== row['Image Index'],'Bbox']=1
         Y_class.loc[Y_class['Image Index']== row['Image Index'],row['Finding Label']+'_loc']=1
@@ -235,53 +231,34 @@ def bind_location_labels(Y_loc_dir, Y_class, P):
             im_q = np.zeros((P, P), np.float)
             im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
 
-            # Y_class.loc[Y_class['Image Index'] == row['Image Index']][row['Finding Label'] + '_loc'] = im_q
-    #
-    #     # coords = str(row['x']) + ', '+ str(row['y'])+ ', '+ str(row['w']) + ', '+ str(row['h'])
-    #     #
-    #     # #x y] are coordinates of each box's topleft corner. [w h] represent the width and height of each box
-    #     # Y_class.loc[Y_class['Image Index']== row['Image Index'],[row['Finding Label']+'_coord']]= coords
-
     Y_class.to_csv("C:/Users/s161590/Desktop/Data/X_Ray/processed_Y.csv")
     return Y_class, Y_loc
 
 
-def couple_location_labels(Y_loc_dir, Y_class, P):
+def couple_location_labels(Y_loc_dir, Y_class, P, out_dir):
     Y_loc = rename_columns(load_csv(Y_loc_dir), False)
 
     for diagnosis in FINDINGS:
         Y_class[[diagnosis + '_loc','Bbox']]= Y_class.apply(lambda x: pd.Series(integrate_annotations(x, Y_loc, diagnosis, P)), axis=1)
 
-    Y_class.to_csv("C:/Users/s161590/Desktop/Data/X_Ray/processed_Y.csv")
+    Y_class.to_csv(out_dir+'/processed_Y.csv')
     return Y_class
 
 
 def create_label_matrix_classification(row, label, P):
     if row[label]==1:
         im_q = np.ones((P, P), np.float)
-        # return ("class is 1")
         return im_q
     else:
         im_q = np.zeros((P, P), np.float)
-        # return ("class is 0")
         return im_q
 
 
 def make_label_matrix_localization(P, x_min, y_min, x_max, y_max):
     im_q = np.zeros((P, P), np.float)
     im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
-    # return("i found location")
     return im_q
 
-
-    # scale_x, scale_y = scaling_factor(src_path[0])
-    # x_min, y_min, x_max, y_max = translate_coords_to_image_size(row['x'], row['y'], row['w'], row['h'], scale_x,
-    #                                                             scale_y)
-    #
-    # x_min, y_min, x_max, y_max = translate_on_patches(x_min, y_min, x_max, y_max)
-    #
-    # im_q = np.zeros((P, P), np.float)
-    # im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
 
 def get_all_bbox_for_image(row, Y_loc):
     all_info = Y_loc.loc[Y_loc['Image Index'] == row['Image Index']]
@@ -331,7 +308,6 @@ def create_label_matrix_localization(row, row_classif_df, diagnosis, P):
 
 def image_with_bbox(row, Y_loc, diagnosis, P):
     bbox_diagnosis = Y_loc.loc[Y_loc['Image Index'] == row['Image Index'], 'Finding Label'].values
-    print("ALL info")
 
     if bbox_diagnosis.size==0:
         # do SMTH WHEN THE IMAGE DOES NOT HAVE ANY BBOX FOR THE CLASS
@@ -455,14 +431,9 @@ def keep_only_diagnose_columns(Y):
 def reshape_Y(Y):
     newarr = []
     for i in range(0, Y.shape[0]):  # (14)
-        # print((Y.iloc[i]).shape)
         single_obs = []
         for j in range(Y.shape[1]):  # 1 -> (16, 16)
-            # print(Y.iloc[i,j].shape)
             single_obs.append(Y.iloc[i,j])
         newarr.append(single_obs)
-    # return newarr
-    print("NEW ARRAY HAS FORM")
-    print(np.asarray(newarr).shape)
     reshaped_Y = np.asarray(newarr).reshape((21, 16, 16, 14))
     return (reshaped_Y)
