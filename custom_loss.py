@@ -1,38 +1,8 @@
 import tensorflow as tf
 import numpy as np
+from keras import backend as K
 
 
-## input is made per each class
-from tensorflow.python.ops.losses.losses_impl import Reduction
-
-
-def compute_image_label_localization_v1(nn_output, y_true, P):
-    pos_patches = tf.reshape((nn_output * y_true), (-1, P * P))
-    neg_patches = tf.reshape((1 - nn_output) * (1 - y_true), (-1, P * P))
-
-    normalized_pos = ((1 - 0.98) * (pos_patches - tf.reduce_min(pos_patches, axis=1)) /
-                      (tf.reduce_max(pos_patches, axis=1) - tf.reduce_min(pos_patches, axis=1))) + 0.98
-    normalized_neg = ((1 - 0.98) * (neg_patches - tf.reduce_min(neg_patches, axis=1)) /
-                      (tf.reduce_max(neg_patches, axis=1) - tf.reduce_min(neg_patches, axis=1))) + 0.98
-
-    Pi_pos_patches = tf.reduce_prod(normalized_pos, axis=1)
-    Pi_neg_patches = tf.reduce_prod(normalized_neg, axis=1)
-
-    return Pi_pos_patches * Pi_neg_patches
-
-
-def compute_image_label_localization(nn_output, y_true, P):
-    pos_patches = tf.reshape((nn_output * y_true), (-1, P * P, 14))
-    neg_patches = tf.reshape((1 - nn_output) * (1 - y_true), (-1, P * P, 14))
-
-    normalized_pos = ((1 - 0.98) * (pos_patches - tf.reduce_min(pos_patches, axis=1)) /
-                      (tf.reduce_max(pos_patches, axis=1) - tf.reduce_min(pos_patches, axis=1))) + 0.98
-    normalized_neg = ((1 - 0.98) * (neg_patches - tf.reduce_min(neg_patches, axis=1)) /
-                      (tf.reduce_max(neg_patches, axis=1) - tf.reduce_min(neg_patches, axis=1))) + 0.98
-
-    Pi_pos_patches = tf.reduce_prod(normalized_pos, axis=1)
-    Pi_neg_patches = tf.reduce_prod(normalized_neg, axis=1)
-    return Pi_pos_patches * Pi_neg_patches
 
 def find_minimum_element_in_class(patches):
     return tf.reduce_min(tf.where(patches > 0.0, patches, tf.fill(tf.shape(patches), 1000.0)), axis=1,
@@ -41,11 +11,13 @@ def find_minimum_element_in_class(patches):
 
 def normalize_patches_per_class(patches, min_element, min_value, max_value):
     return (((max_value - min_value) * (patches - min_element) /
-     (tf.reduce_max(patches, axis=1, keepdims=True) - min_element)) + 0.98)
+     (tf.reduce_max(patches, axis=1, keepdims=True) - min_element + tf.keras.backend.epsilon)) + 0.98)
 
 
 ## input handles all classes simultaneously
 def compute_image_label_localization_v2(nn_output, y_true, P):
+    epsilon = tf.pow(tf.cast(10, tf.float32), -15)
+
     pos_patches = tf.reshape((nn_output * y_true), (-1, P * P, 14))
     neg_patches = tf.reshape((1 - nn_output) * (1 - y_true), (-1, P * P, 14))
 
@@ -55,10 +27,17 @@ def compute_image_label_localization_v2(nn_output, y_true, P):
     # min_pos_values = find_minimum_element_in_class(pos_patches)
     # min_neg_values = find_minimum_element_in_class(neg_patches)
 
-    normalized_pos = ((1 - 0.98) * (pos_patches - min_pos_values) /
-                      (tf.reduce_max(pos_patches, axis=1, keepdims=True) - min_pos_values)) + 0.98
-    normalized_neg = ((1 - 0.98) * (neg_patches - min_neg_values) /
-                      (tf.reduce_max(neg_patches, axis=1, keepdims=True) - min_neg_values)) + 0.98
+    div_pos_result = tf.where(tf.greater((pos_patches - min_pos_values), 0.0),
+                          (pos_patches - min_pos_values) /
+                          (tf.reduce_max(pos_patches, axis=1, keepdims=True) - min_pos_values + epsilon),
+                          tf.zeros(tf.shape(pos_patches - min_pos_values)))
+
+    normalized_pos = ((1 - 0.98) * div_pos_result) + 0.98
+
+    div_neg_res = tf.where(tf.greater((neg_patches - min_neg_values), 0.0), (neg_patches - min_neg_values) /
+                      (tf.reduce_max(neg_patches, axis=1, keepdims=True) - min_neg_values + epsilon),
+                           tf.zeros(tf.shape(neg_patches-min_neg_values)))
+    normalized_neg = ((1 - 0.98) * div_neg_res) + 0.98
     # normalized_pos = normalize_patches_per_class(pos_patches, min_pos_values, 0.98, 1.0)
     # normalized_neg = normalize_patches_per_class(neg_patches, min_pos_values, 0.98, 1.0)
 
@@ -73,6 +52,10 @@ def compute_image_label_localization_v2(nn_output, y_true, P):
 
 ## input handles all classes simultaneously
 def compute_image_label_classification_v2(nn_output, P):
+    # epsilon = tf.keras.backend.epsilon()
+    #
+    epsilon = tf.pow(tf.cast(10, tf.float32), -15)
+
     subtracted_prob = 1 - nn_output
     ### KEEP the dimension for observations and for the classes
     flat_mat = tf.reshape(subtracted_prob, (-1, P * P, 14))
@@ -84,89 +67,42 @@ def compute_image_label_classification_v2(nn_output, P):
     ### ( (b-a) (X - MIN(x)))/ (MAX(x) - Min(x)) + a
 
     normalized_mat = ((1 - 0.98) * (flat_mat - min_val) /
-                      (max_values - min_val)) + 0.98
+                      (max_values - min_val + epsilon)) + 0.98
 
     element_product = tf.reduce_prod(normalized_mat, axis=1)
     return (tf.cast(1, tf.float32) - element_product)
 
 
-## input is made per each class
-def compute_image_label_classification_v1(nn_output, P):
-    subtracted_prob = 1 - nn_output
-    ### KEEP the dimension for observations and for the classes
-    flat_mat = tf.reshape(subtracted_prob, (-1, P * P))
-    min_val = tf.reshape(tf.reduce_min(flat_mat, axis=1), (-1, 1))
-    max_val = tf.reshape(tf.reduce_max(flat_mat, axis=1), (-1, 1))
-    ## Normalization between [a, b]
-    ### ( (b-a) (X - MIN(x)))/ (MAX(x) - Min(x)) + a
+def test_image_label_classification_v2(nn_output, P):
+    # epsilon = tf.keras.backend.epsilon()
+    #
+    epsilon = tf.pow(tf.cast(10, tf.float32), -15)
 
-    normalized_mat = ((1 - 0.98) * (flat_mat - min_val) /
-                      (max_val - min_val)) + 0.98
-
-    element_product = tf.reduce_prod(normalized_mat, axis=1)
-    # res = (tf.cast(1, tf.float32) - element_product)
-    return (1 - element_product)
-
-
-def compute_image_label_classification(nn_output, P):
     subtracted_prob = 1 - nn_output
     ### KEEP the dimension for observations and for the classes
     flat_mat = tf.reshape(subtracted_prob, (-1, P * P, 14))
-    min_val = tf.reshape(tf.reduce_min(flat_mat, axis=1), (-1, 1, 14))
-    max_val = tf.reshape(tf.reduce_max(flat_mat, axis=1), (-1, 1, 14))
+    min_val = tf.reduce_min(tf.where(flat_mat > 0.0, flat_mat, tf.fill(tf.shape(flat_mat), 1000.0)),
+                                   axis=1, keepdims=True)
+
+    max_values = tf.reduce_max(flat_mat, axis=1, keepdims=True)
     ## Normalization between [a, b]
     ### ( (b-a) (X - MIN(x)))/ (MAX(x) - Min(x)) + a
 
-    normalized_mat = ((1 - 0.98) * (flat_mat - min_val) /
-                      (max_val - min_val)) + 0.98
+    div_result = tf.where(tf.greater(flat_mat - min_val, 0.0), ((flat_mat - min_val) /(max_values - min_val + epsilon)), tf.zeros(tf.shape(flat_mat - min_val)))
 
+    normalized_mat = ((1 - 0.98) * div_result) + 0.98
+    # normalized_mat = ((1-0.98)*tf.truediv((flat_mat-min_val), (max_values-min_val+epsilon))) + 0.98
     element_product = tf.reduce_prod(normalized_mat, axis=1)
     return (tf.cast(1, tf.float32) - element_product)
+
 
 
 def compute_loss_per_image_per_class(comparison, nn_output_class, y_true_class, m, n, P):
     prob = tf.where(comparison, compute_image_label_localization_v2(nn_output_class, y_true_class, P),
-                    compute_image_label_classification_v2(nn_output_class, P))
+                    test_image_label_classification_v2(nn_output_class, P))
     return prob
 
-
-def compute_loss_v1(nn_output, y_true, P):
-    epsilon = tf.pow(tf.cast(10, tf.float32), -7)
-    n_K = tf.reduce_sum(tf.reshape(y_true, (-1, P * P, 14)), axis=1)
-    m = P * P
-    L_bbox = tf.constant(5, dtype=tf.float32)
-
-    total_loss = 0
-    pred_probab = []
-    true_probab = []
-    total_loss_class = []
-
-    for k in range(14):
-        n = n_K[:, k]
-        nn_output_class = nn_output[:, :, :, k]
-        y_true_class = y_true[:, :, :, k]
-
-        image_true_prob = tf.cast(tf.greater(n, 0), tf.float32)
-        true_probab.append(image_true_prob)
-
-        is_localization = tf.logical_and(tf.less(n, m), tf.greater(n, 0))
-        prob_class = compute_loss_per_image_per_class(is_localization, nn_output_class, y_true_class, m, n, P)
-
-        loss_loc = -(L_bbox * prob_class * (tf.log(image_true_prob + epsilon))) - (
-        L_bbox * (1 - prob_class) * (tf.log(1 - image_true_prob + epsilon)))
-
-        loss_classification = - (prob_class * (tf.log(image_true_prob + epsilon))) - (
-        (1 - prob_class) * (tf.log(1 - image_true_prob + epsilon)))
-
-        loss_class = tf.where(is_localization, loss_loc, loss_classification)
-
-        total_loss += loss_class
-        pred_probab.append(prob_class)
-        total_loss_class.append(loss_class)
-
-    return total_loss, total_loss_class, np.asarray(pred_probab), np.asarray(true_probab)
-
-def compute_CE_loss(is_localization, labels, preds):
+def custom_CE_loss(is_localization, labels, preds):
     L_bbox = tf.constant(5, dtype=tf.float32)
     epsilon = tf.pow(tf.cast(10, tf.float32), -15)
 
@@ -180,7 +116,7 @@ def compute_CE_loss(is_localization, labels, preds):
     return loss_class
 
 
-def keras_loss(is_localization, labels, probs):
+def keras_CE_loss(is_localization, labels, probs):
     L_bbox = tf.constant(5, dtype=tf.float32)
 
     loss_classification_keras = tf.keras.backend.binary_crossentropy(labels,probs, from_logits=False)
@@ -189,27 +125,31 @@ def keras_loss(is_localization, labels, probs):
     return loss_class_keras
 
 
-def compute_loss(nn_output, y_true, P):
-    n_K = tf.reduce_sum(tf.reshape(y_true, (-1, P * P, 14)), axis=1)
+def classification_labels(instance_label_ground_truth, nn_output, P):
+    m = P*P
+    n_K = tf.reduce_sum(tf.reshape(instance_label_ground_truth, (-1, P * P, 14)), axis=1)
+    class_label_ground_truth = tf.cast(tf.greater(n_K, 0), tf.float32)
+    has_bbox = tf.logical_and(tf.less(n_K,m), tf.greater(n_K, 0))
+    combo_img_pred = compute_loss_per_image_per_class(has_bbox, nn_output, instance_label_ground_truth, m, n_K, P)
+    class_pred = test_image_label_classification_v2(nn_output, P)
+    # return instance_label_ground_truth, n_K, class_label_ground_truth, has_bbox, img_label_pred, div_result, min_val, max_values, class_pred
+    return class_label_ground_truth, has_bbox, combo_img_pred, class_pred
+
+
+def compute_loss(nn_output, instance_label_ground_truth, P):
+    n_K = tf.reduce_sum(tf.reshape(instance_label_ground_truth, (-1, P * P, 14)), axis=1)
     m = P * P
-    L_bbox = tf.constant(5, dtype=tf.float32)
+    # L_bbox = tf.constant(5, dtype=tf.float32)
 
-    img_labels = tf.cast(tf.greater(n_K, 0), tf.float32)
+    class_label_ground_truth = tf.cast(tf.greater(n_K, 0), tf.float32)
 
-    is_localization = tf.logical_and(tf.less(n_K, m), tf.greater(n_K, 0))
-    img_pred = compute_loss_per_image_per_class(is_localization, nn_output, y_true, m, n_K, P)
+    has_bbox = tf.logical_and(tf.less(n_K, m), tf.greater(n_K, 0))
+    img_label_pred = compute_loss_per_image_per_class(has_bbox, nn_output, instance_label_ground_truth, m, n_K, P)
 
-    loss_classification = compute_CE_loss(is_localization, img_labels,img_pred)
-    loss_classification_keras = keras_loss(is_localization, img_labels, img_pred)
+    loss_classification = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
 
-    # loss_classification_keras = tf.keras.backend.binary_crossentropy(image_true_prob,prob_class, from_logits=False)
-    # loss_loc_keras = L_bbox*tf.keras.backend.binary_crossentropy(image_true_prob,prob_class, from_logits=False)
-    # loss_class_keras = tf.where(is_localization, loss_loc_keras, loss_classification_keras)
-
-    # total_loss_classes = tf.reduce_sum(loss_class, axis=0)
-    # total_loss = tf.reduce_sum(loss_class)
-
-    return loss_classification, loss_classification_keras, img_pred, img_labels
+    return loss_classification, loss_classification_keras, img_label_pred, class_label_ground_truth
 
 
 def loss_L2(Y_hat, Y, P, L2_rate=0.01):

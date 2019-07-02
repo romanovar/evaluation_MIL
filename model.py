@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from tensorflow.python.framework import ops
 from keras import backend as K
 import pandas as pd
-from custom_loss import loss_L2, compute_loss
+import custom_loss as cl
 
 
 def get_feature_extraction(images, labels, batch_size, seed=0):
@@ -170,13 +170,9 @@ def build_model(X_train, Y_train, X_test, Y_test, minibatch_size, P=16, start_le
 
     Z3 = forward_propagation(X, weights, P)
     # total_loss, total_loss_class, y_hat, y_true = loss_L2(Z3, Y, P)
-    loss_classification, loss_classification_keras, prob_class, image_true_prob = compute_loss(Z3, Y, P)
-    # cost = tf.reduce_mean(total_loss_class, 0)
-    # cost = tf.reduce_mean(loss_classification)
-    # cost = tf.reduce_mean(tf.sqrt(y_true, y_hat))
-    # cost  = tf.reduce_mean((y_true, y_hat), 0)
-    # cost = tf.reduce_mean((y_true, y_hat))
-    cost = loss_classification_keras
+    loss_classification, loss_classification_keras, prob_class, image_true_prob = cl.compute_loss(Z3, Y, P)
+
+    cost = tf.reduce_sum(loss_classification_keras)
 
     global_step = tf.Variable(0, trainable=False)
     learning_rate = tf.train.exponential_decay(start_learning_rate, global_step,
@@ -188,8 +184,8 @@ def build_model(X_train, Y_train, X_test, Y_test, minibatch_size, P=16, start_le
     with tf.Session() as sess:
         sess.run(init)
         for epoch in range(num_epochs):
-
-            minibatch_cost = 0.
+            print("NEWWWWW EPOCH **********************************************")
+            minibatch_cost = 0.0
 
 
             num_minibatches = int(X_train.shape[0] / minibatch_size)  # number of minibatches of size minibatch_size in the train set
@@ -199,20 +195,32 @@ def build_model(X_train, Y_train, X_test, Y_test, minibatch_size, P=16, start_le
 
 
             for minibatch in minibatches:
+                print("*******************NEWWWWW BATCH**********************************************")
+
                 # Select a minibatch
                 (minibatch_X, minibatch_Y) = minibatch
-                # print(loss_class_tf, loss_class)
-                _, temp_cost,  prob_class, image_true_prob  = sess.run([optimizer, cost,  prob_class, image_true_prob ], feed_dict={X: minibatch_X, Y: minibatch_Y})
-                print("temp loss")
+                # instance_label, n_K, class_label, has_bbox  = cl.classification_labels(Y, P)
+                class_label_ground_truth, has_bbox, combo_img_pred, class_pred = cl.classification_labels(Y, Z3,P)
+                # nn_output, min_val, max_values, class_pred = cl.compute_image_label_classification_v2(Z3, P)
+
+                # optimizer, temp_cost = sess.run([optimizer, cost ], feed_dict={X: minibatch_X, Y: minibatch_Y})
+
+                # print("image true prob")
+                # print(class_label_ground_truth)
+                # print("has bbox")
+                # print(has_bbox)
+                #
+                # print("combination prediction  ")
+                # print(combo_img_pred)
+                #
+                # print("only classification")
+                # print( class_pred)
+
+                _, temp_cost = sess.run([optimizer, cost ], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                print("Temporary cost is: ")
                 print(temp_cost)
-                # print(lcl) , lcl, lcltf, y_hat, y_true
-                # print(lcltf)
-                print("prob class")
-                print(prob_class)
-                print("image true prob")
-                print(image_true_prob)
-                # print(y_true)
                 minibatch_cost += temp_cost / (num_minibatches)
+
                 # for iter in range(num_iter):
                 #     _, temp_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
                 #     print("Temporary cost is: ")
@@ -221,7 +229,7 @@ def build_model(X_train, Y_train, X_test, Y_test, minibatch_size, P=16, start_le
 
             # Print the cost every epoch
             if print_cost == True and epoch % 5 == 0:
-                # print("Cost after epoch %i: %f" % (epoch, minibatch_cost))
+                print("Cost after epoch %i: %f" % (epoch, minibatch_cost))
                 print("Cost after epoch: ")
 
                 print(minibatch_cost)

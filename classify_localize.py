@@ -79,10 +79,10 @@ Y = ld.couple_location_labels(LOCAL_PATH_L , Y, ld.PATCH_SIZE, LOCAL_OUT)
 Y_class, Y_loc = ld.separate_localization_classification_labels(Y)
 
 Y_new = ld.keep_only_diagnose_columns(Y)
-print(X.shape)
+print(Y_new)
 
 X_train, Y_train_df= model.get_feature_extraction(X,Y_new, batch_size=2, seed=0)
-Y_train = ld.reshape_Y(Y_train_df)
+Y_train = ld.reshape_Y(Y_new)
 
 
 model.build_model(X_train, Y_train, X_train, Y_train, P=16, start_learning_rate = 0.001,

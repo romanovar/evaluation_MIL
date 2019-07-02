@@ -435,5 +435,5 @@ def reshape_Y(Y):
         for j in range(Y.shape[1]):  # 1 -> (16, 16)
             single_obs.append(Y.iloc[i,j])
         newarr.append(single_obs)
-    reshaped_Y = np.asarray(newarr).reshape((21, 16, 16, 14))
+    reshaped_Y = np.transpose(np.asarray(newarr), [0, 2, 3, 1])
     return (reshaped_Y)
