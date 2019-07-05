@@ -1,13 +1,18 @@
-import cv2
 import numpy as np
 from keras.utils import Sequence
-import threading
-
 from keras.preprocessing.image import load_img, img_to_array
 
-# dataset_path = 'nih_data/'
 
+ON_SERVER = False
 LOCAL_PATH_I = "C:/Users/s161590/Desktop/Data/X_Ray/images/"
+SERVER_PATH_I = "/home/rnromanova/XRay14/images/batch1"
+img_dir = None
+
+if ON_SERVER:
+    img_dir = SERVER_PATH_I
+else:
+    img_dir = LOCAL_PATH_I
+
 
 class BatchGenerator(Sequence):
     def __init__(self,

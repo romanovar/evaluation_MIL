@@ -11,7 +11,7 @@ FINDINGS = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion',
             'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 'Nodule', 'Pleural_Thickening',
             'Pneumonia', 'Pneumothorax']
 
-LOCALIZATION = ['Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass',
+LOCALIZATION = ['Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltrate', 'Mass',
                 'Nodule', 'Pneumonia', 'Pneumothorax']
 
 IMAGE_X = 512
@@ -366,23 +366,23 @@ def bbox_available(df, img_ind):
     return df.loc[df['Image Index'] == img_ind, ['Bbox']]
 
 
-### LOOP through and update the bbox, according to the
-def get_bbox_coords(class_df, loc_df, img_ind):
-    # image in bbox coord may appear multiple times - 1 row per class
-    rows = loc_df.loc[loc_df['Image Index'] == img_ind]
-    # Images in classification file will appear once, while
-    for ind, row in loc_df.iterrows():
-        res.append([row['Finding Label'], row['x'], row['y'], row['w'], row['h']])
-        if bbox_available(Yclass, image_ind) == 1:
-            coords = get_bbox_coords()
+# ### LOOP through and update the bbox, according to the
+# def get_bbox_coords(class_df, loc_df, img_ind):
+#     # image in bbox coord may appear multiple times - 1 row per class
+#     rows = loc_df.loc[loc_df['Image Index'] == img_ind]
+#     # Images in classification file will appear once, while
+#     for ind, row in loc_df.iterrows():
+#         res.append([row['Finding Label'], row['x'], row['y'], row['w'], row['h']])
+#         if bbox_available(Yclass, image_ind) == 1:
+#             coords = get_bbox_coords()
 
 
-def add_bbox_coord():
-
-    coords = str(row['x']) + ', ' + str(row['y']) + ', ' + str(row['w']) + ', ' + str(row['h'])
-
-    # x y] are coordinates of each box's topleft corner. [w h] represent the width and height of each box
-    Y_class.loc[Y_class['Image Index'] == row['Image Index'], [row['Finding Label'] + '_coord']] = coords
+# def add_bbox_coord():
+#
+#     coords = str(row['x']) + ', ' + str(row['y']) + ', ' + str(row['w']) + ', ' + str(row['h'])
+#
+#     # x y] are coordinates of each box's topleft corner. [w h] represent the width and height of each box
+#     Y_class.loc[Y_class['Image Index'] == row['Image Index'], [row['Finding Label'] + '_coord']] = coords
 
 def get_process_annotated_png(ann_list, path_to_png="C:/Users/s161590/Desktop/Data/X_Ray/images"):
     """
@@ -428,12 +428,24 @@ def keep_only_diagnose_columns(Y):
         'Nodule_loc', 'Pleural_Thickening_loc', 'Pneumonia_loc', 'Pneumothorax_loc']]
 
 
-def reshape_Y(Y):
+# THIS METHOD IS USED FOR KERAS TESTING
+def keep_index_and_diagnose_columns(Y):
+    return Y[['Image Index', 'Atelectasis_loc', 'Cardiomegaly_loc', 'Consolidation_loc', 'Edema_loc',
+        'Effusion_loc', 'Emphysema_loc','Fibrosis_loc', 'Hernia_loc', 'Infiltration_loc', 'Mass_loc',
+        'Nodule_loc', 'Pleural_Thickening_loc', 'Pneumonia_loc', 'Pneumothorax_loc']]
+
+
+def keep_only_classification_columns(Y):
+    return Y[['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema',
+              'Effusion', 'Emphysema', 'Fibrosis', 'Hernia', 'Infiltration', 'Mass',
+              'Nodule', 'Pleural_Thickening', 'Pneumonia', 'Pneumothorax']]
+
+
+def reorder_Y(Y):
     newarr = []
     for i in range(0, Y.shape[0]):  # (14)
         single_obs = []
         for j in range(Y.shape[1]):  # 1 -> (16, 16)
             single_obs.append(Y.iloc[i,j])
         newarr.append(single_obs)
-    reshaped_Y = np.transpose(np.asarray(newarr), [0, 2, 3, 1])
-    return (reshaped_Y)
+    return np.transpose(np.asarray(newarr), [0, 2, 3, 1])

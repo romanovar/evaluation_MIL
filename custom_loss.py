@@ -159,7 +159,23 @@ def loss_L2(Y_hat, Y, P, L2_rate=0.01):
     reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
     return total_loss + L2_rate * sum(reg_losses), total_loss_class, pred_prob, image_prob
 
+def compute_loss_keras(nn_output, instance_label_ground_truth, P):
+    m = P * P
+    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m)
+    # n_K = tf.reduce_sum(tf.reshape(instance_label_ground_truth, (-1, P * P, 14)), axis=1)
 
+    # class_label_ground_truth = tf.cast(tf.greater(n_K, 0), tf.float32)
+
+    # has_bbox = tf.logical_and(tf.less(n_K, m), tf.greater(n_K, 0))
+    img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, m, sum_active_patches, P)
+
+    loss_classification = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    total_loss = tf.reduce_sum(loss_classification_keras)
+    return total_loss
+
+def keras_loss(y_true, y_pred):
+    return compute_loss_keras(y_pred, y_true, P=16)
 ####################################### Computing accuracy ####################################################
 
 
@@ -193,3 +209,22 @@ def compute_accuracy(predictions, instance_labels_ground, P):
                         compute_accuracy_on_image_level(predictions, class_label_ground, P))
     accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
     return accuracy_per_obs_per_class, accuracy_per_class, tf.reduce_mean(accuracy_per_obs_per_class)
+
+
+
+def compute_accuracy_keras(predictions, instance_labels_ground, P):
+    m=P*P
+    # n_K = tf.reduce_sum(tf.reshape(instance_labels_ground, (-1, P * P, 14)), axis=1)
+    # is_localization = tf.logical_and(tf.less(n_K, P * P), tf.greater(n_K, 0))
+    # class_label_ground = tf.cast(tf.greater(n_K, 0), tf.float32)
+    sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
+
+    accuracy_per_obs_per_class = tf.where(has_bbox,
+                        compute_accuracy_on_patch_level(predictions, instance_labels_ground, P),
+                        compute_accuracy_on_image_level(predictions, class_label_ground, P))
+    accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
+    # return tf.reduce_mean(accuracy_per_obs_per_class)
+    return accuracy_per_class
+
+def keras_accuracy(y_true, y_pred):
+    return compute_accuracy_keras(y_pred, y_true, P=16)
