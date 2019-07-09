@@ -1,17 +1,30 @@
+import keras as K
+from keras.callbacks import Callback
+
+
+class MyCallback(Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        lr = self.model.optimizer.lr
+        decay = self.model.optimizer.decay
+        iterations = self.model.optimizer.iterations
+        lr_with_decay = lr / (1. + decay * K.cast(iterations, K.dtype(decay)))
+        print(K.eval(lr_with_decay))
+
 import load_data as ld
 from keras.applications import ResNet50
-from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import EarlyStopping, ModelCheckpoint, LearningRateScheduler, Callback, Callback
 from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU
 import os
 from keras.models import Model
 from keras.optimizers import Adam
 import keras_generators as gen
 import custom_loss as cl
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+import tensorflow as tf
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 ON_SERVER = False
 IMAGE_SIZE = 512
-BATCH_SIZE = 8
+BATCH_SIZE = 5
 BOX_SIZE = 16
 
 
@@ -28,17 +41,18 @@ LOCAL_OUT = "C:/Users/s161590/Desktop/Data/X_Ray/out"
 if ON_SERVER:
     label_df = ld.get_classification_labels(SERVER_PATH_C, False)
     X, Y = ld.load_process_png_v2(label_df, SERVER_PATH_I)
-    Y = ld.couple_location_labels(SERVER_PATH_L , Y, ld.PATCH_SIZE, SERVER_OUT)
+    xray_df = ld.couple_location_labels(SERVER_PATH_L , Y, ld.PATCH_SIZE, SERVER_OUT)
 
 else:
     label_df = ld.get_classification_labels(LOCAL_PATH_C, False)
     _, Y = ld.load_process_png_v2(label_df, LOCAL_PATH_I)
-    Y = ld.couple_location_labels(LOCAL_PATH_L , Y, ld.PATCH_SIZE, LOCAL_OUT)
+    xray_df = ld.couple_location_labels(LOCAL_PATH_L , Y, ld.PATCH_SIZE, LOCAL_OUT)
 
-XY = ld.keep_index_and_diagnose_columns(Y)
+# filtering the columns in the split of the train and test
+print("Splitting data ...")
+df_train, df_val, df_bbox_test, df_class_test = ld.get_train_test(xray_df)
 
 
-# print(XY)
 def normalize(im):
     im = im / 255
     return im
@@ -46,7 +60,7 @@ def normalize(im):
 
 # print(X.shape)
 train_generator = gen.BatchGenerator(
-            instances=XY.values,
+            instances=df_train.values,
             batch_size=BATCH_SIZE,
             net_h=IMAGE_SIZE,
             net_w=IMAGE_SIZE,
@@ -56,7 +70,7 @@ train_generator = gen.BatchGenerator(
         )
 
 valid_generator = gen.BatchGenerator(
-    instances=XY.values,
+    instances=df_val.values,
     batch_size=BATCH_SIZE,
     net_h=IMAGE_SIZE,
     net_w=IMAGE_SIZE,
@@ -84,8 +98,24 @@ def build_model():
     return model
 
 
+def step_decay(epoch, lr):
+    '''
+    :param epoch: current epoch
+    :param lr: current learning rate
+    :return: decay every 10 epochs the learning rate with 0.1
+    '''
+    decay = 0.1
+    # lrate = lr*decay
+    lrate = lr
+    if(epoch%10==0):
+        lrate = lr * decay
+    return lrate
+
+
+lrate = LearningRateScheduler(step_decay, verbose=1)
+
 def compile_model(model):
-    optimizer = Adam(lr=0.0001)
+    optimizer = Adam(lr=0.001)
     model.compile(optimizer=optimizer,
                   #loss='binary_crossentropy',
                   loss=cl.keras_loss,  # Call the loss function with the selected layer
@@ -117,15 +147,20 @@ checkpoint = ModelCheckpoint(
     period=1
 )
 
+def on_epoch_end(self, epoch, logs=None):
+    print(K.eval(self.model.optimizer.lr))
+
 model.fit_generator(
             generator=train_generator,
-            steps_per_epoch=len(XY)//BATCH_SIZE,
+            steps_per_epoch=len(df_train)//BATCH_SIZE,
             epochs=100,
             validation_data=valid_generator,
-            validation_steps=len(XY)//BATCH_SIZE,
-            verbose=1,
-            callbacks=[checkpoint, early_stop],
+            validation_steps=len(df_val)//BATCH_SIZE,
+            verbose=2,
+            callbacks = [checkpoint, early_stop, lrate],
+            # callbacks=[checkpoint, early_stop],
             workers=4,
             max_queue_size=16
         )
+
 

@@ -1,5 +1,6 @@
 from keras.applications import ResNet50V2
 import tensorflow as tf
+from keras_preprocessing.image import ImageDataGenerator
 from tensorflow.python.ops.nn_ops import max_pool
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,6 +8,87 @@ from tensorflow.python.framework import ops
 from keras import backend as K
 import pandas as pd
 import custom_loss as cl
+from keras import models
+from keras import layers
+from keras import optimizers
+
+
+
+
+def fine_tune_resnet(images, labels):
+    resnet = ResNet50V2(include_top=False, weights='imagenet',  input_shape=(512, 512, 3))
+    for layer in resnet.layers[:-50]:
+        layer.trainable = False
+
+
+    for layer in resnet.layers:
+        print(layer, layer.trainable)
+
+    model = models.Sequential()
+    model.add(resnet)
+    model.add(layers.Flatten())
+    model.add(layers.Dense(1024, activation='relu'))
+    model.add(layers.Dropout(0.5))
+    model.add(layers.Dense(14, activation='sigmoid'))
+    model.summary()
+
+    train_datagen = ImageDataGenerator(
+        rescale=1. / 255,
+        rotation_range=20,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        horizontal_flip=True)
+    # test_datagen = ImageDataGenerator(rescale=1. / 255)
+
+    validation_datagen = ImageDataGenerator(rescale=1. / 255)
+
+    # Change the batchsize according to your system RAM
+    train_batchsize = 100
+    val_batchsize = 10
+
+    train_generator = train_datagen.flow_from_directory(
+        'data/train',
+        target_size=(512, 512),
+        batch_size=32,
+        class_mode='binary')
+
+    validation_generator = validation_datagen.flow_from_directory(
+        'data/validation',
+        target_size=(512, 512),
+        batch_size=32,
+        class_mode='binary',
+        shuffle=False)
+
+
+    # Compile the model
+
+    model.compile(loss='binary_crossentropy',
+                  optimizer=optimizers.RMSprop(lr=1e-4),
+                  metrics=['acc'])
+    # Train the model
+    history = model.fit_generator(
+        train_generator,
+        steps_per_epoch=train_generator.samples / train_generator.batch_size,
+        epochs=30,
+        validation_data=validation_generator,
+        validation_steps=validation_generator.samples / validation_generator.batch_size,
+        verbose=1)
+
+    # Save the model
+    model.save('small_last4.h5')
+
+    # train_generator = train_datagen.flow_from_directory(
+    #     train_dir,
+    #     target_size=(image_size, image_size),
+    #     batch_size=train_batchsize,
+    #     class_mode='categorical')
+    #
+    # validation_generator = validation_datagen.flow_from_directory(
+    #     validation_dir,
+    #     target_size=(image_size, image_size),
+    #     batch_size=val_batchsize,
+    #     class_mode='categorical',
+    #     shuffle=False)
 
 
 def get_feature_extraction(images, labels, batch_size, seed=0):
@@ -19,7 +101,7 @@ def get_feature_extraction(images, labels, batch_size, seed=0):
     X = np.empty((0, 16, 16, 2048))
 
     model = ResNet50V2(include_top=False, weights='imagenet',  input_shape=(512, 512, 3))
-    # model.summary()
+    model.summary()
     model._make_predict_function()
     minibatches = mini_batches(images, labels, batch_size, seed)
 
@@ -97,14 +179,15 @@ def mini_batches(X, Y, mini_batch_size=5, seed=0, random=False):
         mini_batch = (mini_batch_X, mini_batch_Y)
         mini_batches.append(mini_batch)
 
-    # Handling the end case (last mini-batch < mini_batch_size)
-    if m % mini_batch_size != 0:
-
-        mini_batch_X = np.take(shuffled_X, range(mini_batch_size * num_complete_minibatches, m), axis=0)
-        mini_batch_Y = np.take(shuffled_Y, range(mini_batch_size * num_complete_minibatches, m), axis=0)
-
-        mini_batch = (mini_batch_X, mini_batch_Y)
-        mini_batches.append(mini_batch)
+    # #todo: dont add incomplete minibatch
+    # # Handling the end case (last mini-batch < mini_batch_size)
+    # if m % mini_batch_size != 0:
+    #
+    #     mini_batch_X = np.take(shuffled_X, range(mini_batch_size * num_complete_minibatches, m), axis=0)
+    #     mini_batch_Y = np.take(shuffled_Y, range(mini_batch_size * num_complete_minibatches, m), axis=0)
+    #
+    #     mini_batch = (mini_batch_X, mini_batch_Y)
+    #     mini_batches.append(mini_batch)
 
     return mini_batches
 
@@ -157,8 +240,8 @@ def random_mini_batches(X, Y, mini_batch_size=5, seed=0):
 # TODO: 5) optimize the model by Adam - DONE
 # todo: 6) with asynchronous training
 # TODO: to change number of iterations
-def build_model(X_train, Y_train, X_test, Y_test, minibatch_size, P=16, start_learning_rate = 0.000001,
-                num_epochs=200, num_iter=500000, print_cost=True):
+def build_model(X_train, Y_train, X_test, Y_test, minibatch_size, P=16, learning_rate=0.0001,  start_learning_rate = 0.0001,
+                num_epochs=200, num_iter=100, print_cost=True):
     ops.reset_default_graph()
     tf.set_random_seed(1)
     seed = 3
@@ -169,63 +252,41 @@ def build_model(X_train, Y_train, X_test, Y_test, minibatch_size, P=16, start_le
     weights = initialize_weights()
 
     Z3 = forward_propagation(X, weights, P)
-    # total_loss, total_loss_class, y_hat, y_true = loss_L2(Z3, Y, P)
     loss_classification, loss_classification_keras, prob_class, image_true_prob = cl.compute_loss(Z3, Y, P)
 
     cost = tf.reduce_sum(loss_classification_keras)
 
-    global_step = tf.Variable(0, trainable=False)
-    learning_rate = tf.train.exponential_decay(start_learning_rate, global_step,
-                                               10, 0.1, staircase=True)
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost, global_step=global_step)
+    # global_step = tf.Variable(0, trainable=False)
+    # learning_rate = tf.train.exponential_decay(start_learning_rate, global_step,
+    #                                            10, 0.1, staircase=True)
+    # optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost, global_step=global_step)
+
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(cost)
 
     init = tf.global_variables_initializer()
 
     with tf.Session() as sess:
         sess.run(init)
         for epoch in range(num_epochs):
-            print("NEWWWWW EPOCH **********************************************")
             minibatch_cost = 0.0
 
 
             num_minibatches = int(X_train.shape[0] / minibatch_size)  # number of minibatches of size minibatch_size in the train set
             seed = seed + 1
             # minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
-            minibatches = mini_batches(X_train, Y_train, minibatch_size, seed, random=False)
+            minibatches = mini_batches(X_train, Y_train, minibatch_size, seed, random=True)
 
 
             for minibatch in minibatches:
-                print("*******************NEWWWWW BATCH**********************************************")
 
                 # Select a minibatch
                 (minibatch_X, minibatch_Y) = minibatch
-                # instance_label, n_K, class_label, has_bbox  = cl.classification_labels(Y, P)
-                class_label_ground_truth, has_bbox, combo_img_pred, class_pred = cl.classification_labels(Y, Z3,P)
-                # nn_output, min_val, max_values, class_pred = cl.compute_image_label_classification_v2(Z3, P)
-
-                # optimizer, temp_cost = sess.run([optimizer, cost ], feed_dict={X: minibatch_X, Y: minibatch_Y})
-
-                # print("image true prob")
-                # print(class_label_ground_truth)
-                # print("has bbox")
-                # print(has_bbox)
-                #
-                # print("combination prediction  ")
-                # print(combo_img_pred)
-                #
-                # print("only classification")
-                # print( class_pred)
-
-                _, temp_cost = sess.run([optimizer, cost ], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                _, temp_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
                 print("Temporary cost is: ")
                 print(temp_cost)
                 minibatch_cost += temp_cost / (num_minibatches)
-
                 # for iter in range(num_iter):
-                #     _, temp_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
-                #     print("Temporary cost is: ")
-                #     print(temp_cost)
-                #     minibatch_cost += temp_cost / (num_minibatches*num_iter)
+
 
             # Print the cost every epoch
             if print_cost == True and epoch % 5 == 0:
@@ -243,49 +304,17 @@ def build_model(X_train, Y_train, X_test, Y_test, minibatch_size, P=16, start_le
         plt.show()
 
         # Calculate the correct predictions
-        predict_op = tf.argmax(y_hat, 1)
-        correct_prediction = tf.equal(predict_op, tf.argmax(y_true, 1))
+        # predict_op = tf.argmax(y_hat, 1)
+        # correct_prediction = tf.equal(predict_op, tf.argmax(y_true, 1))
 
         # Calculate accuracy on the test set
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-        print(accuracy)
-        train_accuracy = accuracy.eval({X: X_train, Y: Y_train})
-        test_accuracy = accuracy.eval({X: X_test, Y: Y_test})
+        # accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+        # print(accuracy)
+        accuracy, acc_per_class, mean_acc = cl.compute_accuracy(Z3, Y, P)
+
+        train_accuracy = mean_acc.eval({X: X_train, Y: Y_train})
+        test_accuracy = mean_acc.eval({X: X_test, Y: Y_test})
         print("Train Accuracy:", train_accuracy)
         print("Test Accuracy:", test_accuracy)
 
         return train_accuracy, test_accuracy, weights
-
-#
-# label_df = ld.get_classification_labels(label_dir="C:/Users/s161590/Desktop/Data/X_Ray/test.csv")
-# # loads Y as a list
-# # X, Y = ld.load_process_png(label_df)
-# # loads as df
-# X, Y = ld.load_process_png_v2(label_df)
-#
-# X_tr, X_t, Y_tr, Y_t = ld.split_test_train(X, Y)
-# print("*********************SPLIT")
-# print((X_tr.shape))
-# print(type(Y_tr))
-# print((X_t.shape))
-# print((Y_t.shape))
-#
-#
-# X_train, Y_train_df= get_feature_extraction(X_tr,Y_tr, batch_size=2, seed=0)
-# X_test, Y_test_df  = get_feature_extraction(X_t,Y_t, batch_size=2, seed=0)
-#
-# print("*********************FE")
-# print((X_train.shape))
-# print(type(Y_train_df))
-# print((X_test.shape))
-# print((Y_test_df.shape))
-#
-# Y_train, Y_test = Y_train_df.to_numpy(), Y_test_df.to_numpy()
-# print("*********************x train shape")
-# print((X_train.shape))
-# print((X_test.shape))
-# print(type(Y_train))
-# print((Y_test.shape))
-
-# model(X_train, Y_train, X_test, Y_test, P=16, start_learning_rate = 0.001,
-#           num_epochs=20, num_iter=5,  minibatch_size=5, print_cost=True)

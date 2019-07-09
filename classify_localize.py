@@ -29,7 +29,13 @@ Y = ld.couple_location_labels(LOCAL_PATH_L , Y, ld.PATCH_SIZE, LOCAL_OUT)
 Y_class, Y_loc = ld.separate_localization_classification_labels(Y)
 
 Y_patch_labels = ld.keep_only_diagnose_columns(Y)
+
 print(Y_patch_labels)
+
+Y_patch_labels = ld.keep_only_diagnose_columns(Y)
+
+Y_class, Y_bbox  = ld.separate_localization_classification_labels(Y)
+
 
 Y_img_label = ld.keep_only_classification_columns(Y)
 # model.fine_tune_resnet(X, Y_img_label)

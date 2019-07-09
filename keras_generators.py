@@ -3,6 +3,7 @@ from keras.utils import Sequence
 from keras.preprocessing.image import load_img, img_to_array
 
 
+# ON_SERVER =
 ON_SERVER = False
 LOCAL_PATH_I = "C:/Users/s161590/Desktop/Data/X_Ray/images/"
 SERVER_PATH_I = "/home/rnromanova/XRay14/images/batch1"
@@ -65,13 +66,11 @@ class BatchGenerator(Sequence):
 
         # do the logic to fill in the inputs and the output
         for train_instance in self.instances[l_bound:r_bound]:
-            # print(train_instance)
-            print(train_instance.shape)
             image_name = train_instance[0]
 
             image = img_to_array(
 
-                load_img(LOCAL_PATH_I + '' + image_name, target_size=(self.net_w, self.net_h), color_mode='rgb'))
+                load_img(img_dir + '' + image_name, target_size=(self.net_w, self.net_h), color_mode='rgb'))
 
             if self.norm != None:
                 x_batch[instance_count] = self.norm(image)
@@ -82,8 +81,7 @@ class BatchGenerator(Sequence):
             for i in range(1, train_instance.shape[0]):  # (15)
 
                 train_instances_classes.append(train_instance[i])
-
-            t = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
+            # t = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
 
             y_batch[instance_count] = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
             # increase instance counter in the current batch

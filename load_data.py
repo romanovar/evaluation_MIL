@@ -418,6 +418,13 @@ def split_test_train(X, Y, test_ratio=0.2):
     return X_train, X_test, Y.iloc[train_inds], Y.iloc[test_inds]
 
 
+def split_test_train_v2(df, test_ratio=0.2):
+    # shuffle split ensuring that same patient ID is only in test or train
+    train_inds, test_inds = next(GroupShuffleSplit(test_size=test_ratio, random_state=0).split(df, groups=df['Patient ID']))
+
+    return df.iloc[train_inds], df.iloc[test_inds]
+
+
 def separate_localization_classification_labels(Y):
     return Y.loc[Y['Bbox']==0], Y.loc[Y['Bbox']==1]
 
@@ -434,6 +441,40 @@ def keep_index_and_diagnose_columns(Y):
         'Effusion_loc', 'Emphysema_loc','Fibrosis_loc', 'Hernia_loc', 'Infiltration_loc', 'Mass_loc',
         'Nodule_loc', 'Pleural_Thickening_loc', 'Pneumonia_loc', 'Pneumothorax_loc']]
 
+
+# Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate
+#  on the other 20% annotated images in each fold.
+def get_train_test(Y):
+    classification, bbox = separate_localization_classification_labels(Y)
+    # clas, local
+    # classification, bbox = keep_index_and_diagnose_columns(clas), keep_index_and_diagnose_columns(local)
+
+    df_class_train, df_class_test = split_test_train_v2(classification, test_ratio=0.5)
+    df_bbox_train, df_bbox_test = split_test_train_v2(bbox, test_ratio=0.8)
+
+    df_class_train, df_class_val = split_test_train_v2(df_class_train, test_ratio=0.2)
+    df_bbox_train, df_bbox_val = split_test_train_v2(df_bbox_train, test_ratio=0.2)
+
+    df_train = pd.concat([df_class_train, df_bbox_train])
+    df_val = pd.concat([df_class_val, df_bbox_val])
+    # print("classification train set: ")
+    # print(df_class_train['Bbox'].value_counts())
+    # print("localization train set: ")
+    # print(df_bbox_train['Bbox'].value_counts())
+    #
+    # print("classification validation set: ")
+    # print(df_class_val['Bbox'].value_counts())
+    # print("localization validation set: ")
+    # print(df_bbox_val['Bbox'].value_counts())
+    #
+    # print("test test set: ")
+    # print(df_class_test['Bbox'].value_counts())
+    # print("localization test set: ")
+    # print(df_bbox_test['Bbox'].value_counts())
+
+    train_set, val_set = keep_index_and_diagnose_columns(df_train), keep_index_and_diagnose_columns(df_val)
+    bbox_test, class_test = keep_index_and_diagnose_columns(df_bbox_test), keep_index_and_diagnose_columns(df_class_test)
+    return train_set, val_set, bbox_test, class_test
 
 def keep_only_classification_columns(Y):
     return Y[['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema',

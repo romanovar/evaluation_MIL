@@ -179,15 +179,21 @@ def keras_loss(y_true, y_pred):
 ####################################### Computing accuracy ####################################################
 
 
-def convert_predictions_to_binary(preds):
-    return tf.where(preds > 0.5, tf.ones(tf.shape(preds)), tf.zeros(tf.shape(preds)))
+def convert_predictions_to_binary(preds, thres):
+    return tf.where(preds > thres, tf.ones(tf.shape(preds)), tf.zeros(tf.shape(preds)))
 
 
-def compute_accuracy_on_patch_level(predictions, labels, P):
-    patches_binary_pred = convert_predictions_to_binary(predictions)
-    correct_prediction = tf.equal(patches_binary_pred, labels)
-    return tf.reduce_mean(tf.cast(tf.reshape(correct_prediction, (-1, P * P, 14)), "float"), 1)
+# def compute_accuracy_on_patch_level(predictions, labels, P):
+#     patches_binary_pred = convert_predictions_to_binary(predictions, thres=0.5)
+#     correct_prediction = tf.equal(patches_binary_pred, labels)
+#     return tf.reduce_mean(tf.cast(tf.reshape(correct_prediction, (-1, P * P, 14)), "float"), 1)
 
+def compute_accuracy_image_bbox(predictions, labels, class_ground_truth, P, iou_threshold):
+    IoU = compute_IoU(predictions, labels, P)
+    print(IoU)
+    image_class_pred = tf.where(tf.greater_equal(IoU, 0.1), tf.ones(tf.shape(IoU)), tf.zeros(tf.shape(IoU)))
+    correct_prediction = tf.equal(image_class_pred, class_ground_truth)
+    return IoU, tf.cast(correct_prediction, "float")
 
 def compute_accuracy_on_image_level(predictions, class_ground_truth, P):
     img_class_prob_pred = compute_image_label_in_classification(predictions, P)
@@ -197,34 +203,49 @@ def compute_accuracy_on_image_level(predictions, class_ground_truth, P):
     return tf.cast(correct_prediction, "float")
 
 
-def compute_accuracy(predictions, instance_labels_ground, P):
+def compute_IoU(predictions, labels, P):
+    predictions_xy_flatten = tf.reshape(predictions, (-1, P*P, 14))
+    labels_xy_flatten = tf.reshape(labels, (-1, P*P, 14))
+
+    patches_binary_pred = convert_predictions_to_binary(predictions, thres=0.5)
+
+    correct_prediction = tf.cast(tf.equal(patches_binary_pred, labels), tf.float32)
+    #check only active patches from the labels and see if the prediction there agrees with the labels
+    intersection = tf.reduce_sum(tf.where(tf.greater(labels_xy_flatten, 0), tf.reshape(correct_prediction, (-1, P*P, 14)), tf.zeros((tf.shape(labels_xy_flatten)))), 1)
+
+    union = tf.reduce_sum(predictions_xy_flatten, 1) + tf.reduce_sum(labels_xy_flatten, 1) - intersection
+
+    return intersection/union
+
+def compute_accuracy(predictions, instance_labels_ground, P, iou_threshold):
     m=P*P
     # n_K = tf.reduce_sum(tf.reshape(instance_labels_ground, (-1, P * P, 14)), axis=1)
     # is_localization = tf.logical_and(tf.less(n_K, P * P), tf.greater(n_K, 0))
     # class_label_ground = tf.cast(tf.greater(n_K, 0), tf.float32)
     sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
+    IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold)
 
     accuracy_per_obs_per_class = tf.where(has_bbox,
-                        compute_accuracy_on_patch_level(predictions, instance_labels_ground, P),
-                        compute_accuracy_on_image_level(predictions, class_label_ground, P))
+                                          accuracy_bbox,
+                                          compute_accuracy_on_image_level(predictions, class_label_ground, P))
     accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
     return accuracy_per_obs_per_class, accuracy_per_class, tf.reduce_mean(accuracy_per_obs_per_class)
 
 
 
-def compute_accuracy_keras(predictions, instance_labels_ground, P):
+def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold):
     m=P*P
     # n_K = tf.reduce_sum(tf.reshape(instance_labels_ground, (-1, P * P, 14)), axis=1)
     # is_localization = tf.logical_and(tf.less(n_K, P * P), tf.greater(n_K, 0))
     # class_label_ground = tf.cast(tf.greater(n_K, 0), tf.float32)
     sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
+    IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold)
 
-    accuracy_per_obs_per_class = tf.where(has_bbox,
-                        compute_accuracy_on_patch_level(predictions, instance_labels_ground, P),
+    accuracy_per_obs_per_class = tf.where(has_bbox, accuracy_bbox,
                         compute_accuracy_on_image_level(predictions, class_label_ground, P))
     accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
     # return tf.reduce_mean(accuracy_per_obs_per_class)
     return accuracy_per_class
 
 def keras_accuracy(y_true, y_pred):
-    return compute_accuracy_keras(y_pred, y_true, P=16)
+    return compute_accuracy_keras(y_pred, y_true, P=16, iou_threshold=0.1)
