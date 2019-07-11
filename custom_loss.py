@@ -47,6 +47,43 @@ def compute_image_label_from_localization(nn_output, y_true, P):
     return tf.multiply(Pi_pos_patches, Pi_neg_patches)
 
 
+def compute_image_label_from_localization_v2(nn_output, y_true, P):
+    epsilon = tf.pow(tf.cast(10, tf.float32), -15)
+    active_patches = tf.cast(tf.where(tf.greater(nn_output, 0.5), tf.ones(tf.shape(nn_output)),
+                                      tf.zeros(tf.shape(nn_output))), tf.float32)
+
+    pos_patches = tf.reshape((nn_output * active_patches), (-1, P * P, 14))
+    neg_patches = tf.reshape((1 - nn_output) * (1 - active_patches), (-1, P * P, 14))
+
+    min_pos_values = tf.reduce_min(tf.where(pos_patches>0.0, pos_patches, tf.fill(tf.shape(pos_patches), 1000.0)), axis=1, keepdims=True)
+
+    min_neg_values = tf.reduce_min(tf.where(neg_patches>0.0, neg_patches, tf.fill(tf.shape(neg_patches), 1000.0)), axis=1, keepdims=True)
+    # min_pos_values = find_minimum_element_in_class(pos_patches)
+    # min_neg_values = find_minimum_element_in_class(neg_patches)
+
+    div_pos_result = tf.where(tf.greater((pos_patches - min_pos_values), 0.0),
+                          (pos_patches - min_pos_values) /
+                          (tf.reduce_max(pos_patches, axis=1, keepdims=True) - min_pos_values + epsilon),
+                          tf.zeros(tf.shape(pos_patches - min_pos_values)))
+
+    normalized_pos = ((1 - 0.98) * div_pos_result) + 0.98
+
+    div_neg_res = tf.where(tf.greater((neg_patches - min_neg_values), 0.0), (neg_patches - min_neg_values) /
+                      (tf.reduce_max(neg_patches, axis=1, keepdims=True) - min_neg_values + epsilon),
+                           tf.zeros(tf.shape(neg_patches-min_neg_values)))
+    normalized_neg = ((1 - 0.98) * div_neg_res) + 0.98
+    # normalized_pos = normalize_patches_per_class(pos_patches, min_pos_values, 0.98, 1.0)
+    # normalized_neg = normalize_patches_per_class(neg_patches, min_pos_values, 0.98, 1.0)
+
+    norm_pos_patches = normalized_pos*tf.reshape(y_true, (-1, P * P, 14))
+    norm_neg_patches = normalized_neg*tf.reshape((1 - y_true), (-1, P * P, 14))
+
+    Pi_pos_patches = tf.reduce_prod(tf.where(norm_pos_patches>0.0, norm_pos_patches, tf.fill(tf.shape(norm_pos_patches),1.0)), axis=1)
+    Pi_neg_patches = tf.reduce_prod(tf.where(norm_neg_patches>0.0, norm_neg_patches, tf.fill(tf.shape(norm_neg_patches),1.0)), axis=1)
+
+    return tf.multiply(Pi_pos_patches, Pi_neg_patches)
+
+
 ## input handles all classes simultaneously
 # def compute_image_label_classification_v2(nn_output, P):
 #     # epsilon = tf.keras.backend.epsilon()
@@ -91,7 +128,7 @@ def compute_image_label_in_classification(nn_output, P):
 
 
 def compute_image_label_prediction(has_bbox, nn_output_class, y_true_class, m, n, P):
-    prob = tf.where(has_bbox, compute_image_label_from_localization(nn_output_class, y_true_class, P),
+    prob = tf.where(has_bbox, compute_image_label_from_localization_v2(nn_output_class, y_true_class, P),
                     compute_image_label_in_classification(nn_output_class, P))
     return prob
 
@@ -115,6 +152,7 @@ def keras_CE_loss(is_localization, labels, probs):
 
     loss_classification_keras = tf.keras.backend.binary_crossentropy(labels,probs, from_logits=False)
     loss_loc_keras = L_bbox*tf.keras.backend.binary_crossentropy(labels,probs, from_logits=False)
+    print(tf.shape(loss_loc_keras))
     loss_class_keras = tf.where(is_localization, loss_loc_keras, loss_classification_keras)
     return loss_class_keras
 
@@ -123,6 +161,7 @@ def compute_ground_truth(instance_labels_gt, m):
     sum_active_patches = tf.reduce_sum(tf.reshape(instance_labels_gt, (-1, m, 14)), axis=1)
     class_label_ground_truth = tf.cast(tf.greater(sum_active_patches, 0), tf.float32)
     has_bbox = tf.logical_and(tf.less(sum_active_patches, m), tf.greater(sum_active_patches, 0))
+    print(has_bbox)
     return sum_active_patches, class_label_ground_truth, has_bbox
 
 
