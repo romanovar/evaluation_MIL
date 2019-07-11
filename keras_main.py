@@ -1,6 +1,9 @@
+import time
+start = time.time()
+
 import keras as K
 from keras.callbacks import Callback
-
+# from keras.regularizers import l2
 
 class MyCallback(Callback):
     def on_epoch_end(self, epoch, logs=None):
@@ -21,6 +24,8 @@ import keras_generators as gen
 import custom_loss as cl
 import tensorflow as tf
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+import matplotlib.pyplot as plt
+
 
 ON_SERVER = False
 IMAGE_SIZE = 512
@@ -30,7 +35,8 @@ BOX_SIZE = 16
 
 SERVER_PATH_C ="/home/rnromanova/scripts/Data_Entry_2017.csv"
 SERVER_PATH_L ="/home/rnromanova/scripts/Bbox_List_2017.csv"
-SERVER_PATH_I = "/home/rnromanova/XRay14/images/batch1"
+# SERVER_PATH_I = "/home/rnromanova/XRay14/images/"
+SERVER_PATH_I = "/home/rnromanova/XRay14/images/test_images"
 SERVER_OUT = "/home/rnromanova/scripts/out"
 
 LOCAL_PATH_C = "C:/Users/s161590/Desktop/Data/X_Ray/Data_Entry_2017.csv"
@@ -40,18 +46,27 @@ LOCAL_OUT = "C:/Users/s161590/Desktop/Data/X_Ray/out"
 
 if ON_SERVER:
     label_df = ld.get_classification_labels(SERVER_PATH_C, False)
-    X, Y = ld.load_process_png_v2(label_df, SERVER_PATH_I)
-    xray_df = ld.couple_location_labels(SERVER_PATH_L , Y, ld.PATCH_SIZE, SERVER_OUT)
+    processed_df = ld.preprocess_labels(label_df, SERVER_PATH_I)
+    xray_df = ld.couple_location_labels(SERVER_PATH_L , processed_df, ld.PATCH_SIZE, SERVER_OUT)
 
 else:
     label_df = ld.get_classification_labels(LOCAL_PATH_C, False)
-    _, Y = ld.load_process_png_v2(label_df, LOCAL_PATH_I)
-    xray_df = ld.couple_location_labels(LOCAL_PATH_L , Y, ld.PATCH_SIZE, LOCAL_OUT)
+    processed_df = ld.preprocess_labels(label_df, LOCAL_PATH_I)
+    # _, processed_df = ld.load_process_png_v2(label_df, LOCAL_PATH_I)
+    xray_df = ld.couple_location_labels(LOCAL_PATH_L , processed_df, ld.PATCH_SIZE, LOCAL_OUT)
 
 # filtering the columns in the split of the train and test
 print("Splitting data ...")
-df_train, df_val, df_bbox_test, df_class_test = ld.get_train_test(xray_df)
+init_train_idx, df_train, df_val, df_bbox_test, df_class_test = ld.get_train_test(xray_df, random_state=0)
+# seed, new_train_idx = ld.create_overlapping_test_set(init_train_idx, 0, 0.95, 0.9, xray_df)
+print(df_train.shape)
+print(df_val.shape)
+print(df_class_test.shape)
+print(df_bbox_test.shape)
 
+end = time.time()
+print("total execution time")
+print(end - start)
 
 def normalize(im):
     im = im / 255
@@ -91,7 +106,7 @@ def build_model():
     recg_net = Conv2D(512, kernel_size=(3,3), padding='same')(downsamp)
     recg_net = BatchNormalization()(recg_net)
     recg_net = ReLU()(recg_net)
-    recg_net = Conv2D(14, (1,1), padding='same', activation='sigmoid')(recg_net)
+    recg_net = Conv2D(14, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
 
     model = Model(base_model.input, recg_net)
 
@@ -147,20 +162,40 @@ checkpoint = ModelCheckpoint(
     period=1
 )
 
-def on_epoch_end(self, epoch, logs=None):
-    print(K.eval(self.model.optimizer.lr))
+def on_epoch_end(self, epoch):
+    if (epoch%10==0):
+        print(K.eval(self.model.optimizer.lr))
 
-model.fit_generator(
+history = model.fit_generator(
             generator=train_generator,
             steps_per_epoch=len(df_train)//BATCH_SIZE,
-            epochs=100,
+            epochs=3,
             validation_data=valid_generator,
             validation_steps=len(df_val)//BATCH_SIZE,
             verbose=2,
-            callbacks = [checkpoint, early_stop, lrate],
+            callbacks = [checkpoint, early_stop, lrate]
             # callbacks=[checkpoint, early_stop],
-            workers=4,
-            max_queue_size=16
+
         )
 
+# list all data in history
+print(history.history.keys())
+# summarize history for accuracy
+plt.plot(history.history['keras_accuracy'])
+plt.plot(history.history['val_keras_accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('accuracy_training.png')
+plt.clf()
+
+# summarize history for loss
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('loss_training.png')
 

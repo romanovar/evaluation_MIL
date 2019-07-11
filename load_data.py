@@ -6,6 +6,8 @@ from pathlib import Path
 from keras.applications.resnet50 import preprocess_input
 import cv2
 from sklearn.model_selection import GroupShuffleSplit
+# import get_image_size
+import imagesize
 
 FINDINGS = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 'Emphysema',
             'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 'Nodule', 'Pleural_Thickening',
@@ -134,6 +136,11 @@ def scaling_factor(img_path):
     return x/IMAGE_X, y/IMAGE_Y
 
 
+def scaling_factor_v2(img_path):
+    x, y = imagesize.get(img_path)
+
+    return x/IMAGE_X, y/IMAGE_Y
+
 def load_image(img_path):
         png = cv2.imread(img_path, 0)
 
@@ -201,38 +208,62 @@ def load_process_png_v2(Yclass, path_to_png):
     return np.array(png_files), reorder_rows(xy_df) #def drop_extra_label_columns(xy_df)
 
 
+def preprocess_labels(Yclass, path_to_png):
+    xy_df = Yclass.copy(deep=True)
+    xy_df['Image Found'] = None
+    xy_df['Reorder Index'] = None
+    xy_df['Dir Path'] = None
+
+    # png_files = []
+    reord_ind = 0
+    for src_path in Path(path_to_png).glob('**/*.png'):
+
+        image_ind = os.path.basename(src_path)
+
+        xy_df.loc[xy_df['Image Index'] == image_ind, ['Dir Path']] = str(src_path)
+
+        # img_data = process_image(src_path)
+        xy_df, reord_ind = add_reorder_indx(xy_df, image_ind, reord_idx=reord_ind)
+
+        # png_files.append(process_image(src_path))
+        # todo: DECIDE WHETHER TO DROP IMAGE ID here or later
+        # drop column with img ind in Y
+        # Y = Y.iloc[:, 2:Y.shape[1]]
+        # labels.append(np.array(Y.values))
+    # TODO: uncomment the dropping procedure
+    xy_df = xy_df.dropna(subset=['Image Found'])
+    return reorder_rows(xy_df) #def drop_extra_label_columns(xy_df)
+
+
 def translate_on_patches(x_min, y_min, x_max, y_max):
-    x = int(np.round((x_min/IMAGE_X)*16))
-    y = int(np.round((y_min/IMAGE_Y)*16))
-    x_max = int(np.round((x_max/IMAGE_X)*16))
-    y_max = int(np.round((y_max/IMAGE_Y)*16))
+    x = int(np.round((x_min/IMAGE_X)*PATCH_SIZE))
+    y = int(np.round((y_min/IMAGE_Y)*PATCH_SIZE))
+    x_max = int(np.round((x_max/IMAGE_X)*PATCH_SIZE))
+    y_max = int(np.round((y_max/IMAGE_Y)*PATCH_SIZE))
     return x, y, x_max, y_max
 
 
-def build_label_matrices(Y_):
-    return 0
-
-
-def bind_location_labels(Y_loc_dir, Y_class, P):
-    Y_loc = load_csv(Y_loc_dir)
-    Y_bbox = rename_columns(Y_loc, False)
-    for ind, row in Y_bbox.iterrows():
-        Y_class.loc[Y_class['Image Index']== row['Image Index'],'Bbox']=1
-        Y_class.loc[Y_class['Image Index']== row['Image Index'],row['Finding Label']+'_loc']=1
-
-        src_path= (Y_class.loc[Y_class['Image Index'] == row['Image Index'], 'Dir Path']).values
-
-        if not src_path.size==0:
-            scale_x, scale_y = scaling_factor(src_path[0])
-            x_min, y_min, x_max, y_max = translate_coords_to_new_image_size(row['x'], row['y'], row['w'], row['h'], scale_x, scale_y)
-
-            x_min, y_min, x_max, y_max = translate_on_patches(x_min, y_min, x_max, y_max )
-
-            im_q = np.zeros((P, P), np.float)
-            im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
-
-    Y_class.to_csv("C:/Users/s161590/Desktop/Data/X_Ray/processed_Y.csv")
-    return Y_class, Y_loc
+#
+# def bind_location_labels(Y_loc_dir, Y_class, P):
+#     Y_loc = load_csv(Y_loc_dir)
+#     Y_bbox = rename_columns(Y_loc, False)
+#     for ind, row in Y_bbox.iterrows():
+#         Y_class.loc[Y_class['Image Index']== row['Image Index'],'Bbox']=1
+#         Y_class.loc[Y_class['Image Index']== row['Image Index'],row['Finding Label']+'_loc']=1
+#
+#         src_path= (Y_class.loc[Y_class['Image Index'] == row['Image Index'], 'Dir Path']).values
+#
+#         if not src_path.size==0:
+#             scale_x, scale_y = scaling_factor(src_path[0])
+#             x_min, y_min, x_max, y_max = translate_coords_to_new_image_size(row['x'], row['y'], row['w'], row['h'], scale_x, scale_y)
+#
+#             x_min, y_min, x_max, y_max = translate_on_patches(x_min, y_min, x_max, y_max )
+#
+#             im_q = np.zeros((P, P), np.float)
+#             im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
+#
+#     Y_class.to_csv("C:/Users/s161590/Desktop/Data/X_Ray/processed_Y.csv")
+#     return Y_class, Y_loc
 
 
 def couple_location_labels(Y_loc_dir, Y_class, P, out_dir):
@@ -257,8 +288,24 @@ def create_label_matrix_classification(row, label, P):
 def make_label_matrix_localization(P, x_min, y_min, x_max, y_max):
     im_q = np.zeros((P, P), np.float)
     im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
+    print("make label matrix localization ")
+    print(x_min)
+    print(x_max)
+    print(y_min)
+    print(y_max)
+    print(im_q)
     return im_q
 
+def make_label_matrix_localization_v2(P, x_min, y_min, x_max, y_max):
+    im_q = np.zeros((P, P), np.float)
+    im_q[y_min:(y_max + 1), x_min:(x_max + 1)] = 1
+    # print(x_min)
+    # print(x_max)
+    # print(y_min)
+    # print(y_max)
+    # print(im_q)
+    # im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
+    return im_q
 
 def get_all_bbox_for_image(row, Y_loc):
     all_info = Y_loc.loc[Y_loc['Image Index'] == row['Image Index']]
@@ -293,66 +340,69 @@ def integrate_annotations(row, Y_loc, diagnosis, P):
 def create_label_matrix_localization(row, row_classif_df, diagnosis, P):
     if row.values.size > 0:
         if diagnosis == row['Finding Label']:
-            scale_x, scale_y = scaling_factor(row_classif_df['Dir Path'])
+            # scale_x, scale_y = scaling_factor(row_classif_df['Dir Path'])
+            scale_x, scale_y = scaling_factor_v2(row_classif_df['Dir Path'])
             x_min, y_min, x_max, y_max = translate_coords_to_new_image_size(row['x'], row['y'], row['w'], row['h'],
                                                                             scale_x,
                                                                             scale_y)
             x_min, y_min, x_max, y_max = translate_on_patches(x_min, y_min, x_max, y_max)
-            y_mat = make_label_matrix_localization(PATCH_SIZE, x_min, y_min, x_max, y_max)
+            #y_mat = make_label_matrix_localization(PATCH_SIZE, x_min, y_min, x_max, y_max)
+            y_mat = make_label_matrix_localization_v2(PATCH_SIZE, x_min, y_min, x_max, y_max)
+
             return y_mat
     else:
         print("this hsould NOT BE PRINTING ")
 
 
+#
+#
+# def image_with_bbox(row, Y_loc, diagnosis, P):
+#     bbox_diagnosis = Y_loc.loc[Y_loc['Image Index'] == row['Image Index'], 'Finding Label'].values
+#
+#     if bbox_diagnosis.size==0:
+#         # do SMTH WHEN THE IMAGE DOES NOT HAVE ANY BBOX FOR THE CLASS
+#         # CHECK IF CLASS IS 1
+#         y_mat = create_label_matrix_classification(row, diagnosis, P)
+#         # return row['Image Index'], diagnosis, y_mat
+#         return y_mat
+#     # IS THERE A BBOX FOR THIS IMAGE
+#     if not bbox_diagnosis.size == 0:
+#         if diagnosis in bbox_diagnosis:
+#             for diag in bbox_diagnosis:
+#                 if diagnosis == diag:
+#                     src_path = row['Dir Path']
+#                     scale_x, scale_y = scaling_factor(src_path)
+#                     print("looking for astring")
+#                     print(row['Image Index'])
+#                     # print(scale_x)
+#                     print(row['x'], row['y'], row['w'], row['h'])
+#                     return row['x']
+#                     # x_min, y_min, x_max, y_max = translate_coords_to_image_size(row['x'], row['y'], row['w'], row['h'],
+#                     #                                                             scale_x,
+#                     #                                                             scale_y)
+#                     # x_min, y_min, x_max, y_max = translate_on_patches(x_min, y_min, x_max, y_max)
+#
+#                     # y_mat = make_label_matrix_localization(PATCH_SIZE, x_min, y_min, x_max, y_max)
+#                     # return y_mat
+#         else:
+#             y_mat = create_label_matrix_classification(row, diagnosis, P)
+#             return y_mat
+#     else:
+#         return 0
+#             #     else:
+#         #         return ("fix")
+#     #     for label in FINDINGS:
+#     #         print("hdksjhdkaiofdaj")
+#     #     #     print(label)
+#     #         # print(fl)
+#     #         print(label in fl)
+#             # for bbox_class in range(fl.size):
+#             #     pass
 
 
-def image_with_bbox(row, Y_loc, diagnosis, P):
-    bbox_diagnosis = Y_loc.loc[Y_loc['Image Index'] == row['Image Index'], 'Finding Label'].values
-
-    if bbox_diagnosis.size==0:
-        # do SMTH WHEN THE IMAGE DOES NOT HAVE ANY BBOX FOR THE CLASS
-        # CHECK IF CLASS IS 1
-        y_mat = create_label_matrix_classification(row, diagnosis, P)
-        # return row['Image Index'], diagnosis, y_mat
-        return y_mat
-    # IS THERE A BBOX FOR THIS IMAGE
-    if not bbox_diagnosis.size == 0:
-        if diagnosis in bbox_diagnosis:
-            for diag in bbox_diagnosis:
-                if diagnosis == diag:
-                    src_path = row['Dir Path']
-                    scale_x, scale_y = scaling_factor(src_path)
-                    print("looking for astring")
-                    print(row['Image Index'])
-                    # print(scale_x)
-                    print(row['x'], row['y'], row['w'], row['h'])
-                    return row['x']
-                    # x_min, y_min, x_max, y_max = translate_coords_to_image_size(row['x'], row['y'], row['w'], row['h'],
-                    #                                                             scale_x,
-                    #                                                             scale_y)
-                    # x_min, y_min, x_max, y_max = translate_on_patches(x_min, y_min, x_max, y_max)
-
-                    # y_mat = make_label_matrix_localization(PATCH_SIZE, x_min, y_min, x_max, y_max)
-                    # return y_mat
-        else:
-            y_mat = create_label_matrix_classification(row, diagnosis, P)
-            return y_mat
-    else:
-        return 0
-            #     else:
-        #         return ("fix")
-    #     for label in FINDINGS:
-    #         print("hdksjhdkaiofdaj")
-    #     #     print(label)
-    #         # print(fl)
-    #         print(label in fl)
-            # for bbox_class in range(fl.size):
-            #     pass
-
-
-def translate_coords(row, x, y, w, h, scale_x, scale_y, img_size):
-    translate_coords_to_new_image_size(x, y, w, h, scale_x, scale_y)
-
+# def translate_coords(row, x, y, w, h, scale_x, scale_y, img_size):
+#     translate_coords_to_new_image_size(x, y, w, h, scale_x, scale_y)
+#
 
 def translate_coords_to_new_image_size(x, y, w, h, scale_x, scale_y):
     x_min = x/ scale_x
@@ -418,11 +468,11 @@ def split_test_train(X, Y, test_ratio=0.2):
     return X_train, X_test, Y.iloc[train_inds], Y.iloc[test_inds]
 
 
-def split_test_train_v2(df, test_ratio=0.2):
+def split_test_train_v2(df, test_ratio=0.2, random_state=None):
     # shuffle split ensuring that same patient ID is only in test or train
-    train_inds, test_inds = next(GroupShuffleSplit(test_size=test_ratio, random_state=0).split(df, groups=df['Patient ID']))
+    train_inds, test_inds = next(GroupShuffleSplit(test_size=test_ratio, random_state=random_state).split(df, groups=df['Patient ID']))
 
-    return df.iloc[train_inds], df.iloc[test_inds]
+    return train_inds, test_inds, df.iloc[train_inds], df.iloc[test_inds]
 
 
 def separate_localization_classification_labels(Y):
@@ -444,17 +494,18 @@ def keep_index_and_diagnose_columns(Y):
 
 # Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate
 #  on the other 20% annotated images in each fold.
-def get_train_test(Y):
+def get_train_test(Y, random_state=None):
     classification, bbox = separate_localization_classification_labels(Y)
     # clas, local
     # classification, bbox = keep_index_and_diagnose_columns(clas), keep_index_and_diagnose_columns(local)
 
-    df_class_train, df_class_test = split_test_train_v2(classification, test_ratio=0.5)
-    df_bbox_train, df_bbox_test = split_test_train_v2(bbox, test_ratio=0.8)
+    _, _, df_class_train, df_class_test = split_test_train_v2(classification, test_ratio=0.5, random_state=random_state)
+    _, _, df_bbox_train, df_bbox_test = split_test_train_v2(bbox, test_ratio=0.8, random_state=random_state)
 
-    df_class_train, df_class_val = split_test_train_v2(df_class_train, test_ratio=0.2)
-    df_bbox_train, df_bbox_val = split_test_train_v2(df_bbox_train, test_ratio=0.2)
+    train_clas_idx, _, df_class_train, df_class_val = split_test_train_v2(df_class_train, test_ratio=0.2, random_state=random_state)
+    train_bbox_idx, _, df_bbox_train, df_bbox_val = split_test_train_v2(df_bbox_train, test_ratio=0.2, random_state=random_state)
 
+    train_idx = np.concatenate((train_clas_idx, train_bbox_idx), axis=None)
     df_train = pd.concat([df_class_train, df_bbox_train])
     df_val = pd.concat([df_class_val, df_bbox_val])
     # print("classification train set: ")
@@ -474,7 +525,36 @@ def get_train_test(Y):
 
     train_set, val_set = keep_index_and_diagnose_columns(df_train), keep_index_and_diagnose_columns(df_val)
     bbox_test, class_test = keep_index_and_diagnose_columns(df_bbox_test), keep_index_and_diagnose_columns(df_class_test)
-    return train_set, val_set, bbox_test, class_test
+    return train_idx, train_set, val_set, bbox_test, class_test
+
+
+def create_overlapping_test_set(init_train_idx, start_seed, max_overlap, min_overlap, df):
+    print("train indices")
+    print(init_train_idx)
+    seed = start_seed
+    new_train_idx = []
+    overlap = np.intersect1d(init_train_idx,new_train_idx)
+    overlap_ratio = float(len(overlap)) / len(init_train_idx)
+    while(not(max_overlap > overlap_ratio and overlap_ratio>min_overlap)):
+        seed+=1
+        new_train_idx, _, _, _, _ = get_train_test(df, random_state=seed)
+        overlap = np.intersect1d(init_train_idx, new_train_idx)
+        overlap_ratio = float(len(overlap)) / len(init_train_idx)
+        print(seed)
+        if (seed== (start_seed+1)*1000):
+            print("No overlapping training test can be constructed within 10000 iterations")
+            break
+
+    # print("found")
+    # print(seed)
+    # print(overlap)
+    # print(len(init_train_idx))
+    # print(new_train_idx)
+    # print((max_overlap > overlap_ratio))
+    # print(overlap_ratio<min_overlap)
+    # print(overlap_ratio)
+    return seed, new_train_idx
+
 
 def keep_only_classification_columns(Y):
     return Y[['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema',
@@ -490,3 +570,7 @@ def reorder_Y(Y):
             single_obs.append(Y.iloc[i,j])
         newarr.append(single_obs)
     return np.transpose(np.asarray(newarr), [0, 2, 3, 1])
+
+
+
+
