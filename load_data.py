@@ -155,15 +155,15 @@ def reorder_rows(df):
     return df.sort_values(by=["Reorder Index"])
 
 
-def add_reorder_indx(df, image_ind, reord_idx):
-    idx  = (df['Image Index']== image_ind)
-
-    #IF image found in the label file
-    if (df.loc[idx]).empty == False:
-        df.loc[idx, 'Image Found'] = 1
-        df.loc[idx, 'Reorder Index'] = reord_idx
-        reord_idx+=1
-    return df, reord_idx
+# def add_reorder_indx(df, image_ind, reord_idx):
+#     idx  = (df['Image Index']== image_ind)
+#
+#     #IF image found in the label file
+#     if (df.loc[idx]).empty == False:
+#         df.loc[idx, 'Image Found'] = 1
+#         df.loc[idx, 'Reorder Index'] = reord_idx
+#         reord_idx+=1
+#     return df, reord_idx
 
 
 def load_process_png(label_df, path_to_png):
@@ -229,7 +229,7 @@ def preprocess_labels(Yclass, path_to_png):
         xy_df.loc[xy_df['Image Index'] == image_ind, ['Dir Path']] = str(src_path)
 
         # img_data = process_image(src_path)
-        xy_df, reord_ind = add_reorder_indx(xy_df, image_ind, reord_idx=reord_ind)
+        # xy_df, reord_ind = add_reorder_indx(xy_df, image_ind, reord_idx=reord_ind)
 
         # png_files.append(process_image(src_path))
         # todo: DECIDE WHETHER TO DROP IMAGE ID here or later
@@ -237,7 +237,8 @@ def preprocess_labels(Yclass, path_to_png):
         # Y = Y.iloc[:, 2:Y.shape[1]]
         # labels.append(np.array(Y.values))
     # TODO: uncomment the dropping procedure
-    xy_df = xy_df.dropna(subset=['Image Found'])
+    # xy_df = xy_df.dropna(subset=['Image Found'])
+    xy_df = xy_df.dropna(subset=['Dir Path'])
     return reorder_rows(xy_df) #def drop_extra_label_columns(xy_df)
 
 
