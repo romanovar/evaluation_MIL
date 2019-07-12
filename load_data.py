@@ -6,7 +6,7 @@ from pathlib import Path
 from keras.applications.resnet50 import preprocess_input
 import cv2
 from sklearn.model_selection import GroupShuffleSplit
-# import get_image_size
+import tensorflow as tf
 import imagesize
 
 FINDINGS = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 'Emphysema',
@@ -24,6 +24,12 @@ PATCH_SIZE = 16
 def load_csv(file_path):
     bbox = pd.read_csv(file_path)
     return bbox.dropna(axis=1)
+
+
+def process_loaded_labels_tf(label_col):
+    newstr = (label_col.replace("[", "")).replace("]", "")
+    return np.fromstring(newstr, dtype=np.ones((PATCH_SIZE, PATCH_SIZE)).dtype, sep=' ').reshape(PATCH_SIZE, PATCH_SIZE)
+
 
 
 def rename_columns(df, classification_csv = True):
@@ -285,20 +291,20 @@ def create_label_matrix_classification(row, label, P):
         return im_q
 
 
-def make_label_matrix_localization(P, x_min, y_min, x_max, y_max):
-    im_q = np.zeros((P, P), np.float)
-    im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
-    print("make label matrix localization ")
-    print(x_min)
-    print(x_max)
-    print(y_min)
-    print(y_max)
-    print(im_q)
-    return im_q
+# def make_label_matrix_localization(P, x_min, y_min, x_max, y_max):
+#     im_q = np.zeros((P, P), np.float)
+#     im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
+#     print("make label matrix localization ")
+#     print(x_min)
+#     print(x_max)
+#     print(y_min)
+#     print(y_max)
+#     print(im_q)
+#     return im_q
 
 def make_label_matrix_localization_v2(P, x_min, y_min, x_max, y_max):
     im_q = np.zeros((P, P), np.float)
-    im_q[y_min:(y_max + 1), x_min:(x_max + 1)] = 1
+    im_q[y_min:(y_max + 1), x_min:(x_max + 1)] = 1.
     # print(x_min)
     # print(x_max)
     # print(y_min)
@@ -316,7 +322,7 @@ def integrate_annotations(row, Y_loc, diagnosis, P):
     result_image_class = []
     all_rows, row_classif_df = get_all_bbox_for_image(row, Y_loc)
 
-    # if no bbox is found for this imae
+    # if no bbox is found for this image
     if all_rows.values.size==0:
         y_mat = create_label_matrix_classification(row, diagnosis, P)
 
@@ -487,7 +493,7 @@ def keep_only_diagnose_columns(Y):
 
 # THIS METHOD IS USED FOR KERAS TESTING
 def keep_index_and_diagnose_columns(Y):
-    return Y[['Image Index', 'Atelectasis_loc', 'Cardiomegaly_loc', 'Consolidation_loc', 'Edema_loc',
+    return Y[['Dir Path', 'Atelectasis_loc', 'Cardiomegaly_loc', 'Consolidation_loc', 'Edema_loc',
         'Effusion_loc', 'Emphysema_loc','Fibrosis_loc', 'Hernia_loc', 'Infiltration_loc', 'Mass_loc',
         'Nodule_loc', 'Pleural_Thickening_loc', 'Pneumonia_loc', 'Pneumothorax_loc']]
 

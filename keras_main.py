@@ -22,14 +22,16 @@ from keras.models import Model
 from keras.optimizers import Adam
 import keras_generators as gen
 import custom_loss as cl
-import tensorflow as tf
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import matplotlib.pyplot as plt
 
 
 ON_SERVER = False
+SKIP_PROCESSING = True
+
+
 IMAGE_SIZE = 512
-BATCH_SIZE = 5
+BATCH_SIZE = 3
 BOX_SIZE = 16
 
 
@@ -41,19 +43,24 @@ SERVER_OUT = "/home/rnromanova/scripts/out"
 
 LOCAL_PATH_C = "C:/Users/s161590/Desktop/Data/X_Ray/Data_Entry_2017.csv"
 LOCAL_PATH_L = "C:/Users/s161590/Desktop/Data/X_Ray/Bbox_List_2017.csv"
-LOCAL_PATH_I = "C:/Users/s161590/Desktop/Data/X_Ray/images/"
+LOCAL_PATH_I = "C:/Users/s161590/Desktop/Data/X_Ray/images-Copy/"
 LOCAL_OUT = "C:/Users/s161590/Desktop/Data/X_Ray/out"
 
-if ON_SERVER:
+if ON_SERVER and not SKIP_PROCESSING:
     label_df = ld.get_classification_labels(SERVER_PATH_C, False)
     processed_df = ld.preprocess_labels(label_df, SERVER_PATH_I)
     xray_df = ld.couple_location_labels(SERVER_PATH_L , processed_df, ld.PATCH_SIZE, SERVER_OUT)
 
-else:
+elif not ON_SERVER and not SKIP_PROCESSING:
     label_df = ld.get_classification_labels(LOCAL_PATH_C, False)
     processed_df = ld.preprocess_labels(label_df, LOCAL_PATH_I)
     # _, processed_df = ld.load_process_png_v2(label_df, LOCAL_PATH_I)
     xray_df = ld.couple_location_labels(LOCAL_PATH_L , processed_df, ld.PATCH_SIZE, LOCAL_OUT)
+
+elif ON_SERVER and SKIP_PROCESSING:
+    test = ld.load_csv(SERVER_OUT+'/'+'processed_Y.csv')
+elif not ON_SERVER and SKIP_PROCESSING:
+    xray_df = ld.load_csv(LOCAL_OUT+'/'+'processed_Y.csv')
 
 # filtering the columns in the split of the train and test
 print("Splitting data ...")
@@ -75,13 +82,14 @@ def normalize(im):
 
 # print(X.shape)
 train_generator = gen.BatchGenerator(
-            instances=df_train.values,
+            instances=df_bbox_test.values,
             batch_size=BATCH_SIZE,
             net_h=IMAGE_SIZE,
             net_w=IMAGE_SIZE,
             # net_crop=IMAGE_SIZE,
             norm=normalize,
-            box_size = BOX_SIZE
+            box_size = BOX_SIZE,
+            processed_y= SKIP_PROCESSING
         )
 
 valid_generator = gen.BatchGenerator(
@@ -91,7 +99,9 @@ valid_generator = gen.BatchGenerator(
     net_w=IMAGE_SIZE,
     box_size = BOX_SIZE,
     # net_crop=IMAGE_SIZE,
-    norm=normalize
+    norm=normalize,
+    processed_y=SKIP_PROCESSING
+
 )
 
 

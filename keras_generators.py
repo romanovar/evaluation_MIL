@@ -1,13 +1,16 @@
 import numpy as np
 from keras.utils import Sequence
 from keras.preprocessing.image import load_img, img_to_array
+from tensorflow import string_to_number
+import load_data as ld
 
 
 # ON_SERVER =
 ON_SERVER = False
-LOCAL_PATH_I = "C:/Users/s161590/Desktop/Data/X_Ray/images/"
-SERVER_PATH_I = "/home/rnromanova/XRay14/images/batch1"
+LOCAL_PATH_I = "C:/Users/s161590/Desktop/Data/X_Ray/images-Copy/"
+SERVER_PATH_I = "/home/rnromanova/XRay14/images/test_images"
 img_dir = None
+IMAGE_SIZE = 512
 
 if ON_SERVER:
     img_dir = SERVER_PATH_I
@@ -23,7 +26,8 @@ class BatchGenerator(Sequence):
                  norm=None,
                  net_h=512,
                  net_w=512,
-                 box_size=16
+                 box_size=16,
+                 processed_y = None
                  ):
         '''
 
@@ -43,6 +47,7 @@ class BatchGenerator(Sequence):
         self.net_h = net_h
         self.net_w = net_w
         self.box_size = box_size
+        self.processed_y = processed_y
 
         if shuffle: np.random.shuffle(self.instances)
 
@@ -66,11 +71,12 @@ class BatchGenerator(Sequence):
 
         # do the logic to fill in the inputs and the output
         for train_instance in self.instances[l_bound:r_bound]:
-            image_name = train_instance[0]
+            print("new batch")
+            print(train_instance[0])
+            image_dir = train_instance[0]
 
             image = img_to_array(
-
-                load_img(img_dir + '' + image_name, target_size=(self.net_w, self.net_h), color_mode='rgb'))
+                load_img(image_dir, target_size=(self.net_w, self.net_h), color_mode='rgb'))
 
             if self.norm != None:
                 x_batch[instance_count] = self.norm(image)
@@ -79,11 +85,16 @@ class BatchGenerator(Sequence):
 
             train_instances_classes = []
             for i in range(1, train_instance.shape[0]):  # (15)
+                if self.processed_y:
+                    g = ld.process_loaded_labels_tf(train_instance[i])
 
-                train_instances_classes.append(train_instance[i])
+                    train_instances_classes.append(g)
+                else:
+                    train_instances_classes.append(train_instance[i])
             # t = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
-
             y_batch[instance_count] = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
+
+            # y_batch[instance_count] = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
             # increase instance counter in the current batch
             instance_count += 1
 
