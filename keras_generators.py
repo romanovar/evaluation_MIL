@@ -8,7 +8,7 @@ import load_data as ld
 # ON_SERVER =
 ON_SERVER = False
 LOCAL_PATH_I = "C:/Users/s161590/Desktop/Data/X_Ray/images-Copy/"
-SERVER_PATH_I = "/home/rnromanova/XRay14/images/test_images"
+SERVER_PATH_I = "/home/rnromanova/XRay14/test_images"
 img_dir = None
 IMAGE_SIZE = 512
 
@@ -85,11 +85,13 @@ class BatchGenerator(Sequence):
 
             train_instances_classes = []
             for i in range(1, train_instance.shape[0]):  # (15)
-                if self.processed_y:
+                if self.processed_y == True:
+                    print("skipping is true")
                     g = ld.process_loaded_labels_tf(train_instance[i])
 
                     train_instances_classes.append(g)
                 else:
+                    print("skipping is false")
                     train_instances_classes.append(train_instance[i])
             # t = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
             y_batch[instance_count] = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])

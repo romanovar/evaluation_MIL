@@ -187,31 +187,31 @@ def load_process_png(label_df, path_to_png):
     return np.array(png_files), np.array(labels)
 
 
-def load_process_png_v2(Yclass, path_to_png):
-    xy_df = Yclass.copy(deep=True)
-    xy_df['Image Found'] = None
-    xy_df['Reorder Index'] = None
-    xy_df['Dir Path'] = None
-
-    png_files = []
-    reord_ind = 0
-    for src_path in Path(path_to_png).glob('**/*.png'):
-
-        image_ind = os.path.basename(src_path)
-
-        xy_df.loc[xy_df['Image Index'] == image_ind, ['Dir Path']] = str(src_path)
-
-        # img_data = process_image(src_path)
-        xy_df, reord_ind = add_reorder_indx(xy_df, image_ind, reord_idx=reord_ind)
-
-        png_files.append(process_image(src_path))
-        # todo: DECIDE WHETHER TO DROP IMAGE ID here or later
-        # drop column with img ind in Y
-        # Y = Y.iloc[:, 2:Y.shape[1]]
-        # labels.append(np.array(Y.values))
-    # TODO: uncomment the dropping procedure
-    xy_df = xy_df.dropna(subset=['Image Found'])
-    return np.array(png_files), reorder_rows(xy_df) #def drop_extra_label_columns(xy_df)
+# def load_process_png_v2(Yclass, path_to_png):
+#     xy_df = Yclass.copy(deep=True)
+#     xy_df['Image Found'] = None
+#     xy_df['Reorder Index'] = None
+#     xy_df['Dir Path'] = None
+#
+#     png_files = []
+#     reord_ind = 0
+#     for src_path in Path(path_to_png).glob('**/*.png'):
+#
+#         image_ind = os.path.basename(src_path)
+#
+#         xy_df.loc[xy_df['Image Index'] == image_ind, ['Dir Path']] = str(src_path)
+#
+#         # img_data = process_image(src_path)
+#         xy_df, reord_ind = add_reorder_indx(xy_df, image_ind, reord_idx=reord_ind)
+#
+#         png_files.append(process_image(src_path))
+#         # todo: DECIDE WHETHER TO DROP IMAGE ID here or later
+#         # drop column with img ind in Y
+#         # Y = Y.iloc[:, 2:Y.shape[1]]
+#         # labels.append(np.array(Y.values))
+#     # TODO: uncomment the dropping procedure
+#     xy_df = xy_df.dropna(subset=['Image Found'])
+#     return np.array(png_files), reorder_rows(xy_df) #def drop_extra_label_columns(xy_df)
 
 
 def preprocess_labels(Yclass, path_to_png):
