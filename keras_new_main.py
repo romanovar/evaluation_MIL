@@ -84,7 +84,7 @@ early_stop = EarlyStopping(monitor='val_loss',
                            verbose=1)
 
 checkpoint = ModelCheckpoint(
-    filepath='model_nodule_bbox.h5',
+    filepath=results_path+ '/model_nodule_bbox.h5',
     monitor='val_loss',
     verbose=1,
     save_best_only=True,
