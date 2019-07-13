@@ -1,15 +1,35 @@
 import tensorflow as tf
 
+#
+# def find_minimum_element_in_class(patches):
+#     return tf.reduce_min(tf.where(patches > 0.0, patches, tf.fill(tf.shape(patches), 1000.0)), axis=1,
+#                   keepdims=True)
 
-def find_minimum_element_in_class(patches):
-    return tf.reduce_min(tf.where(patches > 0.0, patches, tf.fill(tf.shape(patches), 1000.0)), axis=1,
-                  keepdims=True)
+
+# def normalize_patches_per_class(patches, min_element, min_value, max_value):
+#     return (((max_value - min_value) * (patches - min_element) /
+#      (tf.reduce_max(patches, axis=1, keepdims=True) - min_element + tf.keras.backend.epsilon)) + 0.98)
 
 
-def normalize_patches_per_class(patches, min_element, min_value, max_value):
-    return (((max_value - min_value) * (patches - min_element) /
-     (tf.reduce_max(patches, axis=1, keepdims=True) - min_element + tf.keras.backend.epsilon)) + 0.98)
+## input handles all classes simultaneously
+def compute_image_label_from_localization_NORM(nn_output, y_true, P):
+    epsilon = tf.pow(tf.cast(10, tf.float32), -15)
 
+    pos_patches = tf.reshape((nn_output * y_true), (-1, P * P, 14))
+    neg_patches = tf.reshape((1 - nn_output) * (1 - y_true), (-1, P * P, 14))
+
+
+    normalized_pos = ((1 - 0.98) * pos_patches) + 0.98
+    normalized_neg = ((1 - 0.98) * neg_patches) + 0.98
+
+    # element wise multiplication is used as a boolean mask to separate active from inactive patches
+    norm_pos_patches = normalized_pos*tf.reshape(y_true, (-1, P * P, 14))
+    norm_neg_patches = normalized_neg*tf.reshape((1 - y_true), (-1, P * P, 14))
+
+    Pi_pos_patches = tf.reduce_prod(tf.where(norm_pos_patches>0.0, norm_pos_patches, tf.fill(tf.shape(norm_pos_patches),1.0)), axis=1)
+    Pi_neg_patches = tf.reduce_prod(tf.where(norm_neg_patches>0.0, norm_neg_patches, tf.fill(tf.shape(norm_neg_patches),1.0)), axis=1)
+
+    return tf.multiply(Pi_pos_patches, Pi_neg_patches)
 
 ## input handles all classes simultaneously
 def compute_image_label_from_localization(nn_output, y_true, P):
@@ -18,12 +38,14 @@ def compute_image_label_from_localization(nn_output, y_true, P):
     pos_patches = tf.reshape((nn_output * y_true), (-1, P * P, 14))
     neg_patches = tf.reshape((1 - nn_output) * (1 - y_true), (-1, P * P, 14))
 
+    #setting the inactive values to 1000, so that the minimum of the active value is taken
     min_pos_values = tf.reduce_min(tf.where(pos_patches>0.0, pos_patches, tf.fill(tf.shape(pos_patches), 1000.0)), axis=1, keepdims=True)
-
     min_neg_values = tf.reduce_min(tf.where(neg_patches>0.0, neg_patches, tf.fill(tf.shape(neg_patches), 1000.0)), axis=1, keepdims=True)
+
     # min_pos_values = find_minimum_element_in_class(pos_patches)
     # min_neg_values = find_minimum_element_in_class(neg_patches)
 
+    # ensuring no division by 0 and 0 in divident gives result 0
     div_pos_result = tf.where(tf.greater((pos_patches - min_pos_values), 0.0),
                           (pos_patches - min_pos_values) /
                           (tf.reduce_max(pos_patches, axis=1, keepdims=True) - min_pos_values + epsilon),
@@ -38,6 +60,7 @@ def compute_image_label_from_localization(nn_output, y_true, P):
     # normalized_pos = normalize_patches_per_class(pos_patches, min_pos_values, 0.98, 1.0)
     # normalized_neg = normalize_patches_per_class(neg_patches, min_pos_values, 0.98, 1.0)
 
+    # element wise multiplication is used as a boolean mask to separate active from inactive patches
     norm_pos_patches = normalized_pos*tf.reshape(y_true, (-1, P * P, 14))
     norm_neg_patches = normalized_neg*tf.reshape((1 - y_true), (-1, P * P, 14))
 
@@ -47,41 +70,42 @@ def compute_image_label_from_localization(nn_output, y_true, P):
     return tf.multiply(Pi_pos_patches, Pi_neg_patches)
 
 
-def compute_image_label_from_localization_v2(nn_output, y_true, P):
-    epsilon = tf.pow(tf.cast(10, tf.float32), -15)
-    active_patches = tf.cast(tf.where(tf.greater(nn_output, 0.5), tf.ones(tf.shape(nn_output)),
-                                      tf.zeros(tf.shape(nn_output))), tf.float32)
-
-    pos_patches = tf.reshape((nn_output * active_patches), (-1, P * P, 14))
-    neg_patches = tf.reshape((1 - nn_output) * (1 - active_patches), (-1, P * P, 14))
-
-    min_pos_values = tf.reduce_min(tf.where(pos_patches>0.0, pos_patches, tf.fill(tf.shape(pos_patches), 1000.0)), axis=1, keepdims=True)
-
-    min_neg_values = tf.reduce_min(tf.where(neg_patches>0.0, neg_patches, tf.fill(tf.shape(neg_patches), 1000.0)), axis=1, keepdims=True)
-    # min_pos_values = find_minimum_element_in_class(pos_patches)
-    # min_neg_values = find_minimum_element_in_class(neg_patches)
-
-    div_pos_result = tf.where(tf.greater((pos_patches - min_pos_values), 0.0),
-                          (pos_patches - min_pos_values) /
-                          (tf.reduce_max(pos_patches, axis=1, keepdims=True) - min_pos_values + epsilon),
-                          tf.zeros(tf.shape(pos_patches - min_pos_values)))
-
-    normalized_pos = ((1 - 0.98) * div_pos_result) + 0.98
-
-    div_neg_res = tf.where(tf.greater((neg_patches - min_neg_values), 0.0), (neg_patches - min_neg_values) /
-                      (tf.reduce_max(neg_patches, axis=1, keepdims=True) - min_neg_values + epsilon),
-                           tf.zeros(tf.shape(neg_patches-min_neg_values)))
-    normalized_neg = ((1 - 0.98) * div_neg_res) + 0.98
-    # normalized_pos = normalize_patches_per_class(pos_patches, min_pos_values, 0.98, 1.0)
-    # normalized_neg = normalize_patches_per_class(neg_patches, min_pos_values, 0.98, 1.0)
-
-    norm_pos_patches = normalized_pos*tf.reshape(y_true, (-1, P * P, 14))
-    norm_neg_patches = normalized_neg*tf.reshape((1 - y_true), (-1, P * P, 14))
-
-    Pi_pos_patches = tf.reduce_prod(tf.where(norm_pos_patches>0.0, norm_pos_patches, tf.fill(tf.shape(norm_pos_patches),1.0)), axis=1)
-    Pi_neg_patches = tf.reduce_prod(tf.where(norm_neg_patches>0.0, norm_neg_patches, tf.fill(tf.shape(norm_neg_patches),1.0)), axis=1)
-
-    return tf.multiply(Pi_pos_patches, Pi_neg_patches)
+### NOT USED
+# def compute_image_label_from_localization_v2(nn_output, y_true, P):
+#     epsilon = tf.pow(tf.cast(10, tf.float32), -15)
+#     active_patches = tf.cast(tf.where(tf.greater(nn_output, 0.5), tf.ones(tf.shape(nn_output)),
+#                                       tf.zeros(tf.shape(nn_output))), tf.float32)
+#
+#     pos_patches = tf.reshape((nn_output * active_patches), (-1, P * P, 14))
+#     neg_patches = tf.reshape((1 - nn_output) * (1 - active_patches), (-1, P * P, 14))
+#
+#     min_pos_values = tf.reduce_min(tf.where(pos_patches>0.0, pos_patches, tf.fill(tf.shape(pos_patches), 1000.0)), axis=1, keepdims=True)
+#
+#     min_neg_values = tf.reduce_min(tf.where(neg_patches>0.0, neg_patches, tf.fill(tf.shape(neg_patches), 1000.0)), axis=1, keepdims=True)
+#     # min_pos_values = find_minimum_element_in_class(pos_patches)
+#     # min_neg_values = find_minimum_element_in_class(neg_patches)
+#
+#     div_pos_result = tf.where(tf.greater((pos_patches - min_pos_values), 0.0),
+#                           (pos_patches - min_pos_values) /
+#                           (tf.reduce_max(pos_patches, axis=1, keepdims=True) - min_pos_values + epsilon),
+#                           tf.zeros(tf.shape(pos_patches - min_pos_values)))
+#
+#     normalized_pos = ((1 - 0.98) * div_pos_result) + 0.98
+#
+#     div_neg_res = tf.where(tf.greater((neg_patches - min_neg_values), 0.0), (neg_patches - min_neg_values) /
+#                       (tf.reduce_max(neg_patches, axis=1, keepdims=True) - min_neg_values + epsilon),
+#                            tf.zeros(tf.shape(neg_patches-min_neg_values)))
+#     normalized_neg = ((1 - 0.98) * div_neg_res) + 0.98
+#     # normalized_pos = normalize_patches_per_class(pos_patches, min_pos_values, 0.98, 1.0)
+#     # normalized_neg = normalize_patches_per_class(neg_patches, min_pos_values, 0.98, 1.0)
+#
+#     norm_pos_patches = normalized_pos*tf.reshape(y_true, (-1, P * P, 14))
+#     norm_neg_patches = normalized_neg*tf.reshape((1 - y_true), (-1, P * P, 14))
+#
+#     Pi_pos_patches = tf.reduce_prod(tf.where(norm_pos_patches>0.0, norm_pos_patches, tf.fill(tf.shape(norm_pos_patches),1.0)), axis=1)
+#     Pi_neg_patches = tf.reduce_prod(tf.where(norm_neg_patches>0.0, norm_neg_patches, tf.fill(tf.shape(norm_neg_patches),1.0)), axis=1)
+#
+#     return tf.multiply(Pi_pos_patches, Pi_neg_patches)
 
 
 ## input handles all classes simultaneously
@@ -107,6 +131,16 @@ def compute_image_label_from_localization_v2(nn_output, y_true, P):
 #     return (tf.cast(1, tf.float32) - element_product)
 
 
+def compute_image_label_in_classification_NORM(nn_output, P):
+    epsilon = tf.pow(tf.cast(10, tf.float32), -15)
+    subtracted_prob = 1 - nn_output
+    flat_mat = tf.reshape(subtracted_prob, (-1, P * P, 14))
+
+    normalized_mat = ((1 - 0.98) * flat_mat) + 0.98
+    element_product = tf.reduce_prod(normalized_mat, axis=1)
+    return (tf.cast(1, tf.float32) - element_product)
+
+
 def compute_image_label_in_classification(nn_output, P):
     epsilon = tf.pow(tf.cast(10, tf.float32), -15)
 
@@ -128,8 +162,8 @@ def compute_image_label_in_classification(nn_output, P):
 
 
 def compute_image_label_prediction(has_bbox, nn_output_class, y_true_class, m, n, P):
-    prob = tf.where(has_bbox, compute_image_label_from_localization_v2(nn_output_class, y_true_class, P),
-                    compute_image_label_in_classification(nn_output_class, P))
+    prob = tf.where(has_bbox, compute_image_label_from_localization_NORM(nn_output_class, y_true_class, P),
+                    compute_image_label_in_classification_NORM(nn_output_class, P))
     return prob
 
 
@@ -235,9 +269,12 @@ def compute_accuracy_image_bbox(predictions, labels, class_ground_truth, P, iou_
     return IoU, tf.cast(correct_prediction, "float")
 
 def compute_accuracy_on_image_level(predictions, class_ground_truth, P):
-    img_class_prob_pred = compute_image_label_in_classification(predictions, P)
-    img_class_pred_bin = tf.where(img_class_prob_pred > 0.5, tf.ones(tf.shape(img_class_prob_pred)),
-                                  tf.zeros(tf.shape(img_class_prob_pred)))
+    # img_class_prob_pred = compute_image_label_in_classification(predictions, P)
+    active_patches = tf.where(predictions > 0.5, tf.ones(tf.shape(predictions)),
+                                  tf.zeros(tf.shape(predictions)))
+    sum_active_patches = tf.reduce_sum(tf.reshape(active_patches, (-1, P*P, 14)), 1)
+    img_class_pred_bin = tf.where(tf.greater_equal(sum_active_patches, 1), tf.ones(tf.shape(sum_active_patches)),
+                                  tf.zeros(tf.shape(sum_active_patches)))
     correct_prediction = tf.equal(img_class_pred_bin, class_ground_truth)
     return tf.cast(correct_prediction, "float")
 
@@ -256,21 +293,21 @@ def compute_IoU(predictions, labels, P):
 
     return intersection/union
 
-def compute_accuracy(predictions, instance_labels_ground, P, iou_threshold):
-    m=P*P
-    # n_K = tf.reduce_sum(tf.reshape(instance_labels_ground, (-1, P * P, 14)), axis=1)
-    # is_localization = tf.logical_and(tf.less(n_K, P * P), tf.greater(n_K, 0))
-    # class_label_ground = tf.cast(tf.greater(n_K, 0), tf.float32)
-    sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
-    IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold)
-
-    accuracy_per_obs_per_class = tf.where(has_bbox,
-                                          accuracy_bbox,
-                                          compute_accuracy_on_image_level(predictions, class_label_ground, P))
-    accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
-    return accuracy_per_obs_per_class, accuracy_per_class, tf.reduce_mean(accuracy_per_obs_per_class)
-
-
+# def compute_accuracy(predictions, instance_labels_ground, P, iou_threshold):
+#     m=P*P
+#     # n_K = tf.reduce_sum(tf.reshape(instance_labels_ground, (-1, P * P, 14)), axis=1)
+#     # is_localization = tf.logical_and(tf.less(n_K, P * P), tf.greater(n_K, 0))
+#     # class_label_ground = tf.cast(tf.greater(n_K, 0), tf.float32)
+#     sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
+#     IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold)
+#
+#     accuracy_per_obs_per_class = tf.where(has_bbox,
+#                                           accuracy_bbox,
+#                                           compute_accuracy_on_image_level(predictions, class_label_ground, P))
+#     accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
+#     return accuracy_per_obs_per_class, accuracy_per_class, tf.reduce_mean(accuracy_per_obs_per_class)
+#
+#
 
 def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold):
     m=P*P
