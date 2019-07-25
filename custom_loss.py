@@ -1,5 +1,6 @@
 import tensorflow as tf
-
+import numpy as np
+import keras as K
 #
 # def find_minimum_element_in_class(patches):
 #     return tf.reduce_min(tf.where(patches > 0.0, patches, tf.fill(tf.shape(patches), 1000.0)), axis=1,
@@ -161,7 +162,7 @@ def compute_image_label_in_classification(nn_output, P):
     return (tf.cast(1, tf.float32) - element_product)
 
 
-def compute_image_label_prediction(has_bbox, nn_output_class, y_true_class, m, n, P):
+def compute_image_label_prediction(has_bbox, nn_output_class, y_true_class, P):
     prob = tf.where(has_bbox, compute_image_label_from_localization_NORM(nn_output_class, y_true_class, P),
                     compute_image_label_in_classification_NORM(nn_output_class, P))
     return prob
@@ -181,11 +182,35 @@ def custom_CE_loss(is_localization, labels, preds):
     return loss_class
 
 
+def binary_crossentropy(target, output, from_logits=False):
+    """Binary crossentropy between an output tensor and a target tensor.
+    # Arguments
+        target: A tensor with the same shape as `output`.
+        output: A tensor.
+        from_logits: Whether `output` is expected to be a logits tensor.
+            By default, we consider that `output`
+            encodes a probability distribution.
+    # Returns
+        A tensor.
+    """
+    # Note: tf.nn.sigmoid_cross_entropy_with_logits
+    # expects logits, Keras expects probabilities.
+    if not from_logits:
+        # transform back to logits
+        _epsilon = tf.convert_to_tensor(K.backend.epsilon(), output.dtype.base_dtype)
+        output = tf.clip_by_value(output, _epsilon, 1 - _epsilon)
+        output = tf.log(output / (1 - output))
+
+    return tf.nn.sigmoid_cross_entropy_with_logits(labels=target, logits=output)
+
+
 def keras_CE_loss(is_localization, labels, probs):
     L_bbox = tf.constant(5, dtype=tf.float32)
 
-    loss_classification_keras = tf.keras.backend.binary_crossentropy(labels,probs, from_logits=False)
-    loss_loc_keras = L_bbox*tf.keras.backend.binary_crossentropy(labels,probs, from_logits=False)
+    # loss_classification_keras = tf.keras.backend.binary_crossentropy(labels,probs, from_logits=False)
+    # loss_loc_keras = L_bbox*tf.keras.backend.binary_crossentropy(labels,probs, from_logits=False)
+    loss_classification_keras = binary_crossentropy(labels, probs, from_logits=False)
+    loss_loc_keras = L_bbox * binary_crossentropy(labels, probs)
     print(tf.shape(loss_loc_keras))
     loss_class_keras = tf.where(is_localization, loss_loc_keras, loss_classification_keras)
     return loss_class_keras
@@ -196,6 +221,22 @@ def compute_ground_truth(instance_labels_gt, m):
     class_label_ground_truth = tf.cast(tf.greater(sum_active_patches, 0), tf.float32)
     has_bbox = tf.logical_and(tf.less(sum_active_patches, m), tf.greater(sum_active_patches, 0))
     print(has_bbox)
+    return sum_active_patches, class_label_ground_truth, has_bbox
+
+
+def test_compute_ground_truth_per_class_numpy(instance_labels_gt, m):
+    print(instance_labels_gt)
+    sum_active_patches = np.sum(np.reshape(instance_labels_gt, (-1, m)), axis=1)
+    print(sum_active_patches.shape)
+    print(len(instance_labels_gt))
+    class_label_ground_truth = False
+    if sum_active_patches > 0.0:
+        class_label_ground_truth = True
+    has_bbox = False
+    if m > sum_active_patches > 0:
+        has_bbox = True
+    # has_bbox = tf.logical_and(tf.less(sum_active_patches, m), tf.greater(sum_active_patches, 0))
+    # print(has_bbox)
     return sum_active_patches, class_label_ground_truth, has_bbox
 
 
@@ -216,7 +257,7 @@ def compute_loss(nn_output, instance_label_ground_truth, P):
     # class_label_ground_truth = tf.cast(tf.greater(n_K, 0), tf.float32)
 
     # has_bbox = tf.logical_and(tf.less(n_K, m), tf.greater(n_K, 0))
-    img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, m, sum_active_patches, P)
+    img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, P)
 
     loss_classification = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
     loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
@@ -240,7 +281,7 @@ def compute_loss_keras(nn_output, instance_label_ground_truth, P):
     # class_label_ground_truth = tf.cast(tf.greater(n_K, 0), tf.float32)
 
     # has_bbox = tf.logical_and(tf.less(n_K, m), tf.greater(n_K, 0))
-    img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, m, sum_active_patches, P)
+    img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, P)
 
     loss_classification = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
     loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
@@ -250,50 +291,66 @@ def compute_loss_keras(nn_output, instance_label_ground_truth, P):
 def keras_loss(y_true, y_pred):
     return compute_loss_keras(y_pred, y_true, P=16)
 ####################################### Computing accuracy ####################################################
-
-
-def convert_predictions_to_binary(preds, thres):
-    return tf.where(preds > thres, tf.ones(tf.shape(preds)), tf.zeros(tf.shape(preds)))
-
-
-# def compute_accuracy_on_patch_level(predictions, labels, P):
+#
+#
+# def convert_predictions_to_binary(preds, thres):
+#     return tf.where(preds > thres, tf.ones(tf.shape(preds)), tf.zeros(tf.shape(preds)))
+#
+#
+# # def compute_accuracy_on_patch_level(predictions, labels, P):
+# #     patches_binary_pred = convert_predictions_to_binary(predictions, thres=0.5)
+# #     correct_prediction = tf.equal(patches_binary_pred, labels)
+# #     return tf.reduce_mean(tf.cast(tf.reshape(correct_prediction, (-1, P * P, 14)), "float"), 1)
+#
+# def compute_accuracy_image_bbox(predictions, labels, class_ground_truth, P, iou_threshold):
+#     IoU = compute_IoU(predictions, labels, P)
+#     print(IoU)
+#     image_class_pred = tf.where(tf.greater_equal(IoU, 0.1), tf.ones(tf.shape(IoU)), tf.zeros(tf.shape(IoU)))
+#     correct_prediction = tf.equal(image_class_pred, class_ground_truth)
+#     return IoU, tf.cast(correct_prediction, "float")
+#
+# def compute_accuracy_on_image_level(predictions, class_ground_truth, P):
+#     # img_class_prob_pred = compute_image_label_in_classification(predictions, P)
+#     active_patches = tf.where(predictions > 0.5, tf.ones(tf.shape(predictions)),
+#                                   tf.zeros(tf.shape(predictions)))
+#     sum_active_patches = tf.reduce_sum(tf.reshape(active_patches, (-1, P*P, 14)), 1)
+#     img_class_pred_bin = tf.where(tf.greater_equal(sum_active_patches, 1), tf.ones(tf.shape(sum_active_patches)),
+#                                   tf.zeros(tf.shape(sum_active_patches)))
+#     correct_prediction = tf.equal(img_class_pred_bin, class_ground_truth)
+#     return tf.cast(correct_prediction, "float")
+#
+#
+# def compute_IoU(predictions, labels, P):
+#     predictions_xy_flatten = tf.reshape(predictions, (-1, P*P, 14))
+#     labels_xy_flatten = tf.reshape(labels, (-1, P*P, 14))
+#
 #     patches_binary_pred = convert_predictions_to_binary(predictions, thres=0.5)
-#     correct_prediction = tf.equal(patches_binary_pred, labels)
-#     return tf.reduce_mean(tf.cast(tf.reshape(correct_prediction, (-1, P * P, 14)), "float"), 1)
-
-def compute_accuracy_image_bbox(predictions, labels, class_ground_truth, P, iou_threshold):
-    IoU = compute_IoU(predictions, labels, P)
-    print(IoU)
-    image_class_pred = tf.where(tf.greater_equal(IoU, 0.1), tf.ones(tf.shape(IoU)), tf.zeros(tf.shape(IoU)))
-    correct_prediction = tf.equal(image_class_pred, class_ground_truth)
-    return IoU, tf.cast(correct_prediction, "float")
-
-def compute_accuracy_on_image_level(predictions, class_ground_truth, P):
-    # img_class_prob_pred = compute_image_label_in_classification(predictions, P)
-    active_patches = tf.where(predictions > 0.5, tf.ones(tf.shape(predictions)),
-                                  tf.zeros(tf.shape(predictions)))
-    sum_active_patches = tf.reduce_sum(tf.reshape(active_patches, (-1, P*P, 14)), 1)
-    img_class_pred_bin = tf.where(tf.greater_equal(sum_active_patches, 1), tf.ones(tf.shape(sum_active_patches)),
-                                  tf.zeros(tf.shape(sum_active_patches)))
-    correct_prediction = tf.equal(img_class_pred_bin, class_ground_truth)
-    return tf.cast(correct_prediction, "float")
-
-
-def compute_IoU(predictions, labels, P):
-    predictions_xy_flatten = tf.reshape(predictions, (-1, P*P, 14))
-    labels_xy_flatten = tf.reshape(labels, (-1, P*P, 14))
-
-    patches_binary_pred = convert_predictions_to_binary(predictions, thres=0.5)
-
-    correct_prediction = tf.cast(tf.equal(patches_binary_pred, labels), tf.float32)
-    #check only active patches from the labels and see if the prediction there agrees with the labels
-    intersection = tf.reduce_sum(tf.where(tf.greater(labels_xy_flatten, 0), tf.reshape(correct_prediction, (-1, P*P, 14)), tf.zeros((tf.shape(labels_xy_flatten)))), 1)
-
-    union = tf.reduce_sum(predictions_xy_flatten, 1) + tf.reduce_sum(labels_xy_flatten, 1) - intersection
-
-    return intersection/union
-
-# def compute_accuracy(predictions, instance_labels_ground, P, iou_threshold):
+#
+#     correct_prediction = tf.cast(tf.equal(patches_binary_pred, labels), tf.float32)
+#     #check only active patches from the labels and see if the prediction there agrees with the labels
+#     intersection = tf.reduce_sum(tf.where(tf.greater(labels_xy_flatten, 0), tf.reshape(correct_prediction, (-1, P*P, 14)), tf.zeros((tf.shape(labels_xy_flatten)))), 1)
+#
+#     union = tf.reduce_sum(predictions_xy_flatten, 1) + tf.reduce_sum(labels_xy_flatten, 1) - intersection
+#
+#     return intersection/union
+#
+# # def compute_accuracy(predictions, instance_labels_ground, P, iou_threshold):
+# #     m=P*P
+# #     # n_K = tf.reduce_sum(tf.reshape(instance_labels_ground, (-1, P * P, 14)), axis=1)
+# #     # is_localization = tf.logical_and(tf.less(n_K, P * P), tf.greater(n_K, 0))
+# #     # class_label_ground = tf.cast(tf.greater(n_K, 0), tf.float32)
+# #     sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
+# #     IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold)
+# #
+# #     accuracy_per_obs_per_class = tf.where(has_bbox,
+# #                                           accuracy_bbox,
+# #                                           compute_accuracy_on_image_level(predictions, class_label_ground, P))
+# #     accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
+# #     return accuracy_per_obs_per_class, accuracy_per_class, tf.reduce_mean(accuracy_per_obs_per_class)
+# #
+# #
+#
+# def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold):
 #     m=P*P
 #     # n_K = tf.reduce_sum(tf.reshape(instance_labels_ground, (-1, P * P, 14)), axis=1)
 #     # is_localization = tf.logical_and(tf.less(n_K, P * P), tf.greater(n_K, 0))
@@ -301,27 +358,11 @@ def compute_IoU(predictions, labels, P):
 #     sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
 #     IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold)
 #
-#     accuracy_per_obs_per_class = tf.where(has_bbox,
-#                                           accuracy_bbox,
-#                                           compute_accuracy_on_image_level(predictions, class_label_ground, P))
+#     accuracy_per_obs_per_class = tf.where(has_bbox, accuracy_bbox,
+#                         compute_accuracy_on_image_level(predictions, class_label_ground, P))
 #     accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
-#     return accuracy_per_obs_per_class, accuracy_per_class, tf.reduce_mean(accuracy_per_obs_per_class)
+#     # return tf.reduce_mean(accuracy_per_obs_per_class)
+#     return accuracy_per_class
 #
-#
-
-def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold):
-    m=P*P
-    # n_K = tf.reduce_sum(tf.reshape(instance_labels_ground, (-1, P * P, 14)), axis=1)
-    # is_localization = tf.logical_and(tf.less(n_K, P * P), tf.greater(n_K, 0))
-    # class_label_ground = tf.cast(tf.greater(n_K, 0), tf.float32)
-    sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
-    IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold)
-
-    accuracy_per_obs_per_class = tf.where(has_bbox, accuracy_bbox,
-                        compute_accuracy_on_image_level(predictions, class_label_ground, P))
-    accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
-    # return tf.reduce_mean(accuracy_per_obs_per_class)
-    return accuracy_per_class
-
-def keras_accuracy(y_true, y_pred):
-    return compute_accuracy_keras(y_pred, y_true, P=16, iou_threshold=0.1)
+# def keras_accuracy(y_true, y_pred):
+#     return compute_accuracy_keras(y_pred, y_true, P=16, iou_threshold=0.1)
