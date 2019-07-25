@@ -1,21 +1,7 @@
 import numpy as np
 from keras.utils import Sequence
 from keras.preprocessing.image import load_img, img_to_array
-from tensorflow import string_to_number
 import load_data as ld
-
-
-# ON_SERVER =
-ON_SERVER = False
-LOCAL_PATH_I = "C:/Users/s161590/Desktop/Data/X_Ray/images-Copy/"
-SERVER_PATH_I = "/home/rnromanova/XRay14/test_images"
-img_dir = None
-IMAGE_SIZE = 512
-
-if ON_SERVER:
-    img_dir = SERVER_PATH_I
-else:
-    img_dir = LOCAL_PATH_I
 
 
 class BatchGenerator(Sequence):
@@ -84,20 +70,19 @@ class BatchGenerator(Sequence):
                 x_batch[instance_count] = image
 
             train_instances_classes = []
-            for i in range(1, train_instance.shape[0]):  # (15)
-                if self.processed_y == True:
-                    print("skipping is true")
-                    g = ld.process_loaded_labels_tf(train_instance[i])
 
-                    train_instances_classes.append(g)
-                else:
-                    print("skipping is false")
-                    train_instances_classes.append(train_instance[i])
-            # t = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
-            y_batch[instance_count] = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
+            if self.processed_y is not None:
+                for i in range(1, train_instance.shape[0]):  # (15)
+                    if self.processed_y:
+                        g = ld.process_loaded_labels_tf(train_instance[i])
 
-            # y_batch[instance_count] = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
-            # increase instance counter in the current batch
+                        train_instances_classes.append(g)
+                    else:
+                        train_instances_classes.append(train_instance[i])
+                y_batch[instance_count] = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
+            else:
+                y_batch[instance_count]= None
+            
             instance_count += 1
 
         return x_batch, y_batch
