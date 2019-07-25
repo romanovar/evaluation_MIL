@@ -6,8 +6,9 @@ from pathlib import Path
 from keras.applications.resnet50 import preprocess_input
 import cv2
 from sklearn.model_selection import GroupShuffleSplit
-import tensorflow as tf
 import imagesize
+
+from keras_utils import plot_grouped_bar_population
 
 FINDINGS = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 'Emphysema',
             'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 'Nodule', 'Pleural_Thickening',
@@ -24,12 +25,6 @@ PATCH_SIZE = 16
 def load_csv(file_path):
     bbox = pd.read_csv(file_path)
     return bbox.dropna(axis=1)
-
-
-def process_loaded_labels_tf(label_col):
-    newstr = (label_col.replace("[", "")).replace("]", "")
-    return np.fromstring(newstr, dtype=np.ones((PATCH_SIZE, PATCH_SIZE)).dtype, sep=' ').reshape(PATCH_SIZE, PATCH_SIZE)
-
 
 
 def rename_columns(df, classification_csv = True):
@@ -501,7 +496,7 @@ def keep_index_and_diagnose_columns(Y):
 
 # Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate
 #  on the other 20% annotated images in each fold.
-def get_train_test(Y, random_state=None):
+def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
     classification, bbox = separate_localization_classification_labels(Y)
     # clas, local
     # classification, bbox = keep_index_and_diagnose_columns(clas), keep_index_and_diagnose_columns(local)
@@ -529,6 +524,12 @@ def get_train_test(Y, random_state=None):
     # print(df_class_test['Bbox'].value_counts())
     # print("localization test set: ")
     # print(df_bbox_test['Bbox'].value_counts())
+    if do_stats and res_path is not None:
+        plot_grouped_bar_population(Y, 'whole_df', res_path, FINDINGS)
+        plot_grouped_bar_population(df_train, 'train', res_path, FINDINGS)
+        plot_grouped_bar_population(df_val, 'validation', res_path, FINDINGS)
+        plot_grouped_bar_population(df_bbox_test, 'test_bbox', res_path, FINDINGS)
+        plot_grouped_bar_population(df_class_test, 'test_class', res_path, FINDINGS)
 
     train_set, val_set = keep_index_and_diagnose_columns(df_train), keep_index_and_diagnose_columns(df_val)
     bbox_test, class_test = keep_index_and_diagnose_columns(df_bbox_test), keep_index_and_diagnose_columns(df_class_test)
@@ -544,7 +545,7 @@ def create_overlapping_test_set(init_train_idx, start_seed, max_overlap, min_ove
     overlap_ratio = float(len(overlap)) / len(init_train_idx)
     while(not(max_overlap > overlap_ratio and overlap_ratio>min_overlap)):
         seed+=1
-        new_train_idx, _, _, _, _ = get_train_test(df, random_state=seed)
+        new_train_idx, _, _, _, _ = get_train_test(df, random_state=seed, do_stats=False, res_path=None)
         overlap = np.intersect1d(init_train_idx, new_train_idx)
         overlap_ratio = float(len(overlap)) / len(init_train_idx)
         print(seed)
@@ -577,6 +578,15 @@ def reorder_Y(Y):
             single_obs.append(Y.iloc[i,j])
         newarr.append(single_obs)
     return np.transpose(np.asarray(newarr), [0, 2, 3, 1])
+
+
+
+#################### processing loaded data ######################
+
+
+def process_loaded_labels_tf(label_col):
+    newstr = (label_col.replace("[", "")).replace("]", "")
+    return np.fromstring(newstr, dtype=np.ones((PATCH_SIZE, PATCH_SIZE)).dtype, sep=' ').reshape(PATCH_SIZE, PATCH_SIZE)
 
 
 

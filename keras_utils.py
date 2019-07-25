@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 #normalize between [-1, 1]
 def normalize(im):
@@ -41,3 +41,45 @@ def plot_ROC_curve(nr_class, fpr, tpr, roc_auc, out_dir):
     plt.legend(loc="lower right")
     plt.savefig(out_dir + '/roc_curve' + nr_class + '.png')
     plt.clf()
+
+
+def plot_grouped_bar_population(df, file_name, res_path, findings_list):
+    clas_0_labels = []
+    clas_1_labels = []
+
+    for clas in findings_list:
+        clas_total = df[clas].value_counts()
+        if clas_total.index[0] == np.float64(0):
+            print("index is 0")
+            print(clas_total.index[0])
+            clas_0_labels.append(clas_total[0])
+            if clas_total.shape[0] == 2:
+                clas_1_labels.append(clas_total[1])
+            else:
+                clas_1_labels.append(0)
+        else:
+            clas_1_labels.append(clas_total[0])
+            if clas_total.index[1] is not None:
+                clas_0_labels.append(clas_total[1])
+            else:
+                clas_0_labels.append(0)
+    clas_0_labels = np.asarray(clas_0_labels)
+    clas_1_labels  = np.asarray(clas_1_labels)
+
+
+    x = np.arange(len(findings_list))  # the label locations
+    width = 0.35  # the width of the bars
+
+    fig, ax = plt.subplots()
+    ax.bar(x - width/2, clas_0_labels, width, label='False')
+    ax.bar(x + width/2, clas_1_labels, width, label='True')
+
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Total observations')
+    ax.set_title('Observations by diagnose and label')
+    ax.set_xticks(x)
+    ax.set_xticklabels(findings_list, fontsize=7)
+    ax.legend()
+    fig.savefig(res_path + 'population_data'+ '_' + file_name + '.jpg')
+    # plt.show()
