@@ -1,14 +1,11 @@
-import load_data as ld
 from keras.applications import ResNet50V2
-from keras.callbacks import EarlyStopping, ModelCheckpoint, LearningRateScheduler, Callback, Callback
 from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU
-import os
 from keras.models import Model
 from keras.optimizers import Adam
-import keras_generators as gen
-import custom_loss as cl
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-import matplotlib.pyplot as plt
+from custom_loss import keras_loss
+from custom_accuracy import keras_accuracy, keras_accuracy_asloss, keras_accuracy_revisited, keras_auc_score, \
+    keras_auc_v3, keras_AUC, keras_AUC_v2
+
 
 
 def build_model():
@@ -36,7 +33,6 @@ def step_decay(epoch, lr):
     :return: decay every 10 epochs the learning rate with 0.1
     '''
     decay = 0.1
-    # lrate = lr*decay
     lrate = lr
     if(epoch%10==0):
         lrate = lr * decay
@@ -46,10 +42,16 @@ def step_decay(epoch, lr):
 def compile_model(model):
     optimizer = Adam(lr=0.001)
     model.compile(optimizer=optimizer,
-                  #loss='binary_crossentropy',
-                  loss=cl.keras_loss,  # Call the loss function with the selected layer
-                  metrics=[cl.keras_accuracy])
+                  loss=keras_loss,
+                  metrics=[keras_accuracy])
 
     return model
 
 
+# this function allows additional evaluation metrices to be added
+def compile_model_on_load(model):
+    optimizer = Adam(lr=0.001)
+    model.compile(optimizer=optimizer,
+                  loss=keras_loss,  # Call the loss function with the selected layer
+                  metrics=[keras_accuracy, keras_accuracy_revisited, keras_accuracy_asloss])
+    return model
