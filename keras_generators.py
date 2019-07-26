@@ -57,8 +57,6 @@ class BatchGenerator(Sequence):
 
         # do the logic to fill in the inputs and the output
         for train_instance in self.instances[l_bound:r_bound]:
-            print("new batch")
-            print(train_instance[0])
             image_dir = train_instance[0]
 
             image = img_to_array(

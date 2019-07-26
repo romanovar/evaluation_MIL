@@ -1,7 +1,7 @@
 import sklearn
 import tensorflow as tf
-from Li_keras import keras_utils
-from Li_keras.custom_loss import compute_ground_truth, compute_image_label_prediction, compute_image_label_in_classification_NORM
+import keras_utils
+from custom_loss import compute_ground_truth, compute_image_label_prediction, compute_image_label_in_classification_NORM
 import keras as K
 from sklearn.metrics import roc_auc_score
 import tensorflow as tf
