@@ -3,8 +3,8 @@ from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU
 from keras.models import Model
 from keras.optimizers import Adam
 from custom_loss import keras_loss
-from custom_accuracy import keras_accuracy, keras_accuracy_asloss, keras_accuracy_revisited, keras_auc_score, \
-    keras_auc_v3, keras_AUC, keras_AUC_v2
+from custom_accuracy import keras_accuracy, AUC_class1, AUC_class2, AUC_class3,keras_accuracy_asloss, keras_accuracy_revisited, keras_auc_score, \
+    keras_auc_v3, keras_AUC
 
 
 
@@ -53,5 +53,5 @@ def compile_model_on_load(model):
     optimizer = Adam(lr=0.001)
     model.compile(optimizer=optimizer,
                   loss=keras_loss,  # Call the loss function with the selected layer
-                  metrics=[keras_accuracy, keras_accuracy_revisited, keras_accuracy_asloss])
+                  metrics=[keras_accuracy])#, AUC_class1, AUC_class2, AUC_class3]) #, keras_accuracy_revisited, keras_accuracy_asloss])
     return model

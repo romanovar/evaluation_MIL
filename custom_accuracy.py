@@ -11,10 +11,6 @@ import numpy as np
 def convert_predictions_to_binary(preds, thres):
     return tf.where(preds > thres, tf.ones(tf.shape(preds)), tf.zeros(tf.shape(preds)))
     tf.cast(tf.greater_equal(preds, thres), tf.float32)
-# def compute_accuracy_on_patch_level(predictions, labels, P):
-#     patches_binary_pred = convert_predictions_to_binary(predictions)
-#     correct_prediction = tf.equal(patches_binary_pred, labels)
-#     return tf.reduce_mean(tf.cast(tf.reshape(correct_prediction, (-1, P*P, 14)), "float"), 1)
 
 
 def reshape_and_convert_to_binary_predictions(predictions, labels, P, threshold_binary):
@@ -49,32 +45,10 @@ def compute_image_label_from_IoU(predictions, labels, P, iou_thres):
 
 def compute_accuracy_image_bbox(predictions, labels, class_ground_truth, P, iou_threshold):
     IoU = compute_IoU(predictions, labels, P)
-    print(IoU)
     image_class_pred = tf.cast(tf.greater_equal(IoU, iou_threshold), tf.float32)
     correct_prediction = tf.equal(image_class_pred, class_ground_truth)
     return IoU, tf.cast(correct_prediction, "float")
 
-# def false_negative_predictions_image(predictions, class_ground_truth, P):
-#     correct_predictions_bin = compute_accuracy_on_image_level(predictions, class_ground_truth, P)
-#     img_class_pred_bin = compute_class_prediction_binary(predictions, P)
-#
-#     TP_mat = tf.where(tf.equal(img_class_pred_bin, 1.0), correct_predictions_bin, tf.zeros(tf.shape(img_class_pred_bin)))
-#     FP_mat = tf.where(tf.equal(img_class_pred_bin, 1.0), 1.0-correct_predictions_bin, tf.zeros(tf.shape(img_class_pred_bin)))
-#     TN_mat = tf.where(tf.equal(img_class_pred_bin, 0.0), correct_predictions_bin, tf.zeros(tf.shape(img_class_pred_bin)))
-#     FN_mat = tf.where(tf.equal(img_class_pred_bin, 0.0), 1.0-correct_predictions_bin, tf.zeros(tf.shape(img_class_pred_bin)))
-#
-#     TP = tf.reduce_sum(TP_mat, 1)
-#     FP = tf.reduce_sum(FP_mat, 1)
-#     TN = tf.reduce_sum(TN_mat, 1)
-#     FN = tf.reduce_sum(FN_mat, 1)
-#
-#     return TP, FP, TN, FN
-
-
-# def compute_AUC_per_class(TP, FP, TN, FN):
-#     TPR = TP/(TP +FN)
-#     FPR = FP/(TN + FP)
-#     return TPR, FPR
 
 
 def compute_AUC_image_per_class(predictions, class_ground_truth, P):
@@ -109,19 +83,8 @@ def compute_accuracy_on_image_level(predictions, class_ground_truth, P):
     return tf.cast(correct_prediction, "float")
 
 
-def compute_AUC_keras(predictions, instance_labels_ground, P, iou_threshold):
-    m=P*P
-    sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
-    # IoU, label_binary_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold)
-    label_binary_bbox = compute_image_label_from_IoU(predictions, instance_labels_ground, P, iou_threshold)
-    img_label_pred = tf.where(has_bbox, label_binary_bbox,
-                              tf.reduce_max(tf.reshape(predictions, (-1, P * P, 14)), 1))
-    auc = roc_auc_score(class_label_ground, img_label_pred)
-    # print(tf.shape(accuracy_per_class))
-    # print(tf.shape(accuracy_per_obs_per_class))
-    # return tf.reduce_mean(accuracy_per_obs_per_class)
-    return auc
-
+# USES IoU which is not needed
+# EVEN if the evaluation is not used, it is needed for compiling the model
 def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold):
     m=P*P
     # n_K = tf.reduce_sum(tf.reshape(instance_labels_ground, (-1, P * P, 14)), axis=1)
@@ -135,7 +98,6 @@ def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold
     accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
     print(tf.shape(accuracy_per_class))
     # print(tf.shape(accuracy_per_obs_per_class))
-    # return tf.reduce_mean(accuracy_per_obs_per_class)
     return accuracy_per_class
 
 
@@ -149,10 +111,9 @@ def compute_accuracy_keras_revisited(predictions, instance_labels_ground, P):
     accuracy_per_obs_per_class = tf.cast(tf.equal(img_pred_01, class_label_ground), tf.float32)
 
     accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
-    print("acc revisited")
-    print( tf.shape(accuracy_per_class))
-    print(tf.shape(accuracy_per_obs_per_class))
-    # return tf.reduce_mean(accuracy_per_obs_per_class)
+    # print("acc revisited")
+    # print( tf.shape(accuracy_per_class))
+    # print(tf.shape(accuracy_per_obs_per_class))
     return accuracy_per_class
 
 
@@ -168,10 +129,7 @@ def compute_accuracy_keras_as_loss(predictions, instance_labels_ground, P):
     accuracy_per_obs_per_class = tf.cast(tf.equal(img_pred_01, class_label_ground), tf.float32)
 
     accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
-    print("acc as loss")
-    print(tf.shape(accuracy_per_class))
-    # print(tf.shape(accuracy_per_obs_per_class))
-    # return tf.reduce_mean(accuracy_per_obs_per_class)
+
     return accuracy_per_class
 
 
@@ -186,68 +144,43 @@ def keras_accuracy_revisited(y_true, y_pred):
 def keras_accuracy_asloss(y_true, y_pred):
     return compute_accuracy_keras_as_loss(y_pred, y_true, P=16)
 
-
-def keras_AUC(y_true, y_pred):
-    P = 16
-    # _, class_ground_truth, _ = compute_ground_truth(y_true, P*P)
-    # # auc, update_op = compute_AUC_image_per_class(y_pred, class_ground_truth, P=P)
-    # auc = compute_AUC_sklearn(y_pred, class_ground_truth, P)
-    return compute_AUC_keras(y_pred, y_true, P, 0.1)
+######################################################### AUC ###########################################
 
 
-#########################################################
-def compute_micro_avg_ROC(fpr, tpr, roc_auc, y_true, y_pred):
-    fpr["micro"], tpr["micro"], _ = sklearn.metrics.roc_curve(np.asarray(y_true).ravel(),
-                                                              np.asarray(y_pred).ravel())
-    roc_auc["micro"] = sklearn.metrics.auc(fpr["micro"], tpr["micro"])
-    return fpr, tpr, roc_auc
+def auc_score_tf(img_label, img_pred):
+    auc, update_op = tf.metrics.auc(img_label, img_pred)
+    K.backend.get_session().run(tf.local_variables_initializer())
+    # K.backend.get_session().run(tf.global_variables_initializer())
+    return auc
 
 
-def compute_roc_curve_all_class( y_test, y_pred, fpr, tpr, roc_auc,n_classes):
-    # fpr = dict()
-    # tpr = dict()
-    # roc_auc = dict()
-    for i in range(0):
-        print("im in the loop")
-        print(i)
-        fpr[i], tpr[i], _ = sklearn.metrics.roc_curve(y_test[:, i], y_pred[:, i], pos_label=1)
-        roc_auc[i] = sklearn.metrics.auc(fpr[i], tpr[i])
-    return fpr, tpr, roc_auc
+def auc_score_sklearn(img_label, img_prob_pred):
+    fpr, tpr, thresholds = sklearn.metrics.roc_curve(img_label, img_prob_pred, pos_label=1.0)
+    return sklearn.metrics.auc(fpr, tpr)
 
 
-def compute_roc_curve(img_label, img_pred):
-    fpr = dict()
-    tpr = dict()
-    roc_auc = dict()
-    fpr, tpr, roc_auc = compute_roc_curve_all_class(img_label, img_pred, fpr, tpr, roc_auc, 14 )
-    fpr, tpr, roc_auc = compute_micro_avg_ROC(fpr, tpr, roc_auc, img_label, img_pred)
-    # keras_utils.plot_ROC_curve(14, fpr, tpr, roc_auc, out_dir=)
-    return fpr, tpr,roc_auc
-
-
-def custom_roc_curve(predictions, instance_labels_ground, P, iou_threshold):
+def compute_auc_tf_as_loss(predictions, instance_labels_ground, P=16):
     m = P * P
     sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
-    # IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P,
-    #                                                  iou_threshold)
-    image_pred_from_bbox = compute_image_label_from_IoU(predictions, instance_labels_ground, P, iou_threshold)
-    img_max_prob_nobbox = tf.reduce_max(tf.reshape(predictions, (-1, P * P, 14)), 1)
-    class_label_ground_binary = np.array(tf.cast(class_label_ground, tf.int32))
-    # tf.Print("tensors:", class_label_ground)
-    image_predictions = tf.where(has_bbox, image_pred_from_bbox, img_max_prob_nobbox)
-    # fpr, tpr, roc_auc = compute_roc_curve(class_label_ground, image_predictions)
-    fpr = dict()
-    tpr = dict()
-    roc_auc = dict()
-    for i in range(P):
-        fpr[i], tpr[i], _ = sklearn.metrics.roc_curve(image_predictions[:,i], class_label_ground[:,i])
-        roc_auc[i] = sklearn.metrics.auc(fpr[i], tpr[i])
+    img_prob_pred = compute_image_label_prediction(has_bbox, predictions, instance_labels_ground, P)
 
-    # Compute micro-average ROC curve and ROC area
-    fpr["micro"], tpr["micro"], _ = sklearn.metrics.roc_curve(np.asarray(predictions).ravel(), np.asarray(instance_labels_ground).ravel())
-    roc_auc["micro"] = sklearn.metrics.auc(fpr["micro"], tpr["micro"])
-    final = tf.reduce_mean(roc_auc)
-    return final
+    auc_all_class = []
+    for clas_ind in range(0,14):
+        print("auc")
+        print(class_label_ground[-1, clas_ind])
+        auc = auc_score_tf(class_label_ground[-1, clas_ind], img_prob_pred[-1, clas_ind])
+        auc_all_class.append(auc)
+    return auc_all_class
+
+
+def compute_auc_sklearn_as_loss(predictions, instance_labels_ground, P):
+    m=P*P
+    sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
+    auc = auc_score_sklearn(predictions, class_label_ground)
+
+    # auc = roc_auc_score(class_label_ground, img_label_pred)
+
+    return auc
 
 
 def custom_auc_score(predictions, instance_labels_ground, P, iou_threshold):
@@ -273,10 +206,27 @@ def keras_auc_score(y_true, y_pred):
     K.backend.get_session().run(tf.local_variables_initializer())
     return auc
 
+# TODO: NOT USED - remove
+# def keras_AUC_v2(y_true, y_pred):
+#     return custom_roc_curve(y_pred, y_true, 16, iou_threshold=0.1)
 
-def keras_AUC_v2(y_true, y_pred):
-    return custom_roc_curve(y_pred, y_true, 16, iou_threshold=0.1)
 
+def keras_AUC(y_true, y_pred):
+    auc =  compute_auc_tf_as_loss(y_pred, y_true)
+    return auc[0], auc[1], auc[2], auc[3], auc[4], auc[5], auc[6], auc[7], auc[8], \
+           auc[9],auc[10], auc[11], auc[12], auc[13]
+
+
+def AUC_class1(y_pred, y_true):
+    return compute_auc_tf_as_loss(y_pred, y_true)[0]
+
+
+def AUC_class2(y_pred, y_true):
+    return compute_auc_tf_as_loss(y_pred, y_true)[1]
+
+
+def AUC_class3(y_pred, y_true):
+    return compute_auc_tf_as_loss(y_pred, y_true)[2]
 
 def compute_image_probability(nn_output, instance_label_ground_truth, P):
     m = P * P

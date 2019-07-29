@@ -43,15 +43,13 @@ def plot_ROC_curve(nr_class, fpr, tpr, roc_auc, out_dir):
     plt.clf()
 
 
-def plot_grouped_bar_population(df, file_name, res_path, findings_list):
+def prepare_data_visualization(df, findings_list):
     clas_0_labels = []
     clas_1_labels = []
 
     for clas in findings_list:
         clas_total = df[clas].value_counts()
         if clas_total.index[0] == np.float64(0):
-            print("index is 0")
-            print(clas_total.index[0])
             clas_0_labels.append(clas_total[0])
             if clas_total.shape[0] == 2:
                 clas_1_labels.append(clas_total[1])
@@ -64,22 +62,59 @@ def plot_grouped_bar_population(df, file_name, res_path, findings_list):
             else:
                 clas_0_labels.append(0)
     clas_0_labels = np.asarray(clas_0_labels)
-    clas_1_labels  = np.asarray(clas_1_labels)
+    clas_1_labels = np.asarray(clas_1_labels)
+    return clas_0_labels, clas_1_labels
 
+
+def plot_grouped_bar_population(df, file_name, res_path, findings_list):
+    neg_labels, pos_labels = prepare_data_visualization(df, findings_list)
 
     x = np.arange(len(findings_list))  # the label locations
     width = 0.35  # the width of the bars
 
-    fig, ax = plt.subplots()
-    ax.bar(x - width/2, clas_0_labels, width, label='False')
-    ax.bar(x + width/2, clas_1_labels, width, label='True')
+    fig, ax = plt.subplots(figsize=(15, 8))
+    ax.bar(x - width/2, neg_labels, width, label='False')
+    ax.bar(x + width/2, pos_labels, width, label='True')
 
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_ylabel('Total observations')
     ax.set_title('Observations by diagnose and label')
     ax.set_xticks(x)
-    ax.set_xticklabels(findings_list, fontsize=7)
+    ax.set_xticklabels(findings_list, fontsize=8)
     ax.legend()
-    fig.savefig(res_path + 'population_data'+ '_' + file_name + '.jpg')
+    fig.savefig(res_path + '/images/'+ 'population_data'+ '_' + file_name + '.jpg', bbox_inches='tight')
     # plt.show()
+
+
+def plot_pie_population(df, file_name, res_path, findings_list):
+    neg_labels, pos_labels = prepare_data_visualization(df, findings_list)
+
+    x = np.arange(len(findings_list))  # the label locations
+    width = 0.35  # the width of the bars
+
+    fig, ax = plt.subplots(2, 7, figsize=(15, 8))
+    for i in range(0, 2):
+        for j in range(0, 7):
+           ax[i, j].pie([neg_labels[i*7+j], pos_labels[i*7+j]],autopct='%1.1f%%',
+            shadow=True, startangle=90)
+           ax[i, j].set_title(findings_list[i*7+j], {'fontsize': 9})
+           # ax[i,j].legend()
+    # fig.legend()
+
+# fig, axes = plt.subplots(1, 2)
+    # axes[1].pie(neg_labels, labels=findings_list, autopct='%1.1f%%',
+    #         shadow=True, startangle=90)
+    # axes[1].axis('equal')
+    #
+    # axes[0, 1].pie(pos_labels, labels=findings_list, autopct='%1.1f%%',
+    #         shadow=True, startangle=90)
+    # axes[0, 1].axis('equal')
+
+
+    fig.savefig(res_path + '/images/' + 'pie_chart' + '_' + file_name + '.jpg', bbox_inches='tight')
+
+
+def visualize_population(df, file_name, res_path, findings_list):
+    plot_grouped_bar_population(df, file_name, res_path, findings_list)
+    plot_pie_population(df, file_name, res_path, findings_list)

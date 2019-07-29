@@ -1,14 +1,16 @@
 import pandas as pd
 import numpy as np
+from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 from keras.preprocessing import image
 import os
 from pathlib import Path
 from keras.applications.resnet50 import preprocess_input
 import cv2
+from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.model_selection import GroupShuffleSplit
 import imagesize
 
-from keras_utils import plot_grouped_bar_population
+from keras_utils import plot_grouped_bar_population, plot_pie_population, visualize_population
 
 FINDINGS = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 'Emphysema',
             'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 'Nodule', 'Pleural_Thickening',
@@ -477,6 +479,11 @@ def split_test_train_v2(df, test_ratio=0.2, random_state=None):
     return train_inds, test_inds, df.iloc[train_inds], df.iloc[test_inds]
 
 
+def split_test_train_stratified(df, test_ration, random_state = None):
+    sss = StratifiedShuffleSplit(n_splits=5, test_size=0.5, random_state=0)
+
+
+
 def separate_localization_classification_labels(Y):
     return Y.loc[Y['Bbox']==0], Y.loc[Y['Bbox']==1]
 
@@ -510,27 +517,26 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
     train_idx = np.concatenate((train_clas_idx, train_bbox_idx), axis=None)
     df_train = pd.concat([df_class_train, df_bbox_train])
     df_val = pd.concat([df_class_val, df_bbox_val])
-    # print("classification train set: ")
-    # print(df_class_train['Bbox'].value_counts())
-    # print("localization train set: ")
-    # print(df_bbox_train['Bbox'].value_counts())
-    #
-    # print("classification validation set: ")
-    # print(df_class_val['Bbox'].value_counts())
-    # print("localization validation set: ")
-    # print(df_bbox_val['Bbox'].value_counts())
-    #
-    # print("test test set: ")
-    # print(df_class_test['Bbox'].value_counts())
-    # print("localization test set: ")
-    # print(df_bbox_test['Bbox'].value_counts())
-    if do_stats and res_path is not None:
-        plot_grouped_bar_population(Y, 'whole_df', res_path, FINDINGS)
-        plot_grouped_bar_population(df_train, 'train', res_path, FINDINGS)
-        plot_grouped_bar_population(df_val, 'validation', res_path, FINDINGS)
-        plot_grouped_bar_population(df_bbox_test, 'test_bbox', res_path, FINDINGS)
-        plot_grouped_bar_population(df_class_test, 'test_class', res_path, FINDINGS)
+    df_train= df_train.reindex(np.random.permutation(df_train.index))
+    df_val = df_val.reindex(np.random.permutation(df_val.index))
 
+    if do_stats and res_path is not None:
+        visualize_population(Y, 'whole_df_group', res_path, FINDINGS)
+        visualize_population(df_train, 'train_group', res_path, FINDINGS)
+        visualize_population(df_val, 'validation_group', res_path, FINDINGS)
+        visualize_population(df_bbox_test, 'test_bbox_group', res_path, FINDINGS)
+        visualize_population(df_class_test, 'test_class_group', res_path, FINDINGS)
+        # plot_grouped_bar_population(Y, 'whole_df', res_path, FINDINGS)
+        # plot_grouped_bar_population(df_train, 'train', res_path, FINDINGS)
+        # plot_grouped_bar_population(df_val, 'validation', res_path, FINDINGS)
+        # plot_grouped_bar_population(df_bbox_test, 'test_bbox', res_path, FINDINGS)
+        # plot_grouped_bar_population(df_class_test, 'test_class', res_path, FINDINGS)
+        # plot_pie_population(Y, 'whole_df', res_path, FINDINGS)
+        # plot_pie_population(df_train, 'train', res_path, FINDINGS)
+        # plot_pie_population(df_val, 'validation', res_path, FINDINGS)
+        # plot_pie_population(df_bbox_test, 'test_bbox', res_path, FINDINGS)
+        # plot_pie_population(df_class_test, 'test_class', res_path, FINDINGS)
+    print(train_idx)
     train_set, val_set = keep_index_and_diagnose_columns(df_train), keep_index_and_diagnose_columns(df_val)
     bbox_test, class_test = keep_index_and_diagnose_columns(df_bbox_test), keep_index_and_diagnose_columns(df_class_test)
     return train_idx, train_set, val_set, bbox_test, class_test
@@ -589,5 +595,62 @@ def process_loaded_labels_tf(label_col):
     return np.fromstring(newstr, dtype=np.ones((PATCH_SIZE, PATCH_SIZE)).dtype, sep=' ').reshape(PATCH_SIZE, PATCH_SIZE)
 
 
+def select_y_class_columns(df):
+    return df[['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 'Emphysema',
+                      'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 'Nodule', 'Pleural_Thickening',
+                      'Pneumonia', 'Pneumothorax']].astype(np.int64)
 
 
+
+def multilabel_stratification(df, Y, splitnr, rnd_seed = 0):
+    mskf = MultilabelStratifiedKFold(n_splits=splitnr, random_state=rnd_seed)
+    X = np.zeros(Y.shape[0])
+    # X.values[:, np.newaxis]
+    for train_index, test_index in mskf.split(np.zeros(Y.shape[0]), Y.values):
+        # print("TRAIN your set:", train_index, "TEST your set:", test_index)
+        df_train, df_test = df.iloc[train_index], df.iloc[test_index]
+        # y_train, y_test = Y[train_index], Y[test_index]
+        return train_index, test_index, df_train, df_test
+
+
+def train_test_stratification(xray_df, rnd_seed=0):
+    classification, bbox = separate_localization_classification_labels(xray_df)
+    y_class = select_y_class_columns(classification)
+    y_bbox = select_y_class_columns(bbox)
+    # print("testing stratification")
+    # print("classif train val - test")
+    ### 50% unannotated images to train model
+    _, _, df_class_trainval, df_class_test = multilabel_stratification(classification, y_class, 2, rnd_seed=rnd_seed)
+
+    ### 80% annotated images for training
+    _, _, df_bbox_trainval, df_bbox_test = multilabel_stratification(bbox, y_bbox, 5, rnd_seed=rnd_seed)
+    # print("classif train -val ")
+
+    ### 20% of train data is validation - split = 5
+    _, _, df_class_train, df_class_val = multilabel_stratification(df_class_trainval, select_y_class_columns(df_class_trainval), 5, rnd_seed=rnd_seed)
+
+    ## 20% of train data is validation - split = 5
+    _, _, df_bbox_train, df_bbox_val = multilabel_stratification(df_bbox_trainval, select_y_class_columns(df_bbox_trainval), 5, rnd_seed=rnd_seed)
+
+    df_train = pd.concat([df_class_train, df_bbox_train])
+    df_val = pd.concat([df_class_val, df_bbox_val])
+
+
+    return df_train.reindex(np.random.permutation(df_train.index)), df_val.reindex(np.random.permutation(df_val.index)), \
+           df_class_test, df_bbox_test
+
+
+def get_train_test_strata(xray_df, random_state=0, do_stats=True, res_path= None):
+    df_train, df_val, df_class_test, df_bbox_test = train_test_stratification(xray_df, rnd_seed=random_state)
+
+    if do_stats and res_path is not None:
+        visualize_population(xray_df, 'whole_df_strata', res_path, FINDINGS)
+        visualize_population(df_train, 'train_strata', res_path, FINDINGS)
+        visualize_population(df_val, 'validation_strata', res_path, FINDINGS)
+        visualize_population(df_bbox_test, 'test_bbox_strata', res_path, FINDINGS)
+        visualize_population(df_class_test, 'test_class_strata', res_path, FINDINGS)
+
+    train_set, val_set = keep_index_and_diagnose_columns(df_train), keep_index_and_diagnose_columns(df_val)
+    bbox_test, class_test = keep_index_and_diagnose_columns(df_bbox_test), keep_index_and_diagnose_columns(
+        df_class_test)
+    return train_set, val_set, bbox_test, class_test

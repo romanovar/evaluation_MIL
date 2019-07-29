@@ -17,7 +17,7 @@ import cv2
 import seaborn as sns
 import matplotlib.pyplot as plt
 import tensorflow as tf
-
+from matplotlib.image import pil_to_array
 from custom_accuracy import keras_accuracy, compute_image_probability, keras_auc_v3
 from custom_loss import keras_loss, test_compute_ground_truth_per_class_numpy
 
@@ -46,7 +46,7 @@ train_mode = config['train_mode']
 test_single_image = config['test_single_image']
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 3
+BATCH_SIZE = 100
 BATCH_SIZE_TEST = 3
 BOX_SIZE = 16
 
@@ -58,7 +58,9 @@ else:
     xray_df = ld.couple_location_labels(localization_labels_path, processed_df, ld.PATCH_SIZE, results_path)
 
 print("Splitting data ...")
-init_train_idx, df_train, df_val, df_bbox_test, df_class_test = ld.get_train_test(xray_df, random_state=0)
+init_train_idx, df_train, df_val, df_bbox_test, df_class_test = ld.get_train_test(xray_df, random_state=0, do_stats=True, res_path =results_path)
+df_train, df_val, df_bbox_test, df_class_test = ld.get_train_test_strata(xray_df, random_state=0, do_stats=True, res_path=results_path)
+# ld.train_test_stratification(xray_df, random_state=0, do_stats=True)
 
 if train_mode:
     train_generator = gen.BatchGenerator(
@@ -124,11 +126,10 @@ else:
 
     model = load_model(results_path+'/trained_model.h5', custom_objects={'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
 
-    # https://stackoverflow.com/questions/44267074/adding-metrics-to-existing-model-in-keras
     model_new_eval = keras_model.compile_model_on_load(model)
 
-        # if skip_processing:
-            # process labels in the same way as in the batch generators
+    # if skip_processing:
+    # process labels in the same way as in the batch generators
     if not test_single_image:
         test_bbox_generator = gen.BatchGenerator(
             instances=df_bbox_test.values,
@@ -163,6 +164,7 @@ else:
             processed_y=skip_processing)
 
         print(model.metrics_names)
+
         # predict performs only predictions predict_onbatch
         # evaluate - does prediction and compute evaluation metrics - test_onbatch
         test_bbox_predictions = model.evaluate_generator(
@@ -192,7 +194,7 @@ else:
         string_dir_path = dir_img+img_ind+".png"
         path_2 = Path(image_path+dir_img+img_ind+".png")
         single_image_df = df_bbox_test[df_bbox_test['Dir Path'] == str(path_2)]
-        print(single_image_df.shape)
+
         test_generator = gen.BatchGenerator(
             instances=single_image_df.values,
             batch_size=1,
@@ -220,64 +222,45 @@ else:
             sess.run(init_op)
             img_label_np =img_label.eval()
             img_prob_np = img_prob.eval()
-        # img_label, img_prob = compute_image_probability(prediction[:, :, :, :],
-        #                                                 np.reshape(np.transpose(np.asarray(labels_df), [1, 2, 0]),
-        #                                                            (-1, 16, 16, 14)), P=16)
 
         for row in single_image_df.values:
             labels_df = []
-            # for i in range (1, row.shape[0]):
-            #     g = ld.process_loaded_labels_tf(row[i])
-            #     labels_df.append(g)
-            # # np.reshape(np.transpose(np.asarray(labels_df), [1, 2, 0]), (-1, 16, 16, 14))
 
             for i in range(1, row.shape[0]):  # (15)
-                # print(single_image_df.columns.values[i])
                 g = ld.process_loaded_labels_tf(row[i])
 
-                # row[i] - 16x16
-                # image_labels.append(ld.process_loaded_labels_tf(row[i]))
                 sum_active_patches, class_label_ground, has_bbox = test_compute_ground_truth_per_class_numpy(g, 16 * 16)
                 print("sum active patches: " + str(sum_active_patches))
                 print("class label: " + str(class_label_ground))
                 print("Has bbox:" + str(has_bbox))
 
-                # plt.figure()
-                # plt.plot([1, 2, 3])
-                fig, axs = plt.subplots(2, 2)
+
+                fig, axs = plt.subplots(2, 2, figsize=(10, 10))
                 ## show prediction active patches
-                # fig1, ax1 = plt.subplots(2, 2, 1)
                 ax1 = plt.subplot(2, 2, 1)
-                # plt.subplot(2, 2, 1)
-                # print(ax1.shape)
-                ax1.set_title('original image')
-                # img = Image.open(image_path+string_dir_path)
-                # img = img.resize((512, 512), Image.ANTIALIAS)
+                ax1.set_title('Original image', {'fontsize': 8})
+
                 img = plt.imread(image_path+string_dir_path)
-                ax1.imshow(img)
-                # plt.plot(im)
+                ax1.imshow(img, 'bone')
 
                 ## PREDICTION
                 ax2 = plt.subplot(2, 2, 2)
-                ax2.set_title('Predictions: '+ single_image_df.columns.values[i])
-                im2 = ax2.imshow(prediction[0, :, :, i-1])
+                ax2.set_title('Predictions: '+ single_image_df.columns.values[i], {'fontsize': 8})
+                im2 = ax2.imshow(prediction[0, :, :, i-1], 'BuPu')
                 fig.colorbar(im2, ax=ax2, norm=0)
                 ax2.set_xlabel("Image prediction : "+str(img_prob_np[0, i-1]))
+
                 ## LABELS
                 ax3 = plt.subplot(2, 2, 3)
-                ax3.set_title('Labels: ' + single_image_df.columns.values[i])
-                # tf.Print(img_label[0, i-1])
+                ax3.set_title('Labels: ' + single_image_df.columns.values[i], {'fontsize': 8})
                 ax3.set_xlabel("Image label: "+str(class_label_ground) + str(img_label_np[0, i-1]) +" Bbox available: " + str(has_bbox))
                 im3 = ax3.imshow(g)
-                # fig.colorbar(im3, ax=ax3)
+                fig.colorbar(im3, ax=ax3, norm=0)
 
                 ## BBOX of prediction and label
                 ax4 = plt.subplot(2, 2, 4)
-                ax4.set_title('Bounding boxes', {'fontsize': 7})
+                ax4.set_title('Bounding boxes', {'fontsize': 8})
 
-                # test =  np.kron(g, np.ones((32,32), dtype=float))
-
-                print((np.where(g == g.max())))
                 y = (np.where(g == g.max()))[0]
                 x = (np.where(g == g.max()))[1]
 
@@ -285,60 +268,25 @@ else:
                 width = np.amax(x)-upper_left_x + 1
                 upper_left_y = np.amin(y)
                 height = np.amax(y)-upper_left_y+1
-                ax4.imshow(img)
+                # todo: to draw using pyplot
                 img4_labels = cv2.rectangle(img, (upper_left_x*64, upper_left_y*64), ((np.amax(x)+1)*64, (np.amax(y)+1)*64), (0, 255, 0), 5)
-                ax4.imshow(img4_labels)
+                img4_labels = cv2.rectangle(img, (upper_left_x*64, upper_left_y*64), ((np.amax(x)+1)*64, (np.amax(y)+1)*64), (0, 255, 0), 5)
+                ax4.imshow(img, 'bone')
+                # ax4.imshow(img4_labels, 'GnBu')
                 pred_resized = np.kron(prediction[0, :, :, i-1], np.ones((64,64), dtype=float))
-                ax4.imshow(pred_resized, zorder=0,
-                           cmap=sns.cubehelix_palette(light=1, as_cmap=True, reverse=True), alpha=0.6)
+                img4_mask = ax4.imshow(pred_resized, 'BuPu', zorder=0, alpha=0.4)
+                # cmap=sns.cubehelix_palette(light=1, as_cmap=True, reverse=True), alpha=0.3)
+                # print("no bbx drawn !!!")
+                # print(type(img4_mask.make_image()))
+                # print(type(img))
 
-                fig.text(0, 0, "Image prediction : "+str(img_prob_np[0, i-1]) + '\n image label: '+
-                         str(img_label_np[0, i-1]) + '\n Auc: '+ str(test_stats[2]) +
-                         '\n accuracy: '+ str(test_stats[1]), fontsize=12)
-                # fig.text(0, 0, "Image prediction : "+str(img_prob_np[0, i-1] + '\n AUC score: ' + , fontsize=12))
+                fig.text(0, 0, " Image prediction : "+str(img_prob_np[0, i-1]) + '\n image label: '+
+                         str(img_label_np[0, i-1]) + '\n Auc: '+ str(test_stats[0]) +
+                         '\n accuracy: '+ str(test_stats[0]),  horizontalalignment='center',
+                         verticalalignment='center', fontsize=9)
 
-                # img4_labels = cv2.rectangle(img4_labels, (upper_left_x*64, upper_left_y*64), ((np.amax(x)+1)*64, (np.amax(y)+1)*64), (255, 255, 0), 5)
-
-                # lower_left_x = np.amax(x)
-                # print(type(lower_left_x))
-                # width = lower_left_x - np.amin(x) + 1
-                # lower_left_y = np.amax(y)
-                # height = lower_left_y - np.amin(y) + 1
-                # print(lower_left_x)
-                # print(lower_left_y)
-                # rect = patches.Rectangle((lower_left_x, lower_left_y), width, height, zorder=2, fill=False) #,  linewidth=5, edgecolor='r', facecolor='none')
-                # ax4.add_patch(rect)
+                plt.tight_layout()
+                fig.savefig(results_path + '/images/'+ img_ind+'_'+single_image_df.columns.values[i]+'.jpg', bbox_inches='tight')
+                # plt.show()
 
 
-                fig.savefig(results_path + '/images/'+ img_ind+'_'+single_image_df.columns.values[i]+'.jpg')
-                plt.show()
-
-        # keras_utils.plot_train_validation(test_classification_predictions[0],
-    #                                   test_bbox_predictions[0], test_predictions[0],
-    #                                   'classification', 'bbox', 'combined',
-    #                                   'Test loss', 'loss', results_path)
-
-
-
-    # # ind_bbox = "img_5/00000211_041.png"
-    # ind_class ="imag_1/00000002_000.png"
-    #
-    # # test_bbox_img = dfdf_bbox_test['Dir Path'][27]== os.path(image_path+ind_bbox)
-    # # test_classif_img = df_class_test['Dir Path'] == (image_path+ ind_class)
-    # # print(image_path+ind_class)
-    #
-    # image = np.array([img_to_array(load_img(image_path+ind_class, target_size=(IMAGE_SIZE, IMAGE_SIZE), color_mode='rgb'))])
-    # # patches_ground_truth = np.asarray(tes['Cardiomegaly_loc'])[0]
-    #
-    # # # prediction on single image
-    # image = keras_utils.normalize(image)
-    # # patch = model.predict(image)
-    # patch = model.predict(image)
-    # print(patch)
-    # im = plt.imread(image_path+ind_class)
-    # plt.imshow(im, 'bone')
-    # plt.figure()
-    # plt.imshow(patch[0, :, :, 1])
-    # plt.figure()
-    # # plt.imshow(patches_ground_truth)
-    # plt.show()
