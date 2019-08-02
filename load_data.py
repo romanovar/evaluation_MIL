@@ -10,8 +10,8 @@ from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.model_selection import GroupShuffleSplit
 import imagesize
 
-from keras_utils import plot_grouped_bar_population, plot_pie_population, visualize_population
-
+from keras_utils import visualize_population
+np.random.seed(0)
 FINDINGS = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 'Emphysema',
             'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 'Nodule', 'Pleural_Thickening',
             'Pneumonia', 'Pneumothorax']
@@ -590,9 +590,6 @@ def reorder_Y(Y):
 #################### processing loaded data ######################
 
 
-def process_loaded_labels_tf(label_col):
-    newstr = (label_col.replace("[", "")).replace("]", "")
-    return np.fromstring(newstr, dtype=np.ones((PATCH_SIZE, PATCH_SIZE)).dtype, sep=' ').reshape(PATCH_SIZE, PATCH_SIZE)
 
 
 def select_y_class_columns(df):
@@ -606,6 +603,7 @@ def multilabel_stratification(df, Y, splitnr, rnd_seed = 0):
     mskf = MultilabelStratifiedKFold(n_splits=splitnr, random_state=rnd_seed)
     X = np.zeros(Y.shape[0])
     # X.values[:, np.newaxis]
+    # print(Y.values)
     for train_index, test_index in mskf.split(np.zeros(Y.shape[0]), Y.values):
         # print("TRAIN your set:", train_index, "TEST your set:", test_index)
         df_train, df_test = df.iloc[train_index], df.iloc[test_index]

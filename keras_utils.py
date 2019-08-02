@@ -1,9 +1,21 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
+import cv2
 
 #normalize between [-1, 1]
+from custom_loss import test_compute_ground_truth_per_class_numpy
+# from load_data import process_loaded_labels_tf
+
+
 def normalize(im):
     return 2*(im/255) -1
+
+
+def process_loaded_labels_tf(label_col):
+    newstr = (label_col.replace("[", "")).replace("]", "")
+    return np.fromstring(newstr, dtype=np.ones((16, 16)).dtype, sep=' ').reshape(16, 16)
 
 
 def plot_train_validation(train_curve, val_curve, third_curve, train_label, val_label, third_label,
@@ -99,18 +111,6 @@ def plot_pie_population(df, file_name, res_path, findings_list):
            ax[i, j].pie([neg_labels[i*7+j], pos_labels[i*7+j]],autopct='%1.1f%%',
             shadow=True, startangle=90)
            ax[i, j].set_title(findings_list[i*7+j], {'fontsize': 9})
-           # ax[i,j].legend()
-    # fig.legend()
-
-# fig, axes = plt.subplots(1, 2)
-    # axes[1].pie(neg_labels, labels=findings_list, autopct='%1.1f%%',
-    #         shadow=True, startangle=90)
-    # axes[1].axis('equal')
-    #
-    # axes[0, 1].pie(pos_labels, labels=findings_list, autopct='%1.1f%%',
-    #         shadow=True, startangle=90)
-    # axes[0, 1].axis('equal')
-
 
     fig.savefig(res_path + '/images/' + 'pie_chart' + '_' + file_name + '.jpg', bbox_inches='tight')
 
@@ -118,3 +118,76 @@ def plot_pie_population(df, file_name, res_path, findings_list):
 def visualize_population(df, file_name, res_path, findings_list):
     plot_grouped_bar_population(df, file_name, res_path, findings_list)
     plot_pie_population(df, file_name, res_path, findings_list)
+
+
+def visualize_single_image_all_classes(xy_df_row, img_ind, results_path, prediction, img_prob,
+                                       img_label, acc_per_class_sc,iou_score):
+    for row in xy_df_row.values:
+        labels_df = []
+
+        #for each class
+        for i in range(1, row.shape[0]):  # (15)
+            g = process_loaded_labels_tf(row[i])
+
+            sum_active_patches, class_label_ground, has_bbox = test_compute_ground_truth_per_class_numpy(g, 16 * 16)
+            # print("sum active patches: " + str(sum_active_patches))
+            # print("class label: " + str(class_label_ground))
+            # print("Has bbox:" + str(has_bbox))
+
+            fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+            ## show prediction active patches
+            ax1 = plt.subplot(2, 2, 1)
+            ax1.set_title('Original image', {'fontsize': 8})
+
+            # img_dir = str(xy_df_row['Dir Path'][1])
+            img_dir = Path(xy_df_row['Dir Path'].values[0]).__str__()
+            img = plt.imread(img_dir)
+            ax1.imshow(img, 'bone')
+
+            ## PREDICTION
+            ax2 = plt.subplot(2, 2, 2)
+            ax2.set_title('Predictions: ' + xy_df_row.columns.values[i], {'fontsize': 8})
+            im2 = ax2.imshow(prediction[0, :, :, i - 1], 'BuPu')
+            fig.colorbar(im2, ax=ax2, norm=0)
+            ax2.set_xlabel("Image prediction : " + str(img_prob[0, i - 1]))
+
+            ## LABELS
+            ax3 = plt.subplot(2, 2, 3)
+            ax3.set_title('Labels: ' + xy_df_row.columns.values[i], {'fontsize': 8})
+            ax3.set_xlabel(
+                "Image label: " + str(class_label_ground) + str(img_label[0, i - 1]) + " Bbox available: " + str(
+                    has_bbox))
+            im3 = ax3.imshow(g)
+            fig.colorbar(im3, ax=ax3, norm=0)
+
+            ## BBOX of prediction and label
+            ax4 = plt.subplot(2, 2, 4)
+            ax4.set_title('Bounding boxes', {'fontsize': 8})
+
+            y = (np.where(g == g.max()))[0]
+            x = (np.where(g == g.max()))[1]
+
+            upper_left_x = np.min(x)
+            width = np.amax(x) - upper_left_x + 1
+            upper_left_y = np.amin(y)
+            height = np.amax(y) - upper_left_y + 1
+            # todo: to draw using pyplot
+            img4_labels = cv2.rectangle(img, (upper_left_x * 64, upper_left_y * 64),
+                                        ((np.amax(x) + 1) * 64, (np.amax(y) + 1) * 64), (0, 255, 0), 5)
+            img4_labels = cv2.rectangle(img, (upper_left_x * 64, upper_left_y * 64),
+                                        ((np.amax(x) + 1) * 64, (np.amax(y) + 1) * 64), (0, 255, 0), 5)
+            ax4.imshow(img, 'bone')
+            # ax4.imshow(img4_labels, 'GnBu')
+            pred_resized = np.kron(prediction[0, :, :, i - 1], np.ones((64, 64), dtype=float))
+            img4_mask = ax4.imshow(pred_resized, 'BuPu', zorder=0, alpha=0.4)
+
+            fig.text(0, 0, " Image prediction : " + str(img_prob[0, i - 1]) + '\n image label: ' +
+                     str(img_label[0, i - 1]) + '\n IoU: ' + str(iou_score) +
+                     '\n accuracy: ' + str(acc_per_class_sc), horizontalalignment='center',
+                     verticalalignment='center', fontsize=9)
+
+            plt.tight_layout()
+            fig.savefig(results_path + '/images/' + img_ind + '_' + xy_df_row.columns.values[i] + '.jpg',
+                        bbox_inches='tight')
+            plt.close(fig)
+
