@@ -1,10 +1,13 @@
 from pathlib import Path
-
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 
 #normalize between [-1, 1]
+import pandas as pd
+
 from custom_loss import test_compute_ground_truth_per_class_numpy
 # from load_data import process_loaded_labels_tf
 
@@ -18,9 +21,10 @@ def process_loaded_labels_tf(label_col):
     return np.fromstring(newstr, dtype=np.ones((16, 16)).dtype, sep=' ').reshape(16, 16)
 
 
-def plot_train_validation(train_curve, val_curve, third_curve, train_label, val_label, third_label,
+def plot_train_validation(train_curve, val_curve, train_label, val_label,
                           title, y_axis, out_dir):
     plt.ioff()
+    plt.clf()
     # summarize history for accuracy
     plt.figure(1)
     plt.plot(train_curve)
@@ -29,11 +33,11 @@ def plot_train_validation(train_curve, val_curve, third_curve, train_label, val_
     plt.title(title)
     plt.ylabel(y_axis)
     plt.xlabel('epoch')
-    if third_curve is not None:
-        plt.plot(third_curve)
-        plt.legend([train_label, val_label, third_label], loc='upper left')
-    else:
-        plt.legend([train_label, val_label, ], loc='upper left')
+    # if third_curve is not None:
+    #     plt.plot(third_curve)
+    #     plt.legend([train_label, val_label, third_label], loc='upper left')
+    # else:
+    plt.legend([train_label, val_label ], loc='upper left')
 
     plt.savefig(out_dir + '/' + title + '.png')
     plt.clf()
@@ -97,6 +101,7 @@ def plot_grouped_bar_population(df, file_name, res_path, findings_list):
     ax.legend()
     fig.savefig(res_path + '/images/'+ 'population_data'+ '_' + file_name + '.jpg', bbox_inches='tight')
     # plt.show()
+    plt.clf()
 
 
 def plot_pie_population(df, file_name, res_path, findings_list):
@@ -113,6 +118,7 @@ def plot_pie_population(df, file_name, res_path, findings_list):
            ax[i, j].set_title(findings_list[i*7+j], {'fontsize': 9})
 
     fig.savefig(res_path + '/images/' + 'pie_chart' + '_' + file_name + '.jpg', bbox_inches='tight')
+    plt.clf()
 
 
 def visualize_population(df, file_name, res_path, findings_list):
@@ -191,3 +197,10 @@ def visualize_single_image_all_classes(xy_df_row, img_ind, results_path, predict
                         bbox_inches='tight')
             plt.close(fig)
 
+
+def save_evaluation_results(col_names, col_values, file_name, out_dir):
+    eval_df = pd.DataFrame()
+    for i in range(len(col_names)):
+        eval_df[col_names[i]] = pd.Series(col_values[i])
+    #     for auc in range(len(auc_
+    eval_df.to_csv(out_dir + '/' + file_name)

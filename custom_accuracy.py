@@ -324,7 +324,7 @@ def compute_image_probability_production_v2(nn_output,instance_label_ground_trut
 ##TODO: to fix the range
 def compute_auc(labels_all_classes, img_predictions_all_classes):
     auc_all_classes = []
-    for ind in range(0,2):
+    for ind in range(0,FINDINGS):
         auc_score = roc_auc_score(labels_all_classes[:, ind], img_predictions_all_classes[:, ind])
         auc_all_classes.append(auc_score)
     return auc_all_classes
@@ -364,3 +364,14 @@ def make_save_predictions(img_name, raw_predictions, image_predictions, image_la
     predictions_df.to_csv(out_dir+'/' + file_name)
 
 
+def create_empty_dataset_results():
+    predictions_df = pd.DataFrame()
+    # df = pd.DataFrame(columns=['lib', 'qty1', 'qty2'])
+    predictions_df['Dir Path'] =[]
+    predictions_df = predictions_df.reset_index()
+    for ind in range(len(FINDINGS)):
+        # df = pd.DataFrame(columns=[FINDINGS[ind] + '_pred', FINDINGS[ind] + '_img_pred', FINDINGS[ind] + '_img_label'])
+        predictions_df[FINDINGS[ind] + '_pred'] = []
+        predictions_df[FINDINGS[ind] + '_img_pred'] = []
+        predictions_df[FINDINGS[ind] + '_img_label'] = []
+    return predictions_df

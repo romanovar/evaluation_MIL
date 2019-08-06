@@ -21,7 +21,8 @@ import tensorflow as tf
 from matplotlib.image import pil_to_array
 from custom_accuracy import keras_accuracy, compute_image_probability_asloss, combine_predictions_each_batch, \
     make_save_predictions, compute_auc, compute_image_probability_production, \
-    test_function_acc_class, accuracy_bbox_IOU, compute_image_probability_production_v2, compute_IoU
+    test_function_acc_class, accuracy_bbox_IOU, compute_image_probability_production_v2, compute_IoU, \
+    create_empty_dataset_results
 from custom_loss import keras_loss, test_compute_ground_truth_per_class_numpy
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
@@ -50,8 +51,8 @@ test_single_image = config['test_single_image']
 
 IMAGE_SIZE = 512
 BATCH_SIZE = 100
-BATCH_SIZE = 4
-BATCH_SIZE_TEST = 3
+BATCH_SIZE = 2
+BATCH_SIZE_TEST = 2
 BOX_SIZE = 16
 
 if skip_processing:
@@ -64,6 +65,10 @@ else:
 print("Splitting data ...")
 init_train_idx, df_train, df_val, df_bbox_test, df_class_test = ld.get_train_test(xray_df, random_state=0, do_stats=True, res_path =results_path)
 # df_train, df_val, df_bbox_test, df_class_test = ld.get_train_test_strata(xray_df, random_state=0, do_stats=True, res_path=results_path)
+print(init_train_idx)
+init_train_idx = df_train['Dir Path'].index.values
+# new_seed, new_tr_ind = ld.create_overlapping_test_set(init_train_idx, 1, 0.95,0.85, xray_df)
+# print(new_tr_ind)
 
 if train_mode:
     train_generator = gen.BatchGenerator(
@@ -113,35 +118,38 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=len(df_train) // BATCH_SIZE,
-        epochs=3,
+        epochs=2,
         validation_data=valid_generator,
         validation_steps=len(df_val) // BATCH_SIZE,
-        verbose=2,
+        verbose=1,
         callbacks=[checkpoint, early_stop, lrate]
     )
-
+    print("history")
+    print(history.history)
+    print(history.history['keras_accuracy'])
     keras_utils.plot_train_validation(history.history['keras_accuracy'],
                                   history.history['val_keras_accuracy'],
-                                  'model accuracy', 'accuracy', results_path)
+                                  'model accuracy', 'training_accuracy', 'accuracy','accuracy', results_path)
 
     keras_utils.plot_train_validation(history.history['loss'],
                                   history.history['val_loss'],
-                                  'model loss', 'loss', results_path)
+                                  'model loss', 'training_loss', 'loss', 'loss', results_path)
 else:
 
-    model = load_model(results_path+'/trained_model.h5', custom_objects={'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
+    model = load_model(results_path+'/trained_model_v1.h5', custom_objects={'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
 
-    model_new_eval = keras_model.compile_model_on_load(model)
+    model = keras_model.compile_model_on_load(model)
 
     # if skip_processing:
     # process labels in the same way as in the batch generators
     if not test_single_image:
 
-        test_set = pd.concat([df_bbox_test, df_class_test])
+        # test_set = pd.concat([df_bbox_test, df_class_test])
+        test_set = pd.concat([df_train])
 
         test_generator = gen.BatchGenerator(
             instances=test_set.values,
-            batch_size=5,
+            batch_size=BATCH_SIZE_TEST,
             net_h=IMAGE_SIZE,
             net_w=IMAGE_SIZE,
             box_size=BOX_SIZE,
@@ -149,6 +157,14 @@ else:
             processed_y=skip_processing)
 
         predictions = model.predict_generator(test_generator, steps= test_generator.__len__(), workers=1)
+        print("PREDICTION SHAPE")
+        print(len(predictions))
+        res_df = create_empty_dataset_results()
+        res_df.to_csv(results_path+ '/' + 'test.csv')
+
+        # for i in range(len(predictions)):
+            # res_df.loc[i] = ['']
+            # res_df['Dir Path'] = res_img_ind
 
         patch_labels_all_batches = []
         img_ind_all_batches = []
@@ -157,7 +173,12 @@ else:
             print(batch_ind)
             x, y = test_generator.__getitem__(batch_ind)
             res_img_ind = test_generator.get_batch_image_indeces(batch_ind)
+            for i in range(BATCH_SIZE_TEST):
+                res_df['Dir Path'] = res_img_ind
+                res_df['']
+                res_df[ld.FINDINGS[0] + '_pred'] = pd.Series([predictions[n, :, :, 0] for n in range(predictions_df.shape[0])])
 
+            # res_df['']
             img_ind_all_batches = combine_predictions_each_batch(res_img_ind, img_ind_all_batches, batch_ind)
             patch_labels_all_batches = combine_predictions_each_batch(y, patch_labels_all_batches, batch_ind)
         patch_labels_all_batches =tf.cast(patch_labels_all_batches, tf.float32)
@@ -171,36 +192,37 @@ else:
         has_bbox_test = 0
         acc_pred_test=0
         acc_per_class_test = 0
+
+        img_labels_v1, img_prob_preds_v1 = compute_image_probability_asloss(predictions, patch_labels_all_batches, P=16)
+        img_labels_v2, img_prob_preds_v2 = compute_image_probability_production(predictions, patch_labels_all_batches, P=16)
+        img_labels_v3, img_prob_preds_v3 = compute_image_probability_production_v2(predictions, patch_labels_all_batches, P=16)
+
         with tf.Session() as sess:
             sess.run(init_op)
-            img_labels_v1, img_prob_preds_v1 = compute_image_probability_asloss(predictions, tf.cast(patch_labels_all_batches, tf.float32), P=16)
-            img_labels_v2, img_prob_preds_v2 = compute_image_probability_production(predictions, tf.cast(patch_labels_all_batches, tf.float32), P=16)
-            img_labels_v3, img_prob_preds_v3 = compute_image_probability_production_v2(predictions, tf.cast(patch_labels_all_batches, tf.float32), P=16)
 
             image_labels_loss, image_prob_predictions_loss = img_labels_v1.eval(), img_prob_preds_v1.eval()
             image_labels, image_prob_predictions  = img_labels_v2.eval(), img_prob_preds_v2.eval()
             image_labels_v3, image_prob_predictions_v3 = img_labels_v3.eval(), img_prob_preds_v3.eval()
 
 
-
-            make_save_predictions(img_ind_all_batches, predictions, image_prob_predictions_loss, image_labels,
+        make_save_predictions(img_ind_all_batches, predictions, image_prob_predictions_loss, image_labels,
                                   results_path, 'predictions_loss.csv')
-            make_save_predictions(img_ind_all_batches, predictions, image_prob_predictions, image_labels,
+        make_save_predictions(img_ind_all_batches, predictions, image_prob_predictions, image_labels,
                                   results_path, 'predictions_production.csv')
-            make_save_predictions(img_ind_all_batches, predictions, image_prob_predictions_v3, image_labels,
+        make_save_predictions(img_ind_all_batches, predictions, image_prob_predictions_v3, image_labels,
                                   results_path, 'predictions_production_v3.csv')
 
-            ###################### EVALUATION METRICS ############################
-            print("# EVALUATION METRICS ####")
-            print(predictions)
-            print(patch_labels_all_batches)
-            has_bbox, sum_bbox, acc_pred, acc_per_class = test_function_acc_class(predictions, patch_labels_all_batches, P=16, iou_threshold=0.1)
-            acc_per_class_V2 = accuracy_bbox_IOU(predictions, patch_labels_all_batches, P=16, iou_threshold=0.1)
+        ###################### EVALUATION METRICS ############################
+        print("# EVALUATION METRICS ####")
+        print(predictions)
+        print(patch_labels_all_batches)
+        has_bbox, sum_bbox, acc_pred, acc_per_class = test_function_acc_class(predictions, patch_labels_all_batches, P=16, iou_threshold=0.1)
+        acc_per_class_V2 = accuracy_bbox_IOU(predictions, patch_labels_all_batches, P=16, iou_threshold=0.1)
 
 
-            print("accuracy type")
-            has_bbox_test, sum_bb, acc_pred_test, acc_per_class_test =  has_bbox.eval(), sum_bbox.eval(), acc_pred.eval(), acc_per_class.eval()
-            acc_per_class_V2_test = acc_per_class_V2.eval()
+        print("accuracy type")
+        has_bbox_test, sum_bb, acc_pred_test, acc_per_class_test =  has_bbox.eval(), sum_bbox.eval(), acc_pred.eval(), acc_per_class.eval()
+        acc_per_class_V2_test = acc_per_class_V2.eval()
 
 
             # make_save_predictions(predictions, img_label_pred, class_label_ground_truth, test_set['Dir Path'], out_dir=results_path)
@@ -214,20 +236,29 @@ else:
         # # for ind in range(7,len(ld.FINDINGS)):
         # #     auc_score = roc_auc_score(image_labels[:,ind], image_prob_predictions[:, ind])
         # #     auc_all_classes.append(auc_score)
-        auc_all_classes_loss = compute_auc(image_labels_loss, image_prob_predictions_loss)
-        print(auc_all_classes_loss)
-        auc_all_classes = compute_auc(image_labels, image_prob_predictions)
-        print(auc_all_classes_loss)
 
-        print("has bbox")
-        print(has_bbox_test)
-        print("sum")
-        print(sum_bb)
-        print("acc pred" )
-        print(acc_pred_test)
-        print("total acc")
-        print(acc_per_class_test)
-        print(acc_per_class_V2_test)
+        auc_all_classes_loss = compute_auc(image_labels_loss, image_prob_predictions_loss)
+        # print(auc_all_classes_loss)
+        # print(type(auc_all_classes_loss[0]))
+        auc_all_classes = compute_auc(image_labels, image_prob_predictions)
+        # print(auc_all_classes)
+        auc_all_classes_v3 = compute_auc(image_labels_v3, image_prob_predictions_v3)
+        # print(auc_all_classes_v3)
+
+        keras_utils.save_evaluation_results(ld.FINDINGS, auc_all_classes_loss, 'auc_prob_as_loss.csv', results_path)
+        keras_utils.save_evaluation_results(ld.FINDINGS, auc_all_classes, 'auc_prob_active_patch.csv', results_path)
+        #
+        keras_utils.save_evaluation_results(ld.FINDINGS, auc_all_classes_v3, 'auc_prob_prod.csv', results_path)
+
+        # print("has bbox")
+        # print(has_bbox_test)
+        # print("sum")
+        # print(sum_bb)
+        # print("acc pred" )
+        # print(acc_pred_test)
+        # print("total acc")
+        # print(acc_per_class_test)
+        # print(acc_per_class_V2_test)
         test_predictions = model.evaluate_generator(
             test_generator,
             steps = test_generator.__len__()
@@ -238,6 +269,12 @@ else:
         # print(test_classification_predictions[0], test_classification_predictions[1], test_classification_predictions[2],
         #       test_classification_predictions[3])
         print(test_predictions)
+        print(model.metrics_names)
+
+
+        keras_utils.save_evaluation_results(model.metrics_names, test_predictions, "eval_test.csv", results_path)
+
+
         print(test_predictions[0], test_predictions[1], test_predictions[2]) #, test_predictions[3])
 
     else:
