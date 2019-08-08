@@ -2,7 +2,7 @@ import numpy as np
 from keras.utils import Sequence
 from keras.preprocessing.image import load_img, img_to_array
 
-from keras_utils import process_loaded_labels_tf
+from keras_utils import process_loaded_labels
 
 
 class BatchGenerator(Sequence):
@@ -73,7 +73,7 @@ class BatchGenerator(Sequence):
             if self.processed_y is not None:
                 for i in range(1, train_instance.shape[0]):  # (15)
                     if self.processed_y:
-                        g = process_loaded_labels_tf(train_instance[i])
+                        g = process_loaded_labels(train_instance[i])
 
                         train_instances_classes.append(g)
                     else:
@@ -101,8 +101,7 @@ class BatchGenerator(Sequence):
         image = img_to_array(load_img(image_name, target_size=(self.net_w, self.net_h), color_mode='rgb'))
         return image
 
-
-    def get_batch_image_indeces(self, idx):
+    def get_batch_image_indices(self, idx):
         # determine the first and the last indices of the batch
         l_bound = idx * self.batch_size
         r_bound = (idx + 1) * self.batch_size

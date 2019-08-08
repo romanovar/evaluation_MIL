@@ -526,6 +526,7 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
         visualize_population(df_val, 'validation_group', res_path, FINDINGS)
         visualize_population(df_bbox_test, 'test_bbox_group', res_path, FINDINGS)
         visualize_population(df_class_test, 'test_class_group', res_path, FINDINGS)
+        visualize_population(pd.concat([df_bbox_test, df_class_test]), 'test_group', res_path, FINDINGS)
         # plot_grouped_bar_population(Y, 'whole_df', res_path, FINDINGS)
         # plot_grouped_bar_population(df_train, 'train', res_path, FINDINGS)
         # plot_grouped_bar_population(df_val, 'validation', res_path, FINDINGS)

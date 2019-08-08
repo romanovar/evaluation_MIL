@@ -152,7 +152,8 @@ def keras_accuracy(y_true, y_pred):
 def accuracy_bbox_IOU(y_pred, instance_labels_ground, P, iou_threshold):
     _, _, has_bbox = compute_ground_truth(instance_labels_ground, P * P)
     iou_scores = tf.where(has_bbox, compute_IoU(y_pred, instance_labels_ground, P), tf.zeros(tf.shape(has_bbox)))
-
+    # with tf.Session().as_default():
+    #     print(iou_scores.eval())
     image_label_pred = tf.cast(tf.greater_equal(iou_scores, iou_threshold), tf.float32)
 
     # compare image_label prediction and has_bbox
@@ -198,7 +199,9 @@ def acc_pneumothorax(y_true, y_pred):
 
 
 def acc_average(y_true, y_pred):
-    avg = [acc_atelectasis(y_true, y_pred), acc_cardiomegaly(y_true, y_pred)]
+    avg = [acc_atelectasis(y_true, y_pred), acc_cardiomegaly(y_true, y_pred), acc_effusion(y_true, y_pred),
+           acc_infiltration(y_true, y_pred), acc_mass(y_true, y_pred), acc_nodule(y_true, y_pred),
+           acc_pneumonia(y_true, y_pred), acc_pneumothorax(y_true, y_pred)]
     return tf.reduce_mean(avg)
 
 
@@ -324,7 +327,7 @@ def compute_image_probability_production_v2(nn_output,instance_label_ground_trut
 ##TODO: to fix the range
 def compute_auc(labels_all_classes, img_predictions_all_classes):
     auc_all_classes = []
-    for ind in range(0,FINDINGS):
+    for ind in range(0, 2): #len(FINDINGS)):
         auc_score = roc_auc_score(labels_all_classes[:, ind], img_predictions_all_classes[:, ind])
         auc_all_classes.append(auc_score)
     return auc_all_classes
@@ -346,7 +349,8 @@ def compute_auc(labels_all_classes, img_predictions_all_classes):
 
 def combine_predictions_each_batch(current_batch, prev_batches_arr, batch_ind):
     if batch_ind==0:
-        return np.concatenate((current_batch, ))
+        # return np.concatenate((current_batch, []))
+        return current_batch
     else:
         return np.concatenate((prev_batches_arr, current_batch))
 
@@ -364,14 +368,21 @@ def make_save_predictions(img_name, raw_predictions, image_predictions, image_la
     predictions_df.to_csv(out_dir+'/' + file_name)
 
 
-def create_empty_dataset_results():
-    predictions_df = pd.DataFrame()
+def create_empty_dataset_results(nr_rows):
     # df = pd.DataFrame(columns=['lib', 'qty1', 'qty2'])
-    predictions_df['Dir Path'] =[]
-    predictions_df = predictions_df.reset_index()
+    columns = []
+    columns.append('Dir Path')
+    # predictions_df['Dir Path'] =[]
+    # predictions_df = predictions_df.reset_index()
     for ind in range(len(FINDINGS)):
         # df = pd.DataFrame(columns=[FINDINGS[ind] + '_pred', FINDINGS[ind] + '_img_pred', FINDINGS[ind] + '_img_label'])
-        predictions_df[FINDINGS[ind] + '_pred'] = []
-        predictions_df[FINDINGS[ind] + '_img_pred'] = []
-        predictions_df[FINDINGS[ind] + '_img_label'] = []
+        # predictions_df[FINDINGS[ind] + '_pred'] = []
+        # predictions_df[FINDINGS[ind] + '_img_pred'] = []
+        # predictions_df[FINDINGS[ind] + '_img_label'] = []
+        columns.append(FINDINGS[ind] + '_pred')
+        columns.append(FINDINGS[ind] + '_img_pred')
+        columns.append(FINDINGS[ind] + 'img_label')
+
+    predictions_df = pd.DataFrame(index=np.arange(0, nr_rows), columns=columns)
+
     return predictions_df

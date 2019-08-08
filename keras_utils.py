@@ -16,9 +16,24 @@ def normalize(im):
     return 2*(im/255) -1
 
 
-def process_loaded_labels_tf(label_col):
+def process_loaded_labels(label_col):
     newstr = (label_col.replace("[", "")).replace("]", "")
     return np.fromstring(newstr, dtype=np.ones((16, 16)).dtype, sep=' ').reshape(16, 16)
+
+
+def process_loaded_labels_all_classes(label_col):
+    res = []
+    for ind in range(1, 15):
+        np_array = (label_col.iloc[:, ind].values)
+        print("in the function")
+        print(np_array[0])
+        print((np_array[0]))
+        ret = process_loaded_labels(np_array[0])
+        #
+        res.append(res)
+    return np.asarray(res)
+        # newstr = (label_col.replace("[", "")).replace("]", "")
+    # return np.fromstring(newstr, dtype=np.ones((16, 16)).dtype, sep=' ').reshape(16, 16)
 
 
 def plot_train_validation(train_curve, val_curve, train_label, val_label,
@@ -110,7 +125,7 @@ def plot_pie_population(df, file_name, res_path, findings_list):
     x = np.arange(len(findings_list))  # the label locations
     width = 0.35  # the width of the bars
 
-    fig, ax = plt.subplots(2, 7, figsize=(15, 8))
+    fig, ax = plt.subplots(2, 7, figsize=(18, 5))
     for i in range(0, 2):
         for j in range(0, 7):
            ax[i, j].pie([neg_labels[i*7+j], pos_labels[i*7+j]],autopct='%1.1f%%',
@@ -133,7 +148,7 @@ def visualize_single_image_all_classes(xy_df_row, img_ind, results_path, predict
 
         #for each class
         for i in range(1, row.shape[0]):  # (15)
-            g = process_loaded_labels_tf(row[i])
+            g = process_loaded_labels(row[i])
 
             sum_active_patches, class_label_ground, has_bbox = test_compute_ground_truth_per_class_numpy(g, 16 * 16)
             # print("sum active patches: " + str(sum_active_patches))
@@ -200,7 +215,75 @@ def visualize_single_image_all_classes(xy_df_row, img_ind, results_path, predict
 
 def save_evaluation_results(col_names, col_values, file_name, out_dir):
     eval_df = pd.DataFrame()
-    for i in range(len(col_names)):
+    for i in range(0, len(col_names)):
         eval_df[col_names[i]] = pd.Series(col_values[i])
-    #     for auc in range(len(auc_
+
     eval_df.to_csv(out_dir + '/' + file_name)
+
+
+def save_accuracy_results(col_names, col_values, file_name, out_dir):
+    localization_ind = [0, 1, 4, 8, 9, 10, 12, 13]
+    eval_df = pd.DataFrame()
+    for i in range(0, len(localization_ind)):
+        eval_df[col_names[localization_ind[i]]] = pd.Series(col_values[i])
+    #     for auc in range(len(auc_
+
+    eval_df['Avg Accuracy'] = pd.Series(col_values[len(localization_ind)])
+    eval_df.to_csv(out_dir + '/' + file_name)
+
+
+def plot_grouped_bar_accuracy(acc_train, acc_val, acc_test, file_name, res_path, finding_list):
+    localization_ind = [0, 1, 4, 8, 9, 10, 12, 13]
+
+    finding_list_localization = [finding_list[i] for i in localization_ind]
+    acc_tr_filter = [acc_train[i] for i in localization_ind]
+    acc_val_filter = [acc_val[i] for i in localization_ind]
+    acc_test_filter = [acc_test[i] for i in localization_ind]
+
+    # neg_labels, pos_labels = prepare_data_visualization(df, finding_list)
+    x = np.arange(len(finding_list_localization))  # the label locations
+    width = 0.4  # the width of the bars
+
+    fig, ax = plt.subplots(figsize=(15, 8))
+    ax.bar(x - width/3, acc_tr_filter, width, label='Training set')
+    ax.bar(x - width, acc_val_filter, width, label='Validation set')
+    ax.bar(x + width/3, acc_test_filter, width, label='Test set')
+
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Accuracy')
+    ax.set_title('Accuracy by diagnose and data set')
+    ax.set_xticks(x)
+    ax.set_xticklabels(finding_list_localization, fontsize=8)
+    ax.legend()
+    fig.savefig(res_path + '/images/'+ 'accuracy_'+ file_name + '.jpg', bbox_inches='tight')
+    # plt.show()
+    plt.clf()
+
+
+def plot_grouped_bar_auc(auc_train, auc_val, auc_test, file_name, res_path, finding_list):
+    # localization_ind = [0, 1, 4, 8, 9, 10, 12, 13]
+
+    # finding_list_localization = [finding_list[i] for i in localization_ind]
+        # acc_tr_filter = [auc_train[i] for i in localization_ind]
+        # acc_val_filter = [auc_val[i] for i in localization_ind]
+        # acc_test_filter = [auc_test[i] for i in localization_ind]
+
+        # neg_labels, pos_labels = prepare_data_visualization(df, finding_list)
+    x = np.arange(len(finding_list))  # the label locations
+    width = 0.4  # the width of the bars
+
+    fig, ax = plt.subplots(figsize=(15, 8))
+    ax.bar(x - width / 3, auc_train, width, label='Training set')
+    ax.bar(x - width, auc_val, width, label='Validation set')
+    ax.bar(x + width / 3, auc_test, width, label='Test set')
+
+      # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('AUC')
+    ax.set_title('AUC by diagnose and data set')
+    ax.set_xticks(x)
+    ax.set_xticklabels(finding_list, fontsize=8)
+    ax.legend()
+    fig.savefig(res_path + '/images/' + 'auc_' + file_name + '.jpg', bbox_inches='tight')
+        # plt.show()
+    plt.clf()
