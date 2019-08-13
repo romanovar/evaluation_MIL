@@ -149,6 +149,15 @@ def keras_accuracy(y_true, y_pred):
 #     return compute_accuracy_keras_as_loss(y_pred, y_true, P=16)
 
 
+def convert_to_sparse(dense_tensor):
+    zero = tf.constant(0, dtype=tf.float32)
+    where = tf.not_equal(dense_tensor, zero)
+    indices = tf.where(where)
+    values = tf.gather_nd(dense_tensor, indices)
+    sparse = tf.SparseTensor(indices, values, dense_tensor.shape)
+    return sparse
+
+
 def accuracy_bbox_IOU(y_pred, instance_labels_ground, P, iou_threshold):
     _, _, has_bbox = compute_ground_truth(instance_labels_ground, P * P)
     iou_scores = tf.where(has_bbox, compute_IoU(y_pred, instance_labels_ground, P), tf.zeros(tf.shape(has_bbox)))
@@ -160,9 +169,29 @@ def accuracy_bbox_IOU(y_pred, instance_labels_ground, P, iou_threshold):
     # tf equal will NOT be a good idea, as 0 in has bbox means absence of bbox and shouldnt be comuted in accuracy
     acc_pred = tf.reduce_sum(image_label_pred, axis=0)
     true_labels = tf.reduce_sum(tf.cast(has_bbox, tf.float32), axis=0)
-
+    # sparse_has_loc = convert_to_sparse(true_labels)
     acc_per_class = tf.where(tf.greater(true_labels, 0), acc_pred / true_labels, tf.zeros(tf.shape(true_labels)))
+    # acc_per_class = tf.where(tf.greater(sparse_has_loc, 0), acc_pred / true_labels,  tf.zeros(tf.shape(true_labels)))
+
     return acc_per_class
+
+
+def accuracy_bbox_IOU_v2(y_pred, instance_labels_ground, P, iou_threshold):
+    _, _, has_bbox = compute_ground_truth(instance_labels_ground, P * P)
+    iou_scores = tf.where(has_bbox, compute_IoU(y_pred, instance_labels_ground, P), tf.zeros(tf.shape(has_bbox)))
+    # with tf.Session().as_default():
+    #     print(iou_scores.eval())
+    image_label_pred = tf.cast(tf.greater_equal(iou_scores, iou_threshold), tf.float32)
+
+    # compare image_label prediction and has_bbox
+    # tf equal will NOT be a good idea, as 0 in has bbox means absence of bbox and shouldnt be comuted in accuracy
+    acc_pred = tf.reduce_sum(image_label_pred, axis=0)
+    true_labels = tf.reduce_sum(tf.cast(has_bbox, tf.float32), axis=0)
+    # sparse_has_loc = convert_to_sparse(true_labels)
+    acc_per_class = tf.where(tf.greater(true_labels, 0), acc_pred / true_labels, tf.zeros(tf.shape(true_labels)))
+    # acc_per_class = tf.where(tf.greater(sparse_has_loc, 0), acc_pred / true_labels,  tf.zeros(tf.shape(true_labels)))
+
+    return acc_per_class, acc_pred, true_labels
 
 
 def acc_atelectasis(y_true, y_pred):
@@ -203,6 +232,27 @@ def acc_average(y_true, y_pred):
            acc_infiltration(y_true, y_pred), acc_mass(y_true, y_pred), acc_nodule(y_true, y_pred),
            acc_pneumonia(y_true, y_pred), acc_pneumothorax(y_true, y_pred)]
     return tf.reduce_mean(avg)
+
+
+# def list_accuracy_results(y_true, y_pred):
+#     return [acc_atelectasis(y_true, y_pred), acc_cardiomegaly(y_true, y_pred), acc_effusion(y_true, y_pred),
+#            acc_infiltration(y_true, y_pred), acc_mass(y_true, y_pred), acc_nodule(y_true, y_pred),
+#            acc_pneumonia(y_true, y_pred), acc_pneumothorax(y_true, y_pred), acc_average(y_true, y_pred)]
+
+
+def list_localization_accuracy(y_true, y_pred):
+    localization_classes = [0, 1, 4, 8, 9, 10, 12, 13]
+    accuracy_all_cl, acc_predictions, local_present = accuracy_bbox_IOU_v2(y_pred, y_true, P=16, iou_threshold=0.1)
+    # acc_loc = [accuracy_all_cl[0], accuracy_all_cl[1],accuracy_all_cl[4], accuracy_all_cl[8], accuracy_all_cl[9],
+    #            accuracy_all_cl[10], accuracy_all_cl[12], accuracy_all_cl[13] ]
+    acc_loc = [accuracy_all_cl[i] for i in localization_classes]
+    # acc_preds = [acc_predictions[0], acc_predictions[1],acc_predictions[4], acc_predictions[8], acc_predictions[9],
+    #              acc_predictions[10], acc_predictions[12], acc_predictions[13] ]
+    acc_preds = [acc_predictions[ind] for ind in localization_classes]
+    # nr_bbox_present = [local_present[0], local_present[1],local_present[4], local_present[8], local_present[9],
+    #                    local_present[10], local_present[12], local_present[13]]
+    nr_bbox_present = [local_present[ind] for ind in localization_classes]
+    return acc_loc, acc_preds, nr_bbox_present
 
 
 def test_function_acc_class(y_pred, instance_labels_ground, P, iou_threshold):
@@ -305,14 +355,29 @@ def image_prob_active_patches(nn_output, P):
 
 
 def compute_image_probability_asloss(nn_output, instance_label_ground_truth, P):
-    m = P * P
-    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m)
+    '''
+    Computes image probability the same way it is computed in the loss, this function has testing purposes only
+    :param nn_output:
+    :param instance_label_ground_truth:
+    :param P:
+    :return:
+    '''
+    # m = P * P
+    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, P*P)
 
     img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, P)
     return class_label_ground_truth, img_label_pred
 
 
 def compute_image_probability_production(nn_output,instance_label_ground_truth, P):
+    '''
+    This method considers patches with prediction above 0.5 as active and then it computes image probability
+    as the localization in the loss
+    :param nn_output: output from the last layers
+    :param instance_label_ground_truth: ground truth of each patch
+    :param P: number of patches
+    :return: image probability per class computed using the active patches
+    '''
     m = P*P
     sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m)
     img_label_prob = image_prob_active_patches(nn_output, P)
@@ -320,14 +385,22 @@ def compute_image_probability_production(nn_output,instance_label_ground_truth, 
 
 
 def compute_image_probability_production_v2(nn_output,instance_label_ground_truth, P):
+    '''
+    Computing image probability prediction considering all patches as equally important
+    :param nn_output:
+    :param instance_label_ground_truth:
+    :param P:
+    :return:
+    '''
     _, class_label_ground_truth, _= compute_ground_truth(instance_label_ground_truth, P*P)
     img_label_prob = compute_image_label_in_classification_NORM(nn_output, P)
     return class_label_ground_truth, img_label_prob
 
+
 ##TODO: to fix the range
 def compute_auc(labels_all_classes, img_predictions_all_classes):
     auc_all_classes = []
-    for ind in range(0, 2): #len(FINDINGS)):
+    for ind in range(0, len(FINDINGS)):
         auc_score = roc_auc_score(labels_all_classes[:, ind], img_predictions_all_classes[:, ind])
         auc_all_classes.append(auc_score)
     return auc_all_classes
@@ -352,6 +425,12 @@ def combine_predictions_each_batch(current_batch, prev_batches_arr, batch_ind):
         # return np.concatenate((current_batch, []))
         return current_batch
     else:
+        print(batch_ind)
+        print("im in the combine")
+        # print(prev_batches_arr)
+        print(prev_batches_arr.shape)
+        print(current_batch.shape)
+
         return np.concatenate((prev_batches_arr, current_batch))
 
 

@@ -23,7 +23,8 @@ from matplotlib.image import pil_to_array
 from custom_accuracy import keras_accuracy, compute_image_probability_asloss, combine_predictions_each_batch, \
     make_save_predictions, compute_auc, compute_image_probability_production, \
     test_function_acc_class, accuracy_bbox_IOU, compute_image_probability_production_v2, compute_IoU, \
-    create_empty_dataset_results, acc_atelectasis, acc_cardiomegaly, acc_infiltration, acc_average, acc_effusion
+    create_empty_dataset_results, acc_atelectasis, acc_cardiomegaly, acc_infiltration, acc_average, acc_effusion, \
+    acc_mass, acc_nodule, acc_pneumonia, acc_pneumothorax
 from custom_loss import keras_loss, test_compute_ground_truth_per_class_numpy
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
@@ -51,9 +52,9 @@ train_mode = config['train_mode']
 test_single_image = config['test_single_image']
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 10
-BATCH_SIZE = 10
-BATCH_SIZE_TEST = 3
+BATCH_SIZE = 1
+# BATCH_SIZE = 10
+BATCH_SIZE_TEST = 1
 BOX_SIZE = 16
 
 if skip_processing:
@@ -122,7 +123,7 @@ if train_mode:
     print(len(df_val))
     history = model.fit_generator(
         generator=train_generator,
-        steps_per_epoch=len(df_train) // BATCH_SIZE,
+        steps_per_epoch=train_generator.__len__() // BATCH_SIZE,
         epochs=2,
         validation_data=valid_generator,
         validation_steps=len(df_val) // BATCH_SIZE,
@@ -141,9 +142,15 @@ if train_mode:
                                   'model loss', 'training_loss', 'loss', 'loss', results_path)
 else:
 
-    model = load_model(results_path+'/trained_model_v2.h5', custom_objects={'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
+    # model = load_model(results_path+'/model_nodule_bbox.h5', custom_objects={
+    #     'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy, 'acc_atelectasis':acc_atelectasis,
+    #     "acc_cardiomegaly":acc_cardiomegaly, "acc_effusion":acc_effusion, "acc_infiltration":acc_infiltration,
+    #     "acc_mass":acc_mass, "acc_nodule":acc_nodule, "acc_pneumonia":acc_pneumonia, "acc_pneumothorax":acc_pneumothorax,
+    #     "acc_average" :acc_average})
 
-    model = keras_model.compile_model_on_load(model)
+    model = load_model(results_path+'/trained_model_v1.h5', custom_objects={
+        'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
+    model = keras_model.compile_model(model)
 
     # if skip_processing:
     # process labels in the same way as in the batch generators
@@ -183,7 +190,7 @@ else:
         np.save(results_path+'/image_indices_'+file_unique_name, all_img_ind)
         np.save(results_path + '/patch_labels_'+file_unique_name, all_patch_labels)
 
-        ########################################### VALIDATION SET######################################################
+        # ########################################### VALIDATION SET######################################################
         file_unique_name = 'val_set'
         test_set = df_val
 
@@ -220,22 +227,22 @@ else:
 
         ########################################### TESTING SET########################################################
         file_unique_name = 'test_set'
-        test_set = pd.concat([df_class_test, df_bbox_test])
+        # test_set = pd.concat([df_train])
 
-        # test_set = pd.concat([df_bbox_test])
+        test_set = pd.concat([df_bbox_test, df_class_test])
 
         test_generator = gen.BatchGenerator(
             instances=test_set.values,
-            batch_size=BATCH_SIZE_TEST,
+            batch_size=1,
             net_h=IMAGE_SIZE,
             net_w=IMAGE_SIZE,
             box_size=BOX_SIZE,
             norm=keras_utils.normalize,
-            processed_y=skip_processing)
+            processed_y=skip_processing, shuffle=False)
 
         predictions = model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
         np.save(results_path + '/predictions_' + file_unique_name, predictions)
-
+        print(test_generator.__len__())
         all_img_ind = []
         all_patch_labels = []
         for batch_ind in range(test_generator.__len__()):
@@ -243,8 +250,8 @@ else:
             # print(batch_ind)
             x, y = test_generator.__getitem__(batch_ind)
             y_cast = y.astype(np.float32)
-
             res_img_ind = test_generator.get_batch_image_indices(batch_ind)
+            print(res_img_ind)
 
             all_img_ind = combine_predictions_each_batch(res_img_ind, all_img_ind, batch_ind)
             all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
@@ -253,23 +260,25 @@ else:
         np.save(results_path + '/image_indices_' + file_unique_name, all_img_ind)
         np.save(results_path + '/patch_labels_' + file_unique_name, all_patch_labels)
 
-        # FOR TESTING PURPOSES
-        # sess = tf.Session()
-        # with sess.as_default():
-        #     acc_per_class_V2 = accuracy_bbox_IOU(predictions, all_patch_labels, P=16, iou_threshold=0.1)
-        #     print(acc_atelectasis(all_patch_labels, predictions).eval())
-        #     print(acc_cardiomegaly(all_patch_labels, predictions).eval(),
-        #           acc_effusion(all_patch_labels, predictions).eval(),
-        #           acc_infiltration(all_patch_labels, predictions).eval(),
-        #           acc_average(all_patch_labels, predictions).eval())
-        #     print(acc_per_class_V2.eval())
+        #FOR TESTING PURPOSES
+        sess = tf.Session()
+        with sess.as_default():
+            acc_per_class_V2 = accuracy_bbox_IOU(predictions, all_patch_labels, P=16, iou_threshold=0.1)
+            accuracy_switched = accuracy_bbox_IOU(all_patch_labels, predictions, P=16, iou_threshold=0.1)
+            print(acc_atelectasis(all_patch_labels, predictions).eval())
+            print(acc_cardiomegaly(all_patch_labels, predictions).eval(),
+                  acc_effusion(all_patch_labels, predictions).eval(),
+                  acc_infiltration(all_patch_labels, predictions).eval(),
+                  acc_average(all_patch_labels, predictions).eval())
+            print(acc_per_class_V2.eval())
+            print(accuracy_switched.eval())
         #
-        # test_predictions = model.evaluate_generator(
-        #     test_generator,
-        #     steps = test_generator.__len__(), workers=1)
-        #
-        # print(test_predictions)
-        # print(model.metrics_names)
+        test_predictions = model.evaluate_generator(
+            test_generator,
+            steps = test_generator.__len__(), workers=1)
+
+        print(test_predictions)
+        print(model.metrics_names)
 
 
             # , test_predictions[3])

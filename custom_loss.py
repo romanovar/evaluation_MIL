@@ -5,7 +5,7 @@ import keras as K
 
 ## input handles all classes simultaneously
 def compute_image_label_from_localization_NORM(nn_output, y_true, P):
-    epsilon = tf.pow(tf.cast(10, tf.float32), -15)
+    # epsilon = tf.pow(tf.cast(10, tf.float32), -15)
 
     pos_patches = tf.reshape((nn_output * y_true), (-1, P * P, 14))
     neg_patches = tf.reshape((1 - nn_output) * (1 - y_true), (-1, P * P, 14))
@@ -63,7 +63,7 @@ def compute_image_label_from_localization(nn_output, y_true, P):
 
 
 def compute_image_label_in_classification_NORM(nn_output, P):
-    epsilon = tf.pow(tf.cast(10, tf.float32), -15)
+    # epsilon = tf.pow(tf.cast(10, tf.float32), -15)
     subtracted_prob = 1 - nn_output
     flat_mat = tf.reshape(subtracted_prob, (-1, P * P, 14))
 
