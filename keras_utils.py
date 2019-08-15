@@ -4,12 +4,12 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+from sklearn.utils import resample
 
 #normalize between [-1, 1]
 import pandas as pd
 
 from custom_loss import test_compute_ground_truth_per_class_numpy
-# from load_data import process_loaded_labels_tf
 
 
 def normalize(im):
@@ -19,21 +19,6 @@ def normalize(im):
 def process_loaded_labels(label_col):
     newstr = (label_col.replace("[", "")).replace("]", "")
     return np.fromstring(newstr, dtype=np.ones((16, 16)).dtype, sep=' ').reshape(16, 16)
-
-
-def process_loaded_labels_all_classes(label_col):
-    res = []
-    for ind in range(1, 15):
-        np_array = (label_col.iloc[:, ind].values)
-        print("in the function")
-        print(np_array[0])
-        print((np_array[0]))
-        ret = process_loaded_labels(np_array[0])
-        #
-        res.append(res)
-    return np.asarray(res)
-        # newstr = (label_col.replace("[", "")).replace("]", "")
-    # return np.fromstring(newstr, dtype=np.ones((16, 16)).dtype, sep=' ').reshape(16, 16)
 
 
 def plot_train_validation(train_curve, val_curve, train_label, val_label,
@@ -151,16 +136,12 @@ def visualize_single_image_all_classes(xy_df_row, img_ind, results_path, predict
             g = process_loaded_labels(row[i])
 
             sum_active_patches, class_label_ground, has_bbox = test_compute_ground_truth_per_class_numpy(g, 16 * 16)
-            # print("sum active patches: " + str(sum_active_patches))
-            # print("class label: " + str(class_label_ground))
-            # print("Has bbox:" + str(has_bbox))
 
             fig, axs = plt.subplots(2, 2, figsize=(10, 10))
             ## show prediction active patches
             ax1 = plt.subplot(2, 2, 1)
             ax1.set_title('Original image', {'fontsize': 8})
 
-            # img_dir = str(xy_df_row['Dir Path'][1])
             img_dir = Path(xy_df_row['Dir Path'].values[0]).__str__()
             img = plt.imread(img_dir)
             ax1.imshow(img, 'bone')
@@ -222,15 +203,15 @@ def save_evaluation_results(col_names, col_values,  file_name, out_dir,add_col=N
     eval_df.to_csv(out_dir + '/' + file_name)
 
 
-def save_accuracy_results(col_names, col_values, file_name, out_dir):
-    localization_ind = [0, 1, 4, 8, 9, 10, 12, 13]
-    eval_df = pd.DataFrame()
-    for i in range(0, len(localization_ind)):
-        eval_df[col_names[localization_ind[i]]] = pd.Series(col_values[i])
-    #     for auc in range(len(auc_
-
-    eval_df['Avg Accuracy'] = pd.Series(col_values[len(localization_ind)])
-    eval_df.to_csv(out_dir + '/' + file_name)
+# def save_accuracy_results(col_names, col_values, file_name, out_dir):
+#     localization_ind = [0, 1, 4, 8, 9, 10, 12, 13]
+#     eval_df = pd.DataFrame()
+#     for i in range(0, len(localization_ind)):
+#         eval_df[col_names[localization_ind[i]]] = pd.Series(col_values[i])
+#     #     for auc in range(len(auc_
+#
+#     eval_df['Avg Accuracy'] = pd.Series(col_values[len(localization_ind)])
+#     eval_df.to_csv(out_dir + '/' + file_name)
 
 
 def plot_grouped_bar_accuracy(acc_train, acc_val, acc_test, file_name, res_path, finding_list):
@@ -288,3 +269,21 @@ def plot_grouped_bar_auc(auc_train, auc_val, auc_test, file_name, res_path, find
     fig.savefig(res_path + '/images/' + 'auc_' + file_name + '.jpg', bbox_inches='tight')
         # plt.show()
     plt.clf()
+
+
+##################### BOOTSTRAP OVERLAP #########################################################
+
+
+def return_rows_to_drop_bootstrap(init_train_df, overlap_pat_ratio, seed):
+    obs_indices = init_train_df.index.values
+    samples_to_drop = np.math.floor((1 - overlap_pat_ratio) * init_train_df.shape[0])
+    return resample(obs_indices, n_samples=samples_to_drop, replace=False, random_state=seed)
+
+
+def drop_rows(init_train_df, ind_to_drop):
+    return init_train_df.drop(ind_to_drop)
+
+
+def create_overlap_set_bootstrap(init_train_df, overlap_pat_ratio, seed):
+    rows_drop = return_rows_to_drop_bootstrap(init_train_df, overlap_pat_ratio, seed)
+    return drop_rows(init_train_df, rows_drop)

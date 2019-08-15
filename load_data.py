@@ -61,60 +61,13 @@ def converto_3_color_channels(img):
     return stacked_img
 
 
-# #Todo: loads currently only
-# def find_load_annotated_png_files(image_ind_with_bbox, path_to_png="C:/Users/s161590/Desktop/Data/X_Ray/images"):
-#     """
-#     Searches recursively for dicom files starting from the common parent dir
-#     When dicom files is found, it is loaded and added to the final list
-#     :param path_to_png: common parent directory path for all dicom files
-#     :return: list with all loaded dicom files found
-#     """
-#     png_files = []
-#     for src_path in Path(path_to_png).glob('**/*.png'):
-#         image_ind = os.path.basename(src_path)
-#         for img in image_ind_with_bbox:
-#             if img == image_ind:
-#                 png = cv2.imread(os.path.join(os.path.dirname(src_path), os.path.basename(src_path)),0-1)
-#                 # img = cv2.resize(png, (224, 224))
-#
-#                 png_files.append(converto_3_color_channels(png))
-#
-#     print("Annotated images found: " + str(np.array(png_files).shape))
-#     return np.array(png_files)
-#
-#
-# def find_load_png_files(path_to_png="C:/Users/s161590/Desktop/Data/X_Ray/images"):
-#     """
-#     Searches recursively for dicom files starting from the common parent dir
-#     When dicom files is found, it is loaded and added to the final list
-#     :param path_to_png: common parent directory path for all dicom files
-#     :return: list with all loaded dicom files found
-#     """
-#     png_files = []
-#     for src_path in Path(path_to_png).glob('**/*.png'):
-#         image_ind = os.path.basename(src_path)
-#         # for img in image_ind_with_bbox:
-#         #     if img == image_ind:
-#         #         print("Annotations of image found: "+ str(image_ind))
-#         png = cv2.imread(os.path.join(os.path.dirname(src_path), os.path.basename(src_path)),-1)
-#         img = cv2.resize(png, (224, 224))
-#         png_files.append(img)
-#     return png_files
-#
-# TODO: remove if not used
 def get_classification_labels(label_dir="C:/Users/s161590/Desktop/Data/X_Ray/Data_Entry_2017.csv", preprocessed_csv=False):
     Y = load_csv(label_dir)
     # TODO: turn into new preparation function
     if not preprocessed_csv:
         Y_pr = rename_columns(Y, True)
         Y = add_label_columns(Y_pr)
-    # SAVE CSV
-    #     Y.to_csv("C:/Users/s161590/Desktop/Data/X_Ray/processed_Y.csv")
-    # Y1 = Y[['Image Index', 'Patient ID', 'Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 'Emphysema',
-    #         'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 'Nodule', 'Pleural_Thickening',
-    #         'Pneumonia', 'Pneumothorax']]
     return Y
-
 
 
 def drop_extra_label_columns(df):
@@ -124,91 +77,19 @@ def drop_extra_label_columns(df):
          'Pneumonia', 'Pneumothorax']]
 
 
-def get_input_df(df):
-    return df [['Image Index', 'Image Found']]
-
 def process_image(img_path):
     img = image.load_img(img_path, target_size=(512, 512))
     x = image.img_to_array(img)
     return preprocess_input(x)
 
 
-def scaling_factor(img_path):
-    img = cv2.imread(img_path, 0)
-    x, y = img.shape[0], img.shape[1]
-    return x/IMAGE_X, y/IMAGE_Y
-
-
 def scaling_factor_v2(img_path):
     x, y = imagesize.get(img_path)
-
     return x/IMAGE_X, y/IMAGE_Y
-
-def load_image(img_path):
-        png = cv2.imread(img_path, 0)
 
 
 def reorder_rows(df):
     return df.sort_values(by=["Reorder Index"])
-
-
-# def add_reorder_indx(df, image_ind, reord_idx):
-#     idx  = (df['Image Index']== image_ind)
-#
-#     #IF image found in the label file
-#     if (df.loc[idx]).empty == False:
-#         df.loc[idx, 'Image Found'] = 1
-#         df.loc[idx, 'Reorder Index'] = reord_idx
-#         reord_idx+=1
-#     return df, reord_idx
-
-
-def load_process_png(label_df, path_to_png):
-    """
-    Searches recursively for png files starting from the common parent dir
-    When png files is found, it is loaded and added to the final list
-    :param path_to_png: common parent directory path for all dicom files
-    :return: list with all loaded dicom files found
-    """
-    png_files = []
-    labels = []
-    labels_reordered = pd.DataFrame()  # creates a new dataframe that's empty
-    for src_path in Path(path_to_png).glob('**/*.png'):
-        image_ind = os.path.basename(src_path)
-        Y = get_label_by_imageind(label_df, image_ind)
-        png_files.append(process_image(src_path))
-        # todo: DECIDE WHETHER TO DROP IMAGE ID here or later
-        # drop column with img ind in Y
-        Y = Y.iloc[:, 2:Y.shape[1]]
-        labels.append(np.array(Y.values))
-    return np.array(png_files), np.array(labels)
-
-
-# def load_process_png_v2(Yclass, path_to_png):
-#     xy_df = Yclass.copy(deep=True)
-#     xy_df['Image Found'] = None
-#     xy_df['Reorder Index'] = None
-#     xy_df['Dir Path'] = None
-#
-#     png_files = []
-#     reord_ind = 0
-#     for src_path in Path(path_to_png).glob('**/*.png'):
-#
-#         image_ind = os.path.basename(src_path)
-#
-#         xy_df.loc[xy_df['Image Index'] == image_ind, ['Dir Path']] = str(src_path)
-#
-#         # img_data = process_image(src_path)
-#         xy_df, reord_ind = add_reorder_indx(xy_df, image_ind, reord_idx=reord_ind)
-#
-#         png_files.append(process_image(src_path))
-#         # todo: DECIDE WHETHER TO DROP IMAGE ID here or later
-#         # drop column with img ind in Y
-#         # Y = Y.iloc[:, 2:Y.shape[1]]
-#         # labels.append(np.array(Y.values))
-#     # TODO: uncomment the dropping procedure
-#     xy_df = xy_df.dropna(subset=['Image Found'])
-#     return np.array(png_files), reorder_rows(xy_df) #def drop_extra_label_columns(xy_df)
 
 
 def preprocess_labels(Yclass, path_to_png):
@@ -217,26 +98,12 @@ def preprocess_labels(Yclass, path_to_png):
     xy_df['Reorder Index'] = None
     xy_df['Dir Path'] = None
 
-    # png_files = []
-    reord_ind = 0
     for src_path in Path(path_to_png).glob('**/*.png'):
-
         image_ind = os.path.basename(src_path)
-
         xy_df.loc[xy_df['Image Index'] == image_ind, ['Dir Path']] = str(src_path)
 
-        # img_data = process_image(src_path)
-        # xy_df, reord_ind = add_reorder_indx(xy_df, image_ind, reord_idx=reord_ind)
-
-        # png_files.append(process_image(src_path))
-        # todo: DECIDE WHETHER TO DROP IMAGE ID here or later
-        # drop column with img ind in Y
-        # Y = Y.iloc[:, 2:Y.shape[1]]
-        # labels.append(np.array(Y.values))
-    # TODO: uncomment the dropping procedure
-    # xy_df = xy_df.dropna(subset=['Image Found'])
     xy_df = xy_df.dropna(subset=['Dir Path'])
-    return reorder_rows(xy_df) #def drop_extra_label_columns(xy_df)
+    return reorder_rows(xy_df)
 
 
 def translate_on_patches(x_min, y_min, x_max, y_max):
@@ -245,29 +112,6 @@ def translate_on_patches(x_min, y_min, x_max, y_max):
     x_max = int(np.round((x_max/IMAGE_X)*PATCH_SIZE))
     y_max = int(np.round((y_max/IMAGE_Y)*PATCH_SIZE))
     return x, y, x_max, y_max
-
-
-#
-# def bind_location_labels(Y_loc_dir, Y_class, P):
-#     Y_loc = load_csv(Y_loc_dir)
-#     Y_bbox = rename_columns(Y_loc, False)
-#     for ind, row in Y_bbox.iterrows():
-#         Y_class.loc[Y_class['Image Index']== row['Image Index'],'Bbox']=1
-#         Y_class.loc[Y_class['Image Index']== row['Image Index'],row['Finding Label']+'_loc']=1
-#
-#         src_path= (Y_class.loc[Y_class['Image Index'] == row['Image Index'], 'Dir Path']).values
-#
-#         if not src_path.size==0:
-#             scale_x, scale_y = scaling_factor(src_path[0])
-#             x_min, y_min, x_max, y_max = translate_coords_to_new_image_size(row['x'], row['y'], row['w'], row['h'], scale_x, scale_y)
-#
-#             x_min, y_min, x_max, y_max = translate_on_patches(x_min, y_min, x_max, y_max )
-#
-#             im_q = np.zeros((P, P), np.float)
-#             im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
-#
-#     Y_class.to_csv("C:/Users/s161590/Desktop/Data/X_Ray/processed_Y.csv")
-#     return Y_class, Y_loc
 
 
 def couple_location_labels(Y_loc_dir, Y_class, P, out_dir):
@@ -289,26 +133,9 @@ def create_label_matrix_classification(row, label, P):
         return im_q
 
 
-# def make_label_matrix_localization(P, x_min, y_min, x_max, y_max):
-#     im_q = np.zeros((P, P), np.float)
-#     im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
-#     print("make label matrix localization ")
-#     print(x_min)
-#     print(x_max)
-#     print(y_min)
-#     print(y_max)
-#     print(im_q)
-#     return im_q
-
 def make_label_matrix_localization_v2(P, x_min, y_min, x_max, y_max):
     im_q = np.zeros((P, P), np.float)
     im_q[y_min:(y_max + 1), x_min:(x_max + 1)] = 1.
-    # print(x_min)
-    # print(x_max)
-    # print(y_min)
-    # print(y_max)
-    # print(im_q)
-    # im_q = cv2.rectangle(im_q, (x_min, y_min), (x_max, y_max), 1, -1)
     return im_q
 
 def get_all_bbox_for_image(row, Y_loc):
@@ -358,56 +185,6 @@ def create_label_matrix_localization(row, row_classif_df, diagnosis, P):
         print("this hsould NOT BE PRINTING ")
 
 
-#
-#
-# def image_with_bbox(row, Y_loc, diagnosis, P):
-#     bbox_diagnosis = Y_loc.loc[Y_loc['Image Index'] == row['Image Index'], 'Finding Label'].values
-#
-#     if bbox_diagnosis.size==0:
-#         # do SMTH WHEN THE IMAGE DOES NOT HAVE ANY BBOX FOR THE CLASS
-#         # CHECK IF CLASS IS 1
-#         y_mat = create_label_matrix_classification(row, diagnosis, P)
-#         # return row['Image Index'], diagnosis, y_mat
-#         return y_mat
-#     # IS THERE A BBOX FOR THIS IMAGE
-#     if not bbox_diagnosis.size == 0:
-#         if diagnosis in bbox_diagnosis:
-#             for diag in bbox_diagnosis:
-#                 if diagnosis == diag:
-#                     src_path = row['Dir Path']
-#                     scale_x, scale_y = scaling_factor(src_path)
-#                     print("looking for astring")
-#                     print(row['Image Index'])
-#                     # print(scale_x)
-#                     print(row['x'], row['y'], row['w'], row['h'])
-#                     return row['x']
-#                     # x_min, y_min, x_max, y_max = translate_coords_to_image_size(row['x'], row['y'], row['w'], row['h'],
-#                     #                                                             scale_x,
-#                     #                                                             scale_y)
-#                     # x_min, y_min, x_max, y_max = translate_on_patches(x_min, y_min, x_max, y_max)
-#
-#                     # y_mat = make_label_matrix_localization(PATCH_SIZE, x_min, y_min, x_max, y_max)
-#                     # return y_mat
-#         else:
-#             y_mat = create_label_matrix_classification(row, diagnosis, P)
-#             return y_mat
-#     else:
-#         return 0
-#             #     else:
-#         #         return ("fix")
-#     #     for label in FINDINGS:
-#     #         print("hdksjhdkaiofdaj")
-#     #     #     print(label)
-#     #         # print(fl)
-#     #         print(label in fl)
-#             # for bbox_class in range(fl.size):
-#             #     pass
-
-
-# def translate_coords(row, x, y, w, h, scale_x, scale_y, img_size):
-#     translate_coords_to_new_image_size(x, y, w, h, scale_x, scale_y)
-#
-
 def translate_coords_to_new_image_size(x, y, w, h, scale_x, scale_y):
     x_min = x/ scale_x
     y_min = y / scale_y
@@ -419,24 +196,6 @@ def translate_coords_to_new_image_size(x, y, w, h, scale_x, scale_y):
 def bbox_available(df, img_ind):
     return df.loc[df['Image Index'] == img_ind, ['Bbox']]
 
-
-# ### LOOP through and update the bbox, according to the
-# def get_bbox_coords(class_df, loc_df, img_ind):
-#     # image in bbox coord may appear multiple times - 1 row per class
-#     rows = loc_df.loc[loc_df['Image Index'] == img_ind]
-#     # Images in classification file will appear once, while
-#     for ind, row in loc_df.iterrows():
-#         res.append([row['Finding Label'], row['x'], row['y'], row['w'], row['h']])
-#         if bbox_available(Yclass, image_ind) == 1:
-#             coords = get_bbox_coords()
-
-
-# def add_bbox_coord():
-#
-#     coords = str(row['x']) + ', ' + str(row['y']) + ', ' + str(row['w']) + ', ' + str(row['h'])
-#
-#     # x y] are coordinates of each box's topleft corner. [w h] represent the width and height of each box
-#     Y_class.loc[Y_class['Image Index'] == row['Image Index'], [row['Finding Label'] + '_coord']] = coords
 
 def get_process_annotated_png(ann_list, path_to_png="C:/Users/s161590/Desktop/Data/X_Ray/images"):
     """
@@ -455,12 +214,6 @@ def get_process_annotated_png(ann_list, path_to_png="C:/Users/s161590/Desktop/Da
     print("Annotated images found: " + str(np.array(png_files).shape))
     return np.array(png_files)
 
-#
-# bbox = load_csv("C:/Users/s161590/Desktop/Data/X_Ray/BBox_List_2017.csv")
-#
-# image_ind_with_bbox = get_ann_list(bbox)
-# # find_load_annotated_png_files(image_ind_with_bbox, path_to_png="C:/Users/s161590/Desktop/Data/X_Ray/images")
-#
 
 def split_test_train(X, Y, test_ratio=0.2):
     # shuffle split ensuring that same patient ID is only in test or train
@@ -505,8 +258,6 @@ def keep_index_and_diagnose_columns(Y):
 #  on the other 20% annotated images in each fold.
 def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
     classification, bbox = separate_localization_classification_labels(Y)
-    # clas, local
-    # classification, bbox = keep_index_and_diagnose_columns(clas), keep_index_and_diagnose_columns(local)
 
     _, _, df_class_train, df_class_test = split_test_train_v2(classification, test_ratio=0.5, random_state=random_state)
     _, _, df_bbox_train, df_bbox_test = split_test_train_v2(bbox, test_ratio=0.8, random_state=random_state)
@@ -527,20 +278,73 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
         visualize_population(df_bbox_test, 'test_bbox_group', res_path, FINDINGS)
         visualize_population(df_class_test, 'test_class_group', res_path, FINDINGS)
         visualize_population(pd.concat([df_bbox_test, df_class_test]), 'test_group', res_path, FINDINGS)
-        # plot_grouped_bar_population(Y, 'whole_df', res_path, FINDINGS)
-        # plot_grouped_bar_population(df_train, 'train', res_path, FINDINGS)
-        # plot_grouped_bar_population(df_val, 'validation', res_path, FINDINGS)
-        # plot_grouped_bar_population(df_bbox_test, 'test_bbox', res_path, FINDINGS)
-        # plot_grouped_bar_population(df_class_test, 'test_class', res_path, FINDINGS)
-        # plot_pie_population(Y, 'whole_df', res_path, FINDINGS)
-        # plot_pie_population(df_train, 'train', res_path, FINDINGS)
-        # plot_pie_population(df_val, 'validation', res_path, FINDINGS)
-        # plot_pie_population(df_bbox_test, 'test_bbox', res_path, FINDINGS)
-        # plot_pie_population(df_class_test, 'test_class', res_path, FINDINGS)
-    print(train_idx)
+
     train_set, val_set = keep_index_and_diagnose_columns(df_train), keep_index_and_diagnose_columns(df_val)
     bbox_test, class_test = keep_index_and_diagnose_columns(df_bbox_test), keep_index_and_diagnose_columns(df_class_test)
     return train_idx, train_set, val_set, bbox_test, class_test
+
+
+def sample_patients(max_observations_drop, df):
+    patient_unq_indices = df['Patient ID'].unique()
+    print("patient unique ind")
+    print(patient_unq_indices)
+
+
+    np.random.seed(2)
+    max_drop_patients_ind = np.random.choice(patient_unq_indices, max_observations_drop,
+                                         replace=False)
+
+    nr_obs_dropped = 0
+    last_pat_ind = 0
+
+    for i in range(0, len(max_drop_patients_ind)):
+        nr_obs_dropped += df.loc[df['Patient ID'] == max_drop_patients_ind[i]].shape[0]
+        last_pat_ind = i
+        ratio = nr_obs_dropped/max_observations_drop
+        if 1.1 <= ratio <= 0.9:
+            max_drop_patients_ind = max_drop_patients_ind[0:i + 1]
+
+    return max_drop_patients_ind, nr_obs_dropped, max_observations_drop
+
+
+def create_overlap_testing_v2(min_overlap, start_seed, init_df, enrich_df):
+    # pat_drop_ub = np.math.floor((1 - min_overlap) * len(init_df['Patient ID'].unique()))
+    max_obs_drop = np.math.floor((1 - min_overlap) * init_df.shape[0])
+
+    drop_patients_ind, nr_obs_dropped, max_obs_todrop= sample_patients(max_obs_drop, init_df)
+
+    # print(df.loc[df['Patient ID']==pat_ind] for pat_ind in drop_patients_ind)
+
+    nr_obs_dropped = np.sum([init_df.loc[init_df['Patient ID']==pat_ind].shape[0] for pat_ind in drop_patients_ind])
+    print("patients to drop")
+    print(drop_patients_ind)
+    print(nr_obs_dropped)
+    # add_patients_ind, nr_obs_added, max_pat_todrop= sample_patients(min_overlap, init_df)
+
+    add_patients_ind, nr_obs_added, max_obs_toadd = sample_patients(nr_obs_dropped, enrich_df)
+    #
+    # patient_unq_indices_enrich = enrich_df['Patient ID'].unique()
+    # print(patient_unq_indices_enrich)
+    # np.random.seed(1)
+    # new_patients_ind = np.random.choice(patient_unq_indices_enrich, nr_obs_added, replace=False) # for _ in range(total_drop_patients)]
+    # print("new patients id")
+    # print(new_patients_ind)
+    # nr_obs_added = 0
+    #
+    # for pat_ind in new_patients_ind:
+    #     print("for loop 2")
+    #     print(enrich_df.loc[enrich_df['Patient ID'] == pat_ind].shape[0])
+    #     nr_obs_added += enrich_df.loc[enrich_df['Patient ID'] == pat_ind].shape[0]
+    #     if (nr_obs_added >= nr_obs_dropped):
+    #         ratio_init_df = (init_df.shape[0]-nr_obs_dropped)/init_df.shape[0]
+    #         ratio_enriched_df = (init_df.shape[0]-nr_obs_dropped)/(init_df.shape[0]-nr_obs_dropped + nr_obs_added)
+    #         print("ratios")
+    #         print(ratio_init_df)
+    #         print(ratio_enriched_df)
+    #         # break
+    #     print("added")
+    # print(nr_obs_added)
+
 
 
 def create_overlapping_test_set(init_train_idx, start_seed, max_overlap, min_overlap, df):
@@ -602,10 +406,7 @@ def reorder_Y(Y):
     return np.transpose(np.asarray(newarr), [0, 2, 3, 1])
 
 
-
 #################### processing loaded data ######################
-
-
 
 
 def select_y_class_columns(df):
@@ -614,14 +415,10 @@ def select_y_class_columns(df):
                       'Pneumonia', 'Pneumothorax']].astype(np.int64)
 
 
-
 def multilabel_stratification(df, Y, splitnr, rnd_seed = 0):
     mskf = MultilabelStratifiedKFold(n_splits=splitnr, random_state=rnd_seed)
-    X = np.zeros(Y.shape[0])
-    # X.values[:, np.newaxis]
-    # print(Y.values)
+
     for train_index, test_index in mskf.split(np.zeros(Y.shape[0]), Y.values):
-        # print("TRAIN your set:", train_index, "TEST your set:", test_index)
         df_train, df_test = df.iloc[train_index], df.iloc[test_index]
         # y_train, y_test = Y[train_index], Y[test_index]
         return train_index, test_index, df_train, df_test
