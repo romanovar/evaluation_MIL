@@ -41,36 +41,11 @@ def compute_IoU(predictions, labels, P):
     return intersection/union
 
 
-# def compute_image_label_from_IoU(predictions, labels, P, iou_thres):
-#     IoU = compute_IoU(predictions, labels, P)
-#     image_class_pred = tf.cast(tf.greater_equal(IoU, iou_thres), tf.float32)
-#     return image_class_pred
-
-
 def compute_accuracy_image_bbox(predictions, labels, class_ground_truth, P, iou_threshold):
     IoU = compute_IoU(predictions, labels, P)
     image_class_pred = tf.cast(tf.greater_equal(IoU, iou_threshold), tf.float32)
     correct_prediction = tf.equal(image_class_pred, class_ground_truth)
     return IoU, tf.cast(correct_prediction, "float")
-
-#
-#
-# def compute_AUC_image_per_class(predictions, class_ground_truth, P):
-#         max_prediction_class = tf.reduce_max(tf.reshape(predictions, (-1, P*P, 14)), 1)
-#         auc = tf.metrics.auc(class_ground_truth, max_prediction_class)
-#         tf.keras.backend.get_session().run(tf.local_variables_initializer())
-#         return auc
-
-
-# def compute_AUC_sklearn(predictions, class_ground_truth, P):
-#     max_prediction = tf.reduce_max(tf.reshape(predictions, (-1, P * P, 14)), 1)
-#     score = tf.py_func(
-#             lambda class_ground_truth, max_prediction: roc_auc_score(class_ground_truth, max_prediction, average='macro', sample_weight=None).astype('float32'),
-#             [class_ground_truth, max_prediction],
-#             'float32',
-#             stateful=False,
-#             name='sklearnAUC')
-#     return score
 
 
 def compute_class_prediction_binary(predictions, P):
@@ -100,8 +75,7 @@ def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold
     accuracy_per_obs_per_class = tf.where(has_bbox, accuracy_bbox,
                         compute_accuracy_on_image_level(predictions, class_label_ground, P))
     accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
-    print(tf.shape(accuracy_per_class))
-    # print(tf.shape(accuracy_per_obs_per_class))
+
     return accuracy_per_class
 
 
@@ -140,57 +114,31 @@ def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold
 def keras_accuracy(y_true, y_pred):
     return compute_accuracy_keras(y_pred, y_true, P=16, iou_threshold=0.1)
 
-#
-# def keras_accuracy_revisited(y_true, y_pred):
-#     return compute_accuracy_keras_revisited(y_pred, y_true, P=16)
-#
-#
-# def keras_accuracy_asloss(y_true, y_pred):
-#     return compute_accuracy_keras_as_loss(y_pred, y_true, P=16)
-
-
-def convert_to_sparse(dense_tensor):
-    zero = tf.constant(0, dtype=tf.float32)
-    where = tf.not_equal(dense_tensor, zero)
-    indices = tf.where(where)
-    values = tf.gather_nd(dense_tensor, indices)
-    sparse = tf.SparseTensor(indices, values, dense_tensor.shape)
-    return sparse
-
 
 def accuracy_bbox_IOU(y_pred, instance_labels_ground, P, iou_threshold):
     _, _, has_bbox = compute_ground_truth(instance_labels_ground, P * P)
     iou_scores = tf.where(has_bbox, compute_IoU(y_pred, instance_labels_ground, P), tf.zeros(tf.shape(has_bbox)))
-    # with tf.Session().as_default():
-    #     print(iou_scores.eval())
     image_label_pred = tf.cast(tf.greater_equal(iou_scores, iou_threshold), tf.float32)
 
     # compare image_label prediction and has_bbox
     # tf equal will NOT be a good idea, as 0 in has bbox means absence of bbox and shouldnt be comuted in accuracy
     acc_pred = tf.reduce_sum(image_label_pred, axis=0)
     true_labels = tf.reduce_sum(tf.cast(has_bbox, tf.float32), axis=0)
-    # sparse_has_loc = convert_to_sparse(true_labels)
-    acc_per_class = tf.where(tf.greater(true_labels, 0), acc_pred / true_labels, tf.zeros(tf.shape(true_labels)))
-    # acc_per_class = tf.where(tf.greater(sparse_has_loc, 0), acc_pred / true_labels,  tf.zeros(tf.shape(true_labels)))
 
+    acc_per_class = tf.where(tf.greater(true_labels, 0), acc_pred / true_labels, tf.zeros(tf.shape(true_labels)))
     return acc_per_class
 
 
 def accuracy_bbox_IOU_v2(y_pred, instance_labels_ground, P, iou_threshold):
     _, _, has_bbox = compute_ground_truth(instance_labels_ground, P * P)
     iou_scores = tf.where(has_bbox, compute_IoU(y_pred, instance_labels_ground, P), tf.zeros(tf.shape(has_bbox)))
-    # with tf.Session().as_default():
-    #     print(iou_scores.eval())
     image_label_pred = tf.cast(tf.greater_equal(iou_scores, iou_threshold), tf.float32)
 
     # compare image_label prediction and has_bbox
     # tf equal will NOT be a good idea, as 0 in has bbox means absence of bbox and shouldnt be comuted in accuracy
     acc_pred = tf.reduce_sum(image_label_pred, axis=0)
     true_labels = tf.reduce_sum(tf.cast(has_bbox, tf.float32), axis=0)
-    # sparse_has_loc = convert_to_sparse(true_labels)
     acc_per_class = tf.where(tf.greater(true_labels, 0), acc_pred / true_labels, tf.zeros(tf.shape(true_labels)))
-    # acc_per_class = tf.where(tf.greater(sparse_has_loc, 0), acc_pred / true_labels,  tf.zeros(tf.shape(true_labels)))
-
     return acc_per_class, acc_pred, true_labels
 
 
@@ -243,14 +191,8 @@ def acc_average(y_true, y_pred):
 def list_localization_accuracy(y_true, y_pred):
     localization_classes = [0, 1, 4, 8, 9, 10, 12, 13]
     accuracy_all_cl, acc_predictions, local_present = accuracy_bbox_IOU_v2(y_pred, y_true, P=16, iou_threshold=0.1)
-    # acc_loc = [accuracy_all_cl[0], accuracy_all_cl[1],accuracy_all_cl[4], accuracy_all_cl[8], accuracy_all_cl[9],
-    #            accuracy_all_cl[10], accuracy_all_cl[12], accuracy_all_cl[13] ]
     acc_loc = [accuracy_all_cl[i] for i in localization_classes]
-    # acc_preds = [acc_predictions[0], acc_predictions[1],acc_predictions[4], acc_predictions[8], acc_predictions[9],
-    #              acc_predictions[10], acc_predictions[12], acc_predictions[13] ]
     acc_preds = [acc_predictions[ind] for ind in localization_classes]
-    # nr_bbox_present = [local_present[0], local_present[1],local_present[4], local_present[8], local_present[9],
-    #                    local_present[10], local_present[12], local_present[13]]
     nr_bbox_present = [local_present[ind] for ind in localization_classes]
     return acc_loc, acc_preds, nr_bbox_present
 
@@ -347,10 +289,10 @@ def test_function_acc_class(y_pred, instance_labels_ground, P, iou_threshold):
 #
 # as loss
 
+
 def image_prob_active_patches(nn_output, P):
     detected_active_patches = tf.cast(tf.greater(nn_output, 0.5), tf.float32)
     sum_detected_actgive_patches, _, detected_bbox = compute_ground_truth(detected_active_patches, P*P)
-    # img_prob = compute_image_label_from_localization_NORM(nn_output, detected_active_patches, P)
     return compute_image_label_prediction(detected_bbox, nn_output, detected_active_patches, P )
 
 
@@ -406,35 +348,17 @@ def compute_auc(labels_all_classes, img_predictions_all_classes):
     return auc_all_classes
 
 
-
-
-# def AUC_class3(y_pred, y_true):
-#     return compute_auc(y_true, y_pred)[2]
-
-#
-# def keras_auc_v3(y_true, y_pred):
-#     img_label, img_prob = compute_image_probability(y_pred, y_true, P=16)
-#     auc, update_op = tf.metrics.auc(img_label, img_prob)
-#     # K.backend.get_session().run(tf.local_variables_initializer())
-#     return auc
-
 ###################################### HANDLING PREDICTIONS ############################################################
 
 def combine_predictions_each_batch(current_batch, prev_batches_arr, batch_ind):
     if batch_ind==0:
-        # return np.concatenate((current_batch, []))
         return current_batch
     else:
-        print(batch_ind)
-        print("im in the combine")
-        # print(prev_batches_arr)
-        print(prev_batches_arr.shape)
-        print(current_batch.shape)
-
         return np.concatenate((prev_batches_arr, current_batch))
 
 
 
+# TODO: delete - not used
 def make_save_predictions(img_name, raw_predictions, image_predictions, image_label, out_dir, file_name):
     predictions_df = pd.DataFrame()
     predictions_df['Dir Path'] = img_name
@@ -447,6 +371,7 @@ def make_save_predictions(img_name, raw_predictions, image_predictions, image_la
     predictions_df.to_csv(out_dir+'/' + file_name)
 
 
+# TODO: delete - not used
 def create_empty_dataset_results(nr_rows):
     # df = pd.DataFrame(columns=['lib', 'qty1', 'qty2'])
     columns = []
