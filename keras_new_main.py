@@ -139,11 +139,11 @@ if train_mode:
     print(history.history['keras_accuracy'])
     keras_utils.plot_train_validation(history.history['keras_accuracy'],
                                   history.history['val_keras_accuracy'],
-                                  'model accuracy', 'training_accuracy', 'accuracy','accuracy', results_path)
+                                  'train accuracy', 'validation accuracy', 'accuracy','accuracy', results_path)
 
     keras_utils.plot_train_validation(history.history['loss'],
                                   history.history['val_loss'],
-                                  'model loss', 'training_loss', 'loss', 'loss', results_path)
+                                  'train loss', 'validation loss', 'loss', 'loss', results_path)
 else:
     model = load_model(results_path+'/trained_model_v1.h5', custom_objects={
         'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
@@ -213,7 +213,7 @@ else:
 
         test_generator = gen.BatchGenerator(
             instances=test_set.values,
-            batch_size=1,
+            batch_size=BATCH_SIZE_TEST,
             net_h=IMAGE_SIZE,
             net_w=IMAGE_SIZE,
             box_size=BOX_SIZE,
