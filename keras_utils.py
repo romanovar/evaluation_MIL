@@ -99,7 +99,7 @@ def plot_grouped_bar_population(df, file_name, res_path, findings_list):
     ax.set_xticks(x)
     ax.set_xticklabels(findings_list, fontsize=8)
     ax.legend()
-    fig.savefig(res_path + '/images/'+ 'population_data'+ '_' + file_name + '.jpg', bbox_inches='tight')
+    fig.savefig(res_path + 'population_data'+ '_' + file_name + '.jpg', bbox_inches='tight')
     # plt.show()
     plt.clf()
 
@@ -117,7 +117,7 @@ def plot_pie_population(df, file_name, res_path, findings_list):
             shadow=True, startangle=90)
            ax[i, j].set_title(findings_list[i*7+j], {'fontsize': 9})
 
-    fig.savefig(res_path + '/images/' + 'pie_chart' + '_' + file_name + '.jpg', bbox_inches='tight')
+    fig.savefig(res_path +  'pie_chart' + '_' + file_name + '.jpg', bbox_inches='tight')
     plt.clf()
 
 

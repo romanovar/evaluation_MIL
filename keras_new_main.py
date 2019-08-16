@@ -47,10 +47,13 @@ image_path = config['image_path']
 classication_labels_path = config['classication_labels_path']
 localization_labels_path = config['localization_labels_path']
 results_path =config['results_path']
-
+generated_images_path = config['generated_images_path']
 processed_labels_path = config['processed_labels_path']
+prediction_results_path = config['prediction_results_path']
 train_mode = config['train_mode']
 test_single_image = config['test_single_image']
+trained_models_path = config['trained_models_path']
+
 
 IMAGE_SIZE = 512
 BATCH_SIZE = 10
@@ -67,15 +70,15 @@ else:
 print("Splitting data ...")
 init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test = ld.get_train_test(xray_df, random_state=0,
                                                                                        do_stats=True,
-                                                                                       res_path = results_path)
-
+                                                                                       res_path = generated_images_path)
+df_train=df_train_init
 # df_train, df_val, df_bbox_test, df_class_test = ld.get_train_test_strata(xray_df, random_state=0, do_stats=True, res_path=results_path)
 print('Training set: '+ str(df_train_init.shape))
 print('Validation set: '+ str(df_val.shape))
 print('Localization testing set: '+ str(df_bbox_test.shape))
 print('Classification testing set: '+ str(df_class_test.shape))
 
-df_train = keras_utils.create_overlap_set_bootstrap(df_train_init, 0.9, seed=2)
+#df_train = keras_utils.create_overlap_set_bootstrap(df_train_init, 0.9, seed=2)
 init_train_idx = df_train['Dir Path'].index.values
 
 # new_seed, new_tr_ind = ld.create_overlapping_test_set(init_train_idx, 1, 0.95,0.85, xray_df)
@@ -107,12 +110,12 @@ if train_mode:
 
     early_stop = EarlyStopping(monitor='val_loss',
                                min_delta=0.001,
-                               patience=10,
+                               patience=15,
                                mode='min',
                                verbose=1)
 
     checkpoint = ModelCheckpoint(
-        filepath=results_path+ '/best_model_100.h5',
+        filepath=trained_models_path+ 'best_model_100.h5',
         monitor='val_loss',
         verbose=1,
         save_best_only=True,
@@ -145,7 +148,7 @@ if train_mode:
                                   history.history['val_loss'],
                                   'train loss', 'validation loss', 'loss', 'loss', results_path)
 else:
-    model = load_model(results_path+'/trained_model_v1.h5', custom_objects={
+    model = load_model(trained_models_path+'best_model_100.h5', custom_objects={
         'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
     model = keras_model.compile_model(model)
 
@@ -164,7 +167,7 @@ else:
                 processed_y=skip_processing)
 
         predictions = model.predict_generator(test_generator, steps= test_generator.__len__(), workers=1)
-        np.save(results_path+'/predictions_'+file_unique_name, predictions)
+        np.save(prediction_results_path+'predictions_'+file_unique_name, predictions)
 
         all_img_ind = []
         all_patch_labels = []
@@ -176,8 +179,8 @@ else:
             all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
 
 
-        np.save(results_path+'/image_indices_'+file_unique_name, all_img_ind)
-        np.save(results_path + '/patch_labels_'+file_unique_name, all_patch_labels)
+        np.save(prediction_results_path+'image_indices_'+file_unique_name, all_img_ind)
+        np.save(prediction_results_path + 'patch_labels_'+file_unique_name, all_patch_labels)
 
         # ########################################### VALIDATION SET######################################################
         file_unique_name = 'val_set'
@@ -193,7 +196,7 @@ else:
             processed_y=skip_processing)
 
         predictions = model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
-        np.save(results_path + '/predictions_' + file_unique_name, predictions)
+        np.save(prediction_results_path + 'predictions_' + file_unique_name, predictions)
 
         all_img_ind = []
         all_patch_labels = []
@@ -204,8 +207,8 @@ else:
             all_img_ind = combine_predictions_each_batch(res_img_ind, all_img_ind, batch_ind)
             all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
 
-        np.save(results_path + '/image_indices_' + file_unique_name, all_img_ind)
-        np.save(results_path + '/patch_labels_' + file_unique_name, all_patch_labels)
+        np.save(prediction_results_path + 'image_indices_' + file_unique_name, all_img_ind)
+        np.save(prediction_results_path + 'patch_labels_' + file_unique_name, all_patch_labels)
 
         ########################################### TESTING SET########################################################
         file_unique_name = 'test_set'
@@ -221,7 +224,7 @@ else:
             processed_y=skip_processing, shuffle=False)
 
         predictions = model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
-        np.save(results_path + '/predictions_' + file_unique_name, predictions)
+        np.save(prediction_results_path + 'predictions_' + file_unique_name, predictions)
 
         all_img_ind = []
         all_patch_labels = []
@@ -232,8 +235,8 @@ else:
             all_img_ind = combine_predictions_each_batch(res_img_ind, all_img_ind, batch_ind)
             all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
 
-        np.save(results_path + '/image_indices_' + file_unique_name, all_img_ind)
-        np.save(results_path + '/patch_labels_' + file_unique_name, all_patch_labels)
+        np.save(prediction_results_path + 'image_indices_' + file_unique_name, all_img_ind)
+        np.save(prediction_results_path + 'patch_labels_' + file_unique_name, all_patch_labels)
 
         #FOR TESTING PURPOSES
         sess = tf.Session()

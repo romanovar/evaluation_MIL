@@ -66,7 +66,7 @@ def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold
 
     img_pred_norm = compute_image_label_in_classification_NORM(predictions, P)
     img_pred_bin = tf.cast(img_pred_norm > 0.5, tf.float32)
-    correct_prediction_img = tf.equal(img_pred_bin, class_label_ground)
+    correct_prediction_img = tf.cast(tf.equal(img_pred_bin, class_label_ground), tf.float32)
 
     accuracy_per_obs_per_class = tf.where(has_bbox, accuracy_bbox, correct_prediction_img)
     accuracy_per_class = tf.reduce_mean(accuracy_per_obs_per_class, 0)
