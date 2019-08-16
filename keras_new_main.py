@@ -53,8 +53,8 @@ train_mode = config['train_mode']
 test_single_image = config['test_single_image']
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 1
-BATCH_SIZE_TEST = 1
+BATCH_SIZE = 10
+BATCH_SIZE_TEST = 10
 BOX_SIZE = 16
 
 if skip_processing:
@@ -112,7 +112,7 @@ if train_mode:
                                verbose=1)
 
     checkpoint = ModelCheckpoint(
-        filepath=results_path+ '/model_nodule_bbox.h5',
+        filepath=results_path+ '/best_model_100.h5',
         monitor='val_loss',
         verbose=1,
         save_best_only=True,
@@ -128,7 +128,7 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=2,
+        epochs=100,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,

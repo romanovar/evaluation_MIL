@@ -9,3 +9,4 @@ class MyCallback(Callback):
         iterations = self.model.optimizer.iterations
         lr_with_decay = lr / (1. + decay * K.cast(iterations, K.dtype(decay)))
         print(K.eval(lr_with_decay))
+        self.model.save("model_{}.hd5".format(epoch))
