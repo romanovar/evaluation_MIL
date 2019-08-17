@@ -38,7 +38,9 @@ def plot_train_validation(train_curve, val_curve, train_label, val_label,
     #     plt.legend([train_label, val_label, third_label], loc='upper left')
     # else:
     plt.legend([train_label, val_label ], loc='upper left')
+    xint = range(1, len(train_curve)+1)
 
+    matplotlib.pyplot.xticks(xint)
     plt.savefig(out_dir + '/' + title + '.png')
     plt.clf()
 

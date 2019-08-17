@@ -56,8 +56,8 @@ trained_models_path = config['trained_models_path']
 
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 10
-BATCH_SIZE_TEST = 10
+BATCH_SIZE = 2
+BATCH_SIZE_TEST = 2
 BOX_SIZE = 16
 
 if skip_processing:
@@ -66,7 +66,7 @@ else:
     label_df = ld.get_classification_labels(classication_labels_path, False)
     processed_df = ld.preprocess_labels(label_df, image_path)
     xray_df = ld.couple_location_labels(localization_labels_path, processed_df, ld.PATCH_SIZE, results_path)
-
+print(xray_df.shape)
 print("Splitting data ...")
 init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test = ld.get_train_test(xray_df, random_state=0,
                                                                                        do_stats=True,
@@ -123,6 +123,9 @@ if train_mode:
         period=1
     )
 
+    filepath = trained_models_path + "saved-model-{epoch:02d}-{val_loss:.2f}.hdf5"
+    checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='max')
+
     lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
     print("df train STEPS")
     print(len(df_train)//BATCH_SIZE)
@@ -131,11 +134,11 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=100,
+        epochs=3,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
-        callbacks=[checkpoint, early_stop, lrate]
+        callbacks=[checkpoint, checkpoint_on_epoch_end, early_stop, lrate]
     )
     print("history")
     print(history.history)
