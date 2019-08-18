@@ -40,7 +40,7 @@ predict_res_path = config['prediction_results_path']
 
 #######################################################################
 def load_npy(file_name, res_path):
-    return np.load(res_path + '/' + file_name, allow_pickle=True)
+    return np.load(res_path + file_name, allow_pickle=True)
 
 
 def get_index_label_prediction(file_set_name, res_path):
@@ -137,8 +137,8 @@ def process_prediction_all_batches(predictions, patch_labels, img_pred_as_loss, 
 
     np.save(results_path + '/image_labels_' + file_unique_name + '_'+img_pred_as_loss+ind_file, coll_image_labels)
     np.save(results_path + '/image_predictions_' + file_unique_name + '_'+img_pred_as_loss+ind_file, coll_image_predictions)
-    np.save(results_path + '/accurate_localization_' + file_unique_name, coll_accurate_preds+ind_file)
-    np.save(results_path + '/bbox_present_' + file_unique_name, coll_bbox_present+ind_file)
+    np.save(results_path + '/accurate_localization_' + file_unique_name+ind_file, coll_accurate_preds)
+    np.save(results_path + '/bbox_present_' + file_unique_name+ind_file, coll_bbox_present)
     return coll_image_labels, coll_image_predictions, coll_accurate_preds, coll_bbox_present
 
 
@@ -146,19 +146,24 @@ def process_prediction_v2(file_unique_name, res_path, img_pred_as_loss, batch_si
     predictions, image_indices, patch_labels = get_index_label_prediction(file_unique_name, res_path)
     slice_size = 5000
     total_full_slices = predictions.shape[0]//slice_size
-
+    print('Total full slices')
+    print(predictions.shape)
+    print(total_full_slices)
     for k in range(0, total_full_slices):
         start_ind = k*slice_size
         end_ind = start_ind+slice_size
-        predictions = predictions[start_ind:end_ind, :, :, :]
-        patch_labels = patch_labels[start_ind:end_ind, :, :, :]
+        predictions_slice = predictions[start_ind:end_ind, :, :, :]
+        patch_labels_slice = patch_labels[start_ind:end_ind, :, :, :]
+        print("start end indices")
+        print(start_ind)
+        print(end_ind)
         print("Shape slices")
-        print(predictions.shape)
-        print(patch_labels.shape)
+        print(predictions_slice.shape)
+        print(patch_labels_slice.shape)
 
         coll_image_labels, coll_image_predictions, coll_accurate_preds, coll_bbox = process_prediction_all_batches(
-            predictions,
-            patch_labels, img_pred_as_loss, batch_size,
+            predictions_slice,
+            patch_labels_slice, img_pred_as_loss, batch_size,
             file_unique_name, str(k))
 
         accurate_pred_all_batches = np.sum(coll_accurate_preds, axis=0)
@@ -170,15 +175,15 @@ def process_prediction_v2(file_unique_name, res_path, img_pred_as_loss, batch_si
     if predictions.shape[0] % slice_size != 0:
         start_ind = total_full_slices * slice_size
 
-        predictions = predictions[start_ind:predictions.shape[0], :, :, :]
-        patch_labels = patch_labels[start_ind:patch_labels.shape[0], :, :, :]
+        predictions_slice = predictions[start_ind:predictions.shape[0], :, :, :]
+        patch_labels_slice = patch_labels[start_ind:patch_labels.shape[0], :, :, :]
         print("Shape slices")
         print(predictions.shape)
         print(patch_labels.shape)
 
         coll_image_labels, coll_image_predictions, coll_accurate_preds, coll_bbox = process_prediction_all_batches(
-            predictions,
-            patch_labels, img_pred_as_loss, batch_size,
+            predictions_slice,
+            patch_labels_slice, img_pred_as_loss, batch_size,
             file_unique_name, str(total_full_slices))
 
         accurate_pred_all_batches = np.sum(coll_accurate_preds, axis=0)
@@ -298,10 +303,13 @@ def do_predictions_set(data_set_name, skip_pred_process, img_pred_as_loss):
 def combine_npy_accuracy(data_set_name, res_path):
     coll_accuracy = 0
     coll_bbox_pres = 0
-    for ind in range(1,10):
+    for ind in range(0,8):
+        print(ind)
         acc_local, bbox_present = load_accuracy_localization_v2(data_set_name, str(ind), res_path)
-        coll_accuracy = combine_predictions_each_batch(acc_local, coll_accuracy, ind - 1)
-        coll_bbox_pres = combine_predictions_each_batch(bbox_present, coll_bbox_pres, ind - 1)
+        print(coll_accuracy.shape)
+        print(acc_local.shape)
+        coll_accuracy = combine_predictions_each_batch(acc_local, coll_accuracy, ind)
+        coll_bbox_pres = combine_predictions_each_batch(bbox_present, coll_bbox_pres, ind)
 
     compute_save_accuracy(coll_accuracy, coll_bbox_pres, data_set_name, res_path)
 
