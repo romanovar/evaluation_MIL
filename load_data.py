@@ -260,16 +260,19 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
     classification, bbox = separate_localization_classification_labels(Y)
 
     _, _, df_class_train, df_class_test = split_test_train_v2(classification, test_ratio=0.5, random_state=random_state)
-    _, _, df_bbox_train, df_bbox_test = split_test_train_v2(bbox, test_ratio=0.8, random_state=random_state)
+    train_bbox_idx, _, df_bbox_train, df_bbox_test = split_test_train_v2(bbox, test_ratio=0.2, random_state=random_state)
+    print("BBO TRAIN")
+    print(df_bbox_train.shape)
+    print(df_bbox_test.shape)
 
     train_clas_idx, _, df_class_train, df_class_val = split_test_train_v2(df_class_train, test_ratio=0.2, random_state=random_state)
-    train_bbox_idx, _, df_bbox_train, df_bbox_val = split_test_train_v2(df_bbox_train, test_ratio=0.2, random_state=random_state)
+    # train_bbox_idx, _, df_bbox_train, df_bbox_val = split_test_train_v2(df_bbox_train, test_ratio=0.2, random_state=random_state)
 
     train_idx = np.concatenate((train_clas_idx, train_bbox_idx), axis=None)
     df_train = pd.concat([df_class_train, df_bbox_train])
-    df_val = pd.concat([df_class_val, df_bbox_val])
-    df_train= df_train.reindex(np.random.permutation(df_train.index))
-    df_val = df_val.reindex(np.random.permutation(df_val.index))
+    df_val = df_class_val
+    # df_train= df_train.reindex(np.random.permutation(df_train.index))
+    # df_val = df_val.reindex(np.random.permutation(df_val.index))
 
     if do_stats and res_path is not None:
         visualize_population(Y, 'whole_df_group', res_path, FINDINGS)
