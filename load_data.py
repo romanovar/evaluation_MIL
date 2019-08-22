@@ -101,8 +101,10 @@ def preprocess_labels(Yclass, path_to_png):
     for src_path in Path(path_to_png).glob('**/*.png'):
         image_ind = os.path.basename(src_path)
         xy_df.loc[xy_df['Image Index'] == image_ind, ['Dir Path']] = str(src_path)
-
+    print("xy before dropping")
+    print(xy_df.shape)
     xy_df = xy_df.dropna(subset=['Dir Path'])
+    print(xy_df.shape)
     return reorder_rows(xy_df)
 
 
@@ -284,7 +286,8 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
 
     train_set, val_set = keep_index_and_diagnose_columns(df_train), keep_index_and_diagnose_columns(df_val)
     bbox_test, class_test = keep_index_and_diagnose_columns(df_bbox_test), keep_index_and_diagnose_columns(df_class_test)
-    return train_idx, train_set, val_set, bbox_test, class_test
+    bbox_train =keep_index_and_diagnose_columns(df_bbox_train)
+    return train_idx, train_set, val_set, bbox_test, class_test, bbox_train
 
 
 def sample_patients(max_observations_drop, df):
@@ -350,47 +353,47 @@ def create_overlap_testing_v2(min_overlap, start_seed, init_df, enrich_df):
 
 
 
-def create_overlapping_test_set(init_train_idx, start_seed, max_overlap, min_overlap, df):
-    print("train indices")
-    print(init_train_idx)
-    seed = start_seed
-    new_train_idx = []
-    overlap = np.intersect1d(init_train_idx,new_train_idx)
-    overlap_ratio = float(len(overlap)) / len(init_train_idx)
-    print("overlap ratio is:")
-    print(overlap_ratio)
-    while(not(max_overlap > overlap_ratio and overlap_ratio>min_overlap)):
-        seed+=1
-        _, df_train, df_val, df_bbox_test, df_class_test = get_train_test(df, random_state=seed, do_stats=False, res_path=None)
-        new_train_idx = df_train['Dir Path'].index.values
-        overlap = np.intersect1d(init_train_idx, new_train_idx)
-        overlap_ratio = float(len(overlap)) / len(init_train_idx)
-        print("overlap ratio is:")
-        print(overlap_ratio)
-        print(seed)
-        if (seed== (start_seed+1)*1000):
-            print("No overlapping training test can be constructed within 10000 iterations")
-            break
-    return seed, new_train_idx
+# def create_overlapping_test_set(init_train_idx, start_seed, max_overlap, min_overlap, df):
+#     print("train indices")
+#     print(init_train_idx)
+#     seed = start_seed
+#     new_train_idx = []
+#     overlap = np.intersect1d(init_train_idx,new_train_idx)
+#     overlap_ratio = float(len(overlap)) / len(init_train_idx)
+#     print("overlap ratio is:")
+#     print(overlap_ratio)
+#     while(not(max_overlap > overlap_ratio and overlap_ratio>min_overlap)):
+#         seed+=1
+#         _, df_train, df_val, df_bbox_test, df_class_test = get_train_test(df, random_state=seed, do_stats=False, res_path=None)
+#         new_train_idx = df_train['Dir Path'].index.values
+#         overlap = np.intersect1d(init_train_idx, new_train_idx)
+#         overlap_ratio = float(len(overlap)) / len(init_train_idx)
+#         print("overlap ratio is:")
+#         print(overlap_ratio)
+#         print(seed)
+#         if (seed== (start_seed+1)*1000):
+#             print("No overlapping training test can be constructed within 10000 iterations")
+#             break
+#     return seed, new_train_idx
 
 
-def create_overlapping_set(init_train_idx, start_seed, max_overlap, min_overlap, df):
-    print("train indices")
-    print(init_train_idx)
-    seed = start_seed
-    new_train_idx = []
-    overlap = np.intersect1d(init_train_idx,new_train_idx)
-    overlap_ratio = float(len(overlap)) / len(init_train_idx)
-    while(not(max_overlap > overlap_ratio and overlap_ratio>min_overlap)):
-        seed+=1
-        new_train_idx, _, _, _, _ = get_train_test(df, random_state=seed, do_stats=False, res_path=None)
-        overlap = np.intersect1d(init_train_idx, new_train_idx)
-        overlap_ratio = float(len(overlap)) / len(init_train_idx)
-        print(seed)
-        if (seed== (start_seed+1)*1000):
-            print("No overlapping training test can be constructed within 10000 iterations")
-            break
-    return seed, new_train_idx
+# def create_overlapping_set(init_train_idx, start_seed, max_overlap, min_overlap, df):
+#     print("train indices")
+#     print(init_train_idx)
+#     seed = start_seed
+#     new_train_idx = []
+#     overlap = np.intersect1d(init_train_idx,new_train_idx)
+#     overlap_ratio = float(len(overlap)) / len(init_train_idx)
+#     while(not(max_overlap > overlap_ratio and overlap_ratio>min_overlap)):
+#         seed+=1
+#         new_train_idx, _, _, _, _ = get_train_test(df, random_state=seed, do_stats=False, res_path=None)
+#         overlap = np.intersect1d(init_train_idx, new_train_idx)
+#         overlap_ratio = float(len(overlap)) / len(init_train_idx)
+#         print(seed)
+#         if (seed== (start_seed+1)*1000):
+#             print("No overlapping training test can be constructed within 10000 iterations")
+#             break
+#     return seed, new_train_idx
 
 
 def keep_only_classification_columns(Y):

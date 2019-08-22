@@ -101,6 +101,64 @@ def process_prediction_per_batch(predictions, patch_labels, img_pred_as_loss, l_
     return coll_image_labs, coll_image_preds, coll_accurate_preds, coll_bbox_present
 
 
+def process_prediction_per_batch_image_level(predictions, patch_labels, img_pred_as_loss, l_bound, r_bound, coll_image_labs,
+                                 coll_image_preds, k):
+    batch_pred = predictions[l_bound:r_bound, :, :, :]
+    batch_patch_lab = patch_labels[l_bound:r_bound, :, :, :]
+
+    #TODO: Different ways of predicting image label
+    batch_img_labels, batch_img_preds_v1 = get_label_prediction_image_level(batch_pred, batch_patch_lab,
+                                                                            img_pred_as_loss)
+
+
+
+    with tf.Session().as_default():
+        batch_image_labels, batch_image_predictions_v1 = batch_img_labels.eval(), batch_img_preds_v1.eval()
+
+        coll_image_labs = combine_predictions_each_batch(batch_image_labels, coll_image_labs, k)
+        coll_image_preds = combine_predictions_each_batch(batch_image_predictions_v1, coll_image_preds, k)
+    return coll_image_labs, coll_image_preds
+
+
+def process_prediction_all_batches_image_level(predictions, patch_labels, img_pred_as_loss, batch_size, file_unique_name,
+                                               ind_file, res_path):
+    # m = predictions.shape[0]  # number of training examples
+    # batch_size = np.math.ceil(predictions.shape[0] / total_batch_nr)
+
+    num_complete_minibatches = (np.floor(predictions.shape[0] / batch_size)).astype(int)
+
+    coll_image_labels = 0
+    coll_image_predictions = 0
+
+
+    for k in range(0, num_complete_minibatches):
+        l_bound = k * batch_size
+        r_bound = (k + 1) * batch_size
+        coll_image_labels, coll_image_predictions = process_prediction_per_batch_image_level(
+            predictions,
+            patch_labels, img_pred_as_loss, l_bound,
+            r_bound, coll_image_labels,
+            coll_image_predictions,
+            k)
+
+    if predictions.shape[0] % batch_size != 0:
+        l_bound = (num_complete_minibatches) * batch_size
+        r_bound = predictions.shape[0]
+        coll_image_labels, coll_image_predictions = process_prediction_per_batch_image_level(
+            predictions,
+            patch_labels, img_pred_as_loss, l_bound,
+            r_bound, coll_image_labels,
+            coll_image_predictions,
+            k=1)
+
+    np.save(res_path + '/image_labels_' + file_unique_name + '_'+img_pred_as_loss+ind_file, coll_image_labels)
+    np.save(res_path + '/image_predictions_' + file_unique_name + '_'+img_pred_as_loss+ind_file, coll_image_predictions)
+    # np.save(res_path + '/accurate_localization_' + file_unique_name+ind_file, coll_accurate_preds)
+    # np.save(res_path + '/bbox_present_' + file_unique_name+ind_file, coll_bbox_present)
+    return coll_image_labels, coll_image_predictions
+
+
+
 def process_prediction_all_batches(predictions, patch_labels, img_pred_as_loss, batch_size, file_unique_name, ind_file,
                                    res_path):
     # m = predictions.shape[0]  # number of training examples
@@ -165,7 +223,7 @@ def process_prediction_v2(file_unique_name, res_path, img_pred_as_loss, batch_si
         coll_image_labels, coll_image_predictions, coll_accurate_preds, coll_bbox = process_prediction_all_batches(
             predictions_slice,
             patch_labels_slice, img_pred_as_loss, batch_size,
-            file_unique_name, str(str(k)+'man'))
+            file_unique_name, str(str(k)+'man'), res_path)
 
         accurate_pred_all_batches = np.sum(coll_accurate_preds, axis=0)
         total_bbox_all_batches = np.sum(coll_bbox, axis=0)
@@ -185,7 +243,7 @@ def process_prediction_v2(file_unique_name, res_path, img_pred_as_loss, batch_si
         coll_image_labels, coll_image_predictions, coll_accurate_preds, coll_bbox = process_prediction_all_batches(
             predictions_slice,
             patch_labels_slice, img_pred_as_loss, batch_size,
-            file_unique_name, str(total_full_slices))
+            file_unique_name, str(total_full_slices), res_path)
 
         accurate_pred_all_batches = np.sum(coll_accurate_preds, axis=0)
         total_bbox_all_batches = np.sum(coll_bbox, axis=0)
@@ -304,13 +362,17 @@ def combine_npy_accuracy(data_set_name, res_path):
     coll_accuracy = 0
     coll_bbox_pres = 0
     for ind in range(0,9):
-        print(ind)
+        # print(ind)
         acc_local, bbox_present = load_accuracy_localization_v2(data_set_name, str(ind), res_path)
-        print(bbox_present)
-        print(type(bbox_present))
-        print(np.sum(bbox_present))
+        # print(bbox_present)
+        # print(type(bbox_present))
+        # print(np.sum(bbox_present))
         coll_accuracy = combine_predictions_each_batch(acc_local, coll_accuracy, ind)
         coll_bbox_pres = combine_predictions_each_batch(bbox_present, coll_bbox_pres, ind)
+    # print(np.sum(coll_accuracy))
+    print(coll_bbox_pres.shape)
+    print(np.sum(coll_bbox_pres))
+    print(np.sum(coll_accuracy))
 
     compute_save_accuracy(coll_accuracy, coll_bbox_pres, data_set_name, res_path)
 
@@ -322,20 +384,51 @@ def combine_npy_auc(data_set_name, image_pred_method, res_path):
     for ind in range(0, 9):
         img_labels, img_preds = load_img_pred_labels_v2(data_set_name, image_pred_method, str(ind), res_path)
         # img_labels2, img_preds2 = load_img_pred_labels_v2(data_set_name, image_pred_method, str(ind+1), res_path)
-        print("labels")
-        print(np.unique(img_labels[:, 0]))
-
-        # print(np.equal(img_labels, img_labels2))
-        print("*********")
 
         coll_image_preds = combine_predictions_each_batch(img_preds, coll_image_preds, ind)
         coll_image_labels = combine_predictions_each_batch(img_labels, coll_image_labels, ind)
 
-    print(coll_image_preds.shape)
-    print(coll_image_labels.shape)
     auc_all_classes_v1 = compute_auc(coll_image_labels, coll_image_preds)
     keras_utils.save_evaluation_results(ld.FINDINGS, auc_all_classes_v1, 'auc_prob_' + data_set_name + '_v1.csv',
                                         res_path)
 
 
+def process_prediction_v2_image_level(file_unique_name, res_path, img_pred_as_loss, batch_size):
+    predictions, image_indices, patch_labels = get_index_label_prediction(file_unique_name, res_path)
+    slice_size = 5000
+    total_full_slices = predictions.shape[0]//slice_size
+    print('Total full slices')
+    print(predictions.shape)
+    print(total_full_slices)
+    for k in range(3, total_full_slices):
+        start_ind = k*slice_size
+        end_ind = start_ind+slice_size
+        predictions_slice = predictions[start_ind:end_ind, :, :, :]
+        patch_labels_slice = patch_labels[start_ind:end_ind, :, :, :]
+        print("start end indices")
+        print(start_ind)
+        print(end_ind)
+        print("Shape slices")
+        print(predictions_slice.shape)
+        print(patch_labels_slice.shape)
+
+        coll_image_labels, coll_image_predictions = process_prediction_all_batches_image_level(
+            predictions_slice,
+            patch_labels_slice, img_pred_as_loss, batch_size,
+            file_unique_name, str(str(k)+'man'), res_path)
+
+
+    if predictions.shape[0] % slice_size != 0:
+        start_ind = total_full_slices * slice_size
+
+        predictions_slice = predictions[start_ind:predictions.shape[0], :, :, :]
+        patch_labels_slice = patch_labels[start_ind:patch_labels.shape[0], :, :, :]
+        print("Shape slices")
+        print(predictions.shape)
+        print(patch_labels.shape)
+
+        coll_image_labels, coll_image_predictions = process_prediction_all_batches_image_level(
+            predictions_slice,
+            patch_labels_slice, img_pred_as_loss, batch_size,
+            file_unique_name, str(total_full_slices), res_path)
 

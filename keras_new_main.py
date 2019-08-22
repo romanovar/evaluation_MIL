@@ -68,7 +68,7 @@ else:
     xray_df = ld.couple_location_labels(localization_labels_path, processed_df, ld.PATCH_SIZE, results_path)
 print(xray_df.shape)
 print("Splitting data ...")
-init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test = ld.get_train_test(xray_df, random_state=0,
+init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(xray_df, random_state=0,
                                                                                        do_stats=True,
                                                                                        res_path = generated_images_path)
 df_train=df_train_init
@@ -134,7 +134,7 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=3,
+        epochs=2,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
