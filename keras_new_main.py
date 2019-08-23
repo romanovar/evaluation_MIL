@@ -106,7 +106,8 @@ if train_mode:
     model = keras_model.build_model()
     # model.summary()
 
-    model = keras_model.compile_model(model)
+    # model = keras_model.compile_model(model)
+    model = keras_model.compile_model_regularization(model)
 
     early_stop = EarlyStopping(monitor='val_loss',
                                min_delta=0.001,

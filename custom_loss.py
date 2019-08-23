@@ -202,3 +202,12 @@ def compute_loss_keras(nn_output, instance_label_ground_truth, P):
 
 def keras_loss(y_true, y_pred):
     return compute_loss_keras(y_pred, y_true, P=16)
+
+
+def keras_loss_reg(y_true, y_pred):
+    loss =  compute_loss_keras(y_pred, y_true, P=16)
+    vars = tf.trainable_variables()
+    lossL2 = tf.add_n([ tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in vars
+                    if 'bias' not in v.name ]) * 0.001
+    # reg_l2 = 0.01 * tf.nn.l2_loss(tf.hidden_weights) + 0.01 * tf.nn.l2_loss(out_weights)
+    return loss+lossL2

@@ -2,7 +2,7 @@ from keras.applications import ResNet50
 from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU
 from keras.models import Model
 from keras.optimizers import Adam
-from custom_loss import keras_loss
+from custom_loss import keras_loss, keras_loss_reg
 from custom_accuracy import keras_accuracy,acc_atelectasis, acc_cardiomegaly, acc_effusion, acc_infiltration, acc_mass, \
     acc_nodule, acc_pneumonia,  acc_pneumothorax,  acc_average
 
@@ -47,6 +47,13 @@ def compile_model(model):
     return model
 
 
+def compile_model_regularization(model):
+    optimizer = Adam(lr=0.001)
+    model.compile(optimizer=optimizer,
+                  loss=keras_loss_reg,
+                  metrics=[keras_accuracy])
+
+    return model
 # this function allows additional evaluation metrices to be added
 def compile_model_on_load(model):
     optimizer = Adam(lr=0.001)
