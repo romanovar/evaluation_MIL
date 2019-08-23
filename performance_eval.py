@@ -41,12 +41,17 @@ predict_res_path = config['prediction_results_path']
 #image_prediction_method = 'as_loss'
 #do_predictions_set(dataset_name, prediction_skip_processing, image_prediction_method)
 
+################# STEP 1 ###########################
+dataset_name = '100_e17train_set'
+image_prediction_method = 'as_production'
+keras_preds.process_prediction_v2_image_level(dataset_name, predict_res_path, img_pred_as_loss=image_prediction_method,
+                                              batch_size=10)
 
-dataset_name = 'train_set'
-image_prediction_method = 'as_loss'
-keras_preds.process_prediction_v2(dataset_name, results_path, img_pred_as_loss='as_loss', batch_size=10)
-#keras_preds.do_predictions_set(dataset_name, prediction_skip_processing, image_prediction_method)
-
+################# STEP 2 ###########################
+dataset_name = '100_e17train_set'
+image_prediction_method = 'as_production'
+# keras_preds.combine_npy_accuracy(dataset_name, results_path)
+# keras_preds.combine_npy_auc(dataset_name, image_prediction_method, results_path)
 
 #dataset_name = 'val_set'
 #image_prediction_method = 'as_loss'
@@ -57,10 +62,10 @@ keras_preds.process_prediction_v2(dataset_name, results_path, img_pred_as_loss='
 #image_prediction_method = 'as_production'
 #do_predictions_set(dataset_name, prediction_skip_processing, image_prediction_method)
 
-
-#dataset_name = 'train_set'
-#image_prediction_method = 'as_production'
-#do_predictions_set(dataset_name, prediction_skip_processing, image_prediction_method)
+#
+# dataset_name = 'train_set'
+# image_prediction_method = 'as_production'
+# do_predictions_set(dataset_name, prediction_skip_processing, image_prediction_method)
 
 #dataset_name = 'val_set'
 #image_prediction_method = 'as_production'
@@ -69,10 +74,6 @@ keras_preds.process_prediction_v2(dataset_name, results_path, img_pred_as_loss='
 
 
 
-# dataset_name = 'test_set'
-# image_prediction_method = 'as_loss'
-# keras_preds.combine_npy_accuracy(dataset_name, predict_res_path)
-# keras_preds.combine_npy_auc(dataset_name, image_prediction_method, predict_res_path)
 
 ############################# TEST SET ########################
 
