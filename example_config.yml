@@ -2,5 +2,12 @@ image_path: directiory folder to the images
 classication_labels_path: path to Data_Entry_2017.csv
 localization_labels_path: path to Bbox_List_2017.csv
 results_path: folder where results are stored
-processed_labels_path: path to preprocessed csv processed_Y.csv
+processed_labels_path: path to ready preprocessed csv processed_Y.csv
 skip_processing_labels: false/true
+generated_images_path: 'C:/Users/s161590/Desktop/Project_li/images/'
+prediction_results_path: 'C:/Users/s161590/Desktop/Project_li/predictions/'
+trained_models_path: 'C:/Users/s161590/Desktop/Project_li/trained_models/'
+skip_processing_labels: true
+train_mode: true
+test_single_image: false
+prediction_skip_processing: false
