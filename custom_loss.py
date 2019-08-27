@@ -24,42 +24,42 @@ def compute_image_label_from_localization_NORM(nn_output, y_true, P):
     return tf.multiply(Pi_pos_patches, Pi_neg_patches)
 
 ## input handles all classes simultaneously
-def compute_image_label_from_localization(nn_output, y_true, P):
-    epsilon = tf.pow(tf.cast(10, tf.float32), -15)
-
-    pos_patches = tf.reshape((nn_output * y_true), (-1, P * P, 14))
-    neg_patches = tf.reshape((1 - nn_output) * (1 - y_true), (-1, P * P, 14))
-
-    #setting the inactive values to 1000, so that the minimum of the active value is taken
-    min_pos_values = tf.reduce_min(tf.where(pos_patches>0.0, pos_patches, tf.fill(tf.shape(pos_patches), 1000.0)), axis=1, keepdims=True)
-    min_neg_values = tf.reduce_min(tf.where(neg_patches>0.0, neg_patches, tf.fill(tf.shape(neg_patches), 1000.0)), axis=1, keepdims=True)
-
-    # min_pos_values = find_minimum_element_in_class(pos_patches)
-    # min_neg_values = find_minimum_element_in_class(neg_patches)
-
-    # ensuring no division by 0 and 0 in divident gives result 0
-    div_pos_result = tf.where(tf.greater((pos_patches - min_pos_values), 0.0),
-                          (pos_patches - min_pos_values) /
-                          (tf.reduce_max(pos_patches, axis=1, keepdims=True) - min_pos_values + epsilon),
-                          tf.zeros(tf.shape(pos_patches - min_pos_values)))
-
-    normalized_pos = ((1 - 0.98) * div_pos_result) + 0.98
-
-    div_neg_res = tf.where(tf.greater((neg_patches - min_neg_values), 0.0), (neg_patches - min_neg_values) /
-                      (tf.reduce_max(neg_patches, axis=1, keepdims=True) - min_neg_values + epsilon),
-                           tf.zeros(tf.shape(neg_patches-min_neg_values)))
-    normalized_neg = ((1 - 0.98) * div_neg_res) + 0.98
-    # normalized_pos = normalize_patches_per_class(pos_patches, min_pos_values, 0.98, 1.0)
-    # normalized_neg = normalize_patches_per_class(neg_patches, min_pos_values, 0.98, 1.0)
-
-    # element wise multiplication is used as a boolean mask to separate active from inactive patches
-    norm_pos_patches = normalized_pos*tf.reshape(y_true, (-1, P * P, 14))
-    norm_neg_patches = normalized_neg*tf.reshape((1 - y_true), (-1, P * P, 14))
-
-    Pi_pos_patches = tf.reduce_prod(tf.where(norm_pos_patches>0.0, norm_pos_patches, tf.fill(tf.shape(norm_pos_patches),1.0)), axis=1)
-    Pi_neg_patches = tf.reduce_prod(tf.where(norm_neg_patches>0.0, norm_neg_patches, tf.fill(tf.shape(norm_neg_patches),1.0)), axis=1)
-
-    return tf.multiply(Pi_pos_patches, Pi_neg_patches)
+# def compute_image_label_from_localization(nn_output, y_true, P):
+#     epsilon = tf.pow(tf.cast(10, tf.float32), -15)
+#
+#     pos_patches = tf.reshape((nn_output * y_true), (-1, P * P, 14))
+#     neg_patches = tf.reshape((1 - nn_output) * (1 - y_true), (-1, P * P, 14))
+#
+#     #setting the inactive values to 1000, so that the minimum of the active value is taken
+#     min_pos_values = tf.reduce_min(tf.where(pos_patches>0.0, pos_patches, tf.fill(tf.shape(pos_patches), 1000.0)), axis=1, keepdims=True)
+#     min_neg_values = tf.reduce_min(tf.where(neg_patches>0.0, neg_patches, tf.fill(tf.shape(neg_patches), 1000.0)), axis=1, keepdims=True)
+#
+#     # min_pos_values = find_minimum_element_in_class(pos_patches)
+#     # min_neg_values = find_minimum_element_in_class(neg_patches)
+#
+#     # ensuring no division by 0 and 0 in divident gives result 0
+#     div_pos_result = tf.where(tf.greater((pos_patches - min_pos_values), 0.0),
+#                           (pos_patches - min_pos_values) /
+#                           (tf.reduce_max(pos_patches, axis=1, keepdims=True) - min_pos_values + epsilon),
+#                           tf.zeros(tf.shape(pos_patches - min_pos_values)))
+#
+#     normalized_pos = ((1 - 0.98) * div_pos_result) + 0.98
+#
+#     div_neg_res = tf.where(tf.greater((neg_patches - min_neg_values), 0.0), (neg_patches - min_neg_values) /
+#                       (tf.reduce_max(neg_patches, axis=1, keepdims=True) - min_neg_values + epsilon),
+#                            tf.zeros(tf.shape(neg_patches-min_neg_values)))
+#     normalized_neg = ((1 - 0.98) * div_neg_res) + 0.98
+#     # normalized_pos = normalize_patches_per_class(pos_patches, min_pos_values, 0.98, 1.0)
+#     # normalized_neg = normalize_patches_per_class(neg_patches, min_pos_values, 0.98, 1.0)
+#
+#     # element wise multiplication is used as a boolean mask to separate active from inactive patches
+#     norm_pos_patches = normalized_pos*tf.reshape(y_true, (-1, P * P, 14))
+#     norm_neg_patches = normalized_neg*tf.reshape((1 - y_true), (-1, P * P, 14))
+#
+#     Pi_pos_patches = tf.reduce_prod(tf.where(norm_pos_patches>0.0, norm_pos_patches, tf.fill(tf.shape(norm_pos_patches),1.0)), axis=1)
+#     Pi_neg_patches = tf.reduce_prod(tf.where(norm_neg_patches>0.0, norm_neg_patches, tf.fill(tf.shape(norm_neg_patches),1.0)), axis=1)
+#
+#     return tf.multiply(Pi_pos_patches, Pi_neg_patches)
 
 
 def compute_image_label_in_classification_NORM(nn_output, P):
@@ -72,24 +72,24 @@ def compute_image_label_in_classification_NORM(nn_output, P):
     return (tf.cast(1, tf.float32) - element_product)
 
 
-def compute_image_label_in_classification(nn_output, P):
-    epsilon = tf.pow(tf.cast(10, tf.float32), -15)
-
-    subtracted_prob = 1 - nn_output
-    ### KEEP the dimension for observations and for the classes
-    flat_mat = tf.reshape(subtracted_prob, (-1, P * P, 14))
-    min_val = tf.reduce_min(tf.where(flat_mat > 0.0, flat_mat, tf.fill(tf.shape(flat_mat), 1000.0)),
-                                   axis=1, keepdims=True)
-
-    max_values = tf.reduce_max(flat_mat, axis=1, keepdims=True)
-    ## Normalization between [a, b]
-    ### ( (b-a) (X - MIN(x)))/ (MAX(x) - Min(x)) + a
-
-    div_result = tf.where(tf.greater(flat_mat - min_val, 0.0), ((flat_mat - min_val) /(max_values - min_val + epsilon)), tf.zeros(tf.shape(flat_mat - min_val)))
-
-    normalized_mat = ((1 - 0.98) * div_result) + 0.98
-    element_product = tf.reduce_prod(normalized_mat, axis=1)
-    return (tf.cast(1, tf.float32) - element_product)
+# def compute_image_label_in_classification(nn_output, P):
+#     epsilon = tf.pow(tf.cast(10, tf.float32), -15)
+#
+#     subtracted_prob = 1 - nn_output
+#     ### KEEP the dimension for observations and for the classes
+#     flat_mat = tf.reshape(subtracted_prob, (-1, P * P, 14))
+#     min_val = tf.reduce_min(tf.where(flat_mat > 0.0, flat_mat, tf.fill(tf.shape(flat_mat), 1000.0)),
+#                                    axis=1, keepdims=True)
+#
+#     max_values = tf.reduce_max(flat_mat, axis=1, keepdims=True)
+#     ## Normalization between [a, b]
+#     ### ( (b-a) (X - MIN(x)))/ (MAX(x) - Min(x)) + a
+#
+#     div_result = tf.where(tf.greater(flat_mat - min_val, 0.0), ((flat_mat - min_val) /(max_values - min_val + epsilon)), tf.zeros(tf.shape(flat_mat - min_val)))
+#
+#     normalized_mat = ((1 - 0.98) * div_result) + 0.98
+#     element_product = tf.reduce_prod(normalized_mat, axis=1)
+#     return (tf.cast(1, tf.float32) - element_product)
 
 
 def compute_image_label_prediction(has_bbox, nn_output_class, y_true_class, P):
@@ -194,8 +194,8 @@ def compute_loss_keras(nn_output, instance_label_ground_truth, P):
     img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, P)
 
     # sanity check
-    # loss_classification = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
-    loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    loss_classification_keras = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    #loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
     total_loss = tf.reduce_sum(loss_classification_keras)
     return total_loss
 
@@ -211,3 +211,19 @@ def keras_loss_reg(y_true, y_pred):
                     if 'bias' not in v.name ]) * 0.001
     # reg_l2 = 0.01 * tf.nn.l2_loss(tf.hidden_weights) + 0.01 * tf.nn.l2_loss(out_weights)
     return loss+lossL2
+
+
+##########################################################
+
+def binary_CE_loss_v2(is_loc, labels, probs):
+    factor_loc = tf.constant(5, dtype=tf.float32)
+
+    _epsilon = tf.convert_to_tensor(K.backend.epsilon(), probs.dtype.base_dtype)
+
+    probs = tf.clip_by_value(probs, _epsilon, 1 - _epsilon)
+
+    loss_common = -(labels*tf.log(probs))-((1-labels)*tf.log(1-probs))
+
+    loss_class_keras = tf.where(is_loc, factor_loc*loss_common, loss_common)
+    return loss_class_keras
+
