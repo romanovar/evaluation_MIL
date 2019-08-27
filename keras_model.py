@@ -18,7 +18,7 @@ def build_model():
     recg_net = Conv2D(512, kernel_size=(3,3), padding='same')(downsamp)
     recg_net = BatchNormalization()(recg_net)
     recg_net = ReLU()(recg_net)
-    recg_net = Conv2D(14, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
+    recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
 
     model = Model(base_model.input, recg_net)
 
