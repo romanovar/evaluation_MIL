@@ -15,17 +15,14 @@ import argparse
 import keras_utils
 import keras_model
 import os
-import cv2
-import seaborn as sns
-import matplotlib.pyplot as plt
 import tensorflow as tf
-from matplotlib.image import pil_to_array
 from custom_accuracy import keras_accuracy, compute_image_probability_asloss, combine_predictions_each_batch, \
     compute_auc, compute_image_probability_production, \
     test_function_acc_class, accuracy_bbox_IOU, compute_image_probability_production_v2, compute_IoU, \
     acc_atelectasis, acc_cardiomegaly, acc_infiltration, acc_average, acc_effusion, \
     acc_mass, acc_nodule, acc_pneumonia, acc_pneumothorax
 from custom_loss import keras_loss, test_compute_ground_truth_per_class_numpy
+from keras_preds import predict_patch_and_save_results
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
@@ -72,13 +69,12 @@ init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test, df_bbox_trai
                                                                                        do_stats=True,
                                                                                        res_path = generated_images_path)
 df_train=df_train_init
-# df_train, df_val, df_bbox_test, df_class_test = ld.get_train_test_strata(xray_df, random_state=0, do_stats=True, res_path=results_path)
 print('Training set: '+ str(df_train_init.shape))
 print('Validation set: '+ str(df_val.shape))
 print('Localization testing set: '+ str(df_bbox_test.shape))
 print('Classification testing set: '+ str(df_class_test.shape))
 
-#df_train = keras_utils.create_overlap_set_bootstrap(df_train_init, 0.9, seed=2)
+# df_train = keras_utils.create_overlap_set_bootstrap(df_train_init, 0.9, seed=2)
 init_train_idx = df_train['Dir Path'].index.values
 
 # new_seed, new_tr_ind = ld.create_overlapping_test_set(init_train_idx, 1, 0.95,0.85, xray_df)
@@ -86,7 +82,7 @@ init_train_idx = df_train['Dir Path'].index.values
 
 if train_mode:
     train_generator = gen.BatchGenerator(
-        instances=df_train.values,
+        instances=df_class_test.values,
         batch_size=BATCH_SIZE,
         net_h=IMAGE_SIZE,
         net_w=IMAGE_SIZE,
@@ -106,8 +102,8 @@ if train_mode:
     model = keras_model.build_model()
     # model.summary()
 
-    # model = keras_model.compile_model(model)
-    model = keras_model.compile_model_regularization(model)
+    model = keras_model.compile_model(model)
+    #model = keras_model.compile_model_regularization(model)
 
     early_stop = EarlyStopping(monitor='val_loss',
                                min_delta=0.001,
@@ -161,106 +157,74 @@ else:
         file_unique_name = 'train_set'
         test_set = df_train
 
-        test_generator = gen.BatchGenerator(
-                instances=test_set.values,
-                batch_size=BATCH_SIZE_TEST,
-                net_h=IMAGE_SIZE,
-                net_w=IMAGE_SIZE,
-                box_size=BOX_SIZE,
-                norm=keras_utils.normalize,
-                processed_y=skip_processing)
-
-        predictions = model.predict_generator(test_generator, steps= test_generator.__len__(), workers=1)
-        np.save(prediction_results_path+'predictions_'+file_unique_name, predictions)
-
-        all_img_ind = []
-        all_patch_labels = []
-        for batch_ind in range(test_generator.__len__()):
-            x, y = test_generator.__getitem__(batch_ind)
-            y_cast = y.astype(np.float32)
-            res_img_ind = test_generator.get_batch_image_indices(batch_ind)
-            all_img_ind = combine_predictions_each_batch(res_img_ind, all_img_ind , batch_ind)
-            all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
-
-
-        np.save(prediction_results_path+'image_indices_'+file_unique_name, all_img_ind)
-        np.save(prediction_results_path + 'patch_labels_'+file_unique_name, all_patch_labels)
+        predict_patch_and_save_results(model, file_unique_name, df_train, skip_processing,
+                                       BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 
         # ########################################### VALIDATION SET######################################################
-        file_unique_name = 'val_set'
-        test_set = df_val
 
-        test_generator = gen.BatchGenerator(
-            instances=test_set.values,
-            batch_size=BATCH_SIZE_TEST,
-            net_h=IMAGE_SIZE,
-            net_w=IMAGE_SIZE,
-            box_size=BOX_SIZE,
-            norm=keras_utils.normalize,
-            processed_y=skip_processing)
+        predict_patch_and_save_results(model, 'val_set', df_val, skip_processing,
+                                       BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+        # file_unique_name = 'val_set'
+        # val_set = df_val
 
-        predictions = model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
-        np.save(prediction_results_path + 'predictions_' + file_unique_name, predictions)
-
-        all_img_ind = []
-        all_patch_labels = []
-        for batch_ind in range(test_generator.__len__()):
-            x, y = test_generator.__getitem__(batch_ind)
-            y_cast = y.astype(np.float32)
-            res_img_ind = test_generator.get_batch_image_indices(batch_ind)
-            all_img_ind = combine_predictions_each_batch(res_img_ind, all_img_ind, batch_ind)
-            all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
-
-        np.save(prediction_results_path + 'image_indices_' + file_unique_name, all_img_ind)
-        np.save(prediction_results_path + 'patch_labels_' + file_unique_name, all_patch_labels)
+        # val_generator = gen.BatchGenerator(
+        #     instances=val_set.values,
+        #     batch_size=BATCH_SIZE_TEST,
+        #     net_h=IMAGE_SIZE,
+        #     net_w=IMAGE_SIZE,
+        #     box_size=BOX_SIZE,
+        #     norm=keras_utils.normalize,
+        #     processed_y=skip_processing)
+        #
+        # predictions = model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
+        # np.save(prediction_results_path + 'predictions_' + file_unique_name, predictions)
+        #
+        # all_img_ind = []
+        # all_patch_labels = []
+        # for batch_ind in range(test_generator.__len__()):
+        #     x, y = test_generator.__getitem__(batch_ind)
+        #     y_cast = y.astype(np.float32)
+        #     res_img_ind = test_generator.get_batch_image_indices(batch_ind)
+        #     all_img_ind = combine_predictions_each_batch(res_img_ind, all_img_ind, batch_ind)
+        #     all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
+        #
+        # np.save(prediction_results_path + 'image_indices_' + file_unique_name, all_img_ind)
+        # np.save(prediction_results_path + 'patch_labels_' + file_unique_name, all_patch_labels)
 
         ########################################### TESTING SET########################################################
-        file_unique_name = 'test_set'
         test_set = pd.concat([df_bbox_test, df_class_test])
+        predict_patch_and_save_results(model, 'test_set', test_set, skip_processing,
+                                       BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 
-        test_generator = gen.BatchGenerator(
-            instances=test_set.values,
-            batch_size=BATCH_SIZE_TEST,
-            net_h=IMAGE_SIZE,
-            net_w=IMAGE_SIZE,
-            box_size=BOX_SIZE,
-            norm=keras_utils.normalize,
-            processed_y=skip_processing, shuffle=False)
 
-        predictions = model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
-        np.save(prediction_results_path + 'predictions_' + file_unique_name, predictions)
+        # file_unique_name = 'test_set'
+        # test_set = pd.concat([df_bbox_test, df_class_test])
+        #
+        # test_generator = gen.BatchGenerator(
+        #     instances=test_set.values,
+        #     batch_size=BATCH_SIZE_TEST,
+        #     net_h=IMAGE_SIZE,
+        #     net_w=IMAGE_SIZE,
+        #     box_size=BOX_SIZE,
+        #     norm=keras_utils.normalize,
+        #     processed_y=skip_processing,
+        #     shuffle=False)
+        #
+        # predictions = model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
+        # np.save(prediction_results_path + 'predictions_' + file_unique_name, predictions)
+        #
+        # all_img_ind = []
+        # all_patch_labels = []
+        # for batch_ind in range(test_generator.__len__()):
+        #     x, y = test_generator.__getitem__(batch_ind)
+        #     y_cast = y.astype(np.float32)
+        #     res_img_ind = test_generator.get_batch_image_indices(batch_ind)
+        #     all_img_ind = combine_predictions_each_batch(res_img_ind, all_img_ind, batch_ind)
+        #     all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
+        #
+        # np.save(prediction_results_path + 'image_indices_' + file_unique_name, all_img_ind)
+        # np.save(prediction_results_path + 'patch_labels_' + file_unique_name, all_patch_labels)
 
-        all_img_ind = []
-        all_patch_labels = []
-        for batch_ind in range(test_generator.__len__()):
-            x, y = test_generator.__getitem__(batch_ind)
-            y_cast = y.astype(np.float32)
-            res_img_ind = test_generator.get_batch_image_indices(batch_ind)
-            all_img_ind = combine_predictions_each_batch(res_img_ind, all_img_ind, batch_ind)
-            all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
-
-        np.save(prediction_results_path + 'image_indices_' + file_unique_name, all_img_ind)
-        np.save(prediction_results_path + 'patch_labels_' + file_unique_name, all_patch_labels)
-
-        #FOR TESTING PURPOSES
-        sess = tf.Session()
-        with sess.as_default():
-            acc_per_class_V2 = accuracy_bbox_IOU(predictions, all_patch_labels, P=16, iou_threshold=0.1)
-            accuracy_switched = accuracy_bbox_IOU(all_patch_labels, predictions, P=16, iou_threshold=0.1)
-            print(acc_atelectasis(all_patch_labels, predictions).eval())
-            print(acc_cardiomegaly(all_patch_labels, predictions).eval(),
-                  acc_effusion(all_patch_labels, predictions).eval(),
-                  acc_infiltration(all_patch_labels, predictions).eval(),
-                  acc_average(all_patch_labels, predictions).eval())
-            print(acc_per_class_V2.eval())
-            print(accuracy_switched.eval())
-
-        test_predictions = model.evaluate_generator(
-            test_generator,
-            steps = test_generator.__len__(), workers=1)
-
-        print(test_predictions)
-        print(model.metrics_names)
 
 
 

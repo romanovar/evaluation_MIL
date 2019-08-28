@@ -54,13 +54,3 @@ def compile_model_regularization(model):
                   metrics=[keras_accuracy])
 
     return model
-# this function allows additional evaluation metrices to be added
-def compile_model_on_load(model):
-    optimizer = Adam(lr=0.001)
-    model.compile(optimizer=optimizer,
-                  loss=keras_loss,  # Call the loss function with the selected layer
-                  # KERAS_ACCURACY IS not relevant and faulty, but it SHOULD NOT be removed as
-                  # it is needed to compile the trained model
-                  metrics=[keras_accuracy, acc_atelectasis, acc_cardiomegaly, acc_effusion, acc_infiltration, acc_mass,
-                           acc_nodule, acc_pneumonia, acc_pneumothorax, acc_average])#, AUC_class1, AUC_class2, AUC_class3]) #, keras_accuracy_revisited, keras_accuracy_asloss])
-    return model

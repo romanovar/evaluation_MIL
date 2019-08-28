@@ -13,33 +13,48 @@ from load_data import FINDINGS, PATCH_SIZE
 
 
 def convert_predictions_to_binary(preds, thres):
-    return tf.where(preds > thres, tf.ones(tf.shape(preds)), tf.zeros(tf.shape(preds)))
-    tf.cast(tf.greater_equal(preds, thres), tf.float32)
+    print(preds.shape)
+    print("predictions")
+    #return tf.where(preds > thres, tf.ones(tf.shape(preds)), tf.zeros(tf.shape(preds)))
+    return tf.cast(tf.greater_equal(preds, thres), tf.float32)
 
 
-def reshape_and_convert_to_binary_predictions(predictions, labels, P, threshold_binary):
+def reshape_and_convert_to_binary_predictions(predictions, labels, P, threshold_binary, class_nr):
+    print("labels shape")
+    print(labels.shape)
+    print(predictions.shape)
     patches_binary_pred = tf.reshape(convert_predictions_to_binary(predictions, thres=threshold_binary),
-                                     (-1, P * P, 14))
-    return patches_binary_pred, tf.reshape(labels, (-1, P * P, 14))
+                                     (-1, P * P, class_nr))
+    return patches_binary_pred, tf.reshape(labels, (-1, P * P, class_nr))
 
 
-def compute_IoU(predictions, labels, P):
+def compute_IoU(predictions, labels, P, class_nr):
 
     patches_binary_pred, labels_xy_flatten = reshape_and_convert_to_binary_predictions(predictions, labels, P,
-                                                                                       threshold_binary=0.5)
+                                                                                       threshold_binary=0.5,
+                                                                                       class_nr=class_nr)
+    print(labels_xy_flatten.shape)
+    print("labelsxy")
+    print(patches_binary_pred.shape)
 
     correct_prediction = tf.cast(tf.equal(patches_binary_pred, labels_xy_flatten), tf.float32)
     #check only active patches from the labels and see if the prediction there agrees with the labels
-    intersection = tf.reduce_sum(tf.where(tf.greater(labels_xy_flatten, 0), tf.reshape(correct_prediction, (-1, P*P, 14)), tf.zeros((tf.shape(labels_xy_flatten)))), 1)
+    intersection = tf.reduce_sum(tf.where(tf.greater(labels_xy_flatten, 0), tf.reshape(correct_prediction, (-1, P*P, class_nr)),
+                                          tf.zeros((tf.shape(labels_xy_flatten)))), 1)
 
     union = tf.reduce_sum(patches_binary_pred, 1) + tf.reduce_sum(labels_xy_flatten, 1) - intersection
 
     return intersection/union
 
 
-def compute_accuracy_image_bbox(predictions, labels, class_ground_truth, P, iou_threshold):
-    IoU = compute_IoU(predictions, labels, P)
+def compute_accuracy_image_bbox(predictions, labels, class_ground_truth, P, iou_threshold, class_nr):
+    print(predictions.shape)
+    IoU = compute_IoU(predictions, labels, P, class_nr)
+    print("IOU")
+    print(IoU.shape)
     image_class_pred = tf.cast(tf.greater_equal(IoU, iou_threshold), tf.float32)
+    print(image_class_pred.shape)
+    print(class_ground_truth.shape)
     correct_prediction = tf.equal(image_class_pred, class_ground_truth)
     return IoU, tf.cast(correct_prediction, "float")
 
@@ -59,13 +74,16 @@ def compute_accuracy_on_image_level(predictions, class_ground_truth, P):
 
 
 # EVEN if the evaluation is not used, it is needed for compiling the model
-def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold):
+def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold, class_nr):
     m=P*P
-    sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m)
-    IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold)
-
-    img_pred_norm = compute_image_label_in_classification_NORM(predictions, P)
+    sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m, class_nr)
+    IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold, class_nr)
+    print(accuracy_bbox.shape)
+    img_pred_norm = compute_image_label_in_classification_NORM(predictions, P, class_nr)
     img_pred_bin = tf.cast(img_pred_norm > 0.5, tf.float32)
+    print("img pred bin")
+    print(img_pred_bin.shape)
+    print(class_label_ground.shape)
     correct_prediction_img = tf.cast(tf.equal(img_pred_bin, class_label_ground), tf.float32)
 
     accuracy_per_obs_per_class = tf.where(has_bbox, accuracy_bbox, correct_prediction_img)
@@ -75,7 +93,10 @@ def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold
 
 
 def keras_accuracy(y_true, y_pred):
-    return compute_accuracy_keras(y_pred, y_true, P=16, iou_threshold=0.1)
+    print("high level")
+    print(y_true.shape)
+    print(y_pred.shape)
+    return compute_accuracy_keras(y_pred, y_true, P=16, iou_threshold=0.1, class_nr=1)
 
 
 def accuracy_bbox_IOU(y_pred, instance_labels_ground, P, iou_threshold):
@@ -169,10 +190,10 @@ def test_function_acc_class(y_pred, instance_labels_ground, P, iou_threshold):
 
 ######################################################### AUC ###########################################
 
-def image_prob_active_patches(nn_output, P):
+def image_prob_active_patches(nn_output, P, class_nr):
     detected_active_patches = tf.cast(tf.greater(nn_output, 0.5), tf.float32)
     sum_detected_actgive_patches, _, detected_bbox = compute_ground_truth(detected_active_patches, P*P)
-    return compute_image_label_prediction(detected_bbox, nn_output, detected_active_patches, P )
+    return compute_image_label_prediction(detected_bbox, nn_output, detected_active_patches, P, class_nr )
 
 
 def compute_image_probability_asloss(nn_output, instance_label_ground_truth, P):
@@ -190,7 +211,7 @@ def compute_image_probability_asloss(nn_output, instance_label_ground_truth, P):
     return class_label_ground_truth, img_label_pred
 
 
-def compute_image_probability_production(nn_output,instance_label_ground_truth, P):
+def compute_image_probability_production(nn_output,instance_label_ground_truth, P, class_nr):
     '''
     This method considers patches with prediction above 0.5 as active and then it computes image probability
     as the localization in the loss
@@ -201,7 +222,7 @@ def compute_image_probability_production(nn_output,instance_label_ground_truth, 
     '''
     m = P*P
     sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m)
-    img_label_prob = image_prob_active_patches(nn_output, P)
+    img_label_prob = image_prob_active_patches(nn_output, P, class_nr)
     return class_label_ground_truth, img_label_prob
 
 

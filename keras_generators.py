@@ -54,6 +54,7 @@ class BatchGenerator(Sequence):
 
         x_batch = np.zeros((r_bound - l_bound, self.net_w, self.net_h, 3))  # input images
         y_batch = np.zeros((r_bound - l_bound, self.box_size, self.box_size, 14))
+        y_batch = np.zeros((r_bound - l_bound, self.box_size, self.box_size, 1))
 
         instance_count = 0
         # do the logic to fill in the inputs and the output
@@ -74,16 +75,14 @@ class BatchGenerator(Sequence):
                 for i in range(1, train_instance.shape[0]):  # (15)
                     if self.processed_y:
                         g = process_loaded_labels(train_instance[i])
-
                         train_instances_classes.append(g)
                     else:
                         train_instances_classes.append(train_instance[i])
                 y_batch[instance_count] = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
             else:
                 y_batch[instance_count]= None
-            
-            instance_count += 1
 
+            instance_count += 1
         return x_batch, y_batch
 
     def on_epoch_end(self):

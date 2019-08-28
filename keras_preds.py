@@ -7,38 +7,38 @@ import os
 import tensorflow as tf
 from custom_accuracy import keras_accuracy, compute_image_probability_asloss, combine_predictions_each_batch, \
     compute_auc, list_localization_accuracy, compute_image_probability_production
+import keras_generators as gen
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
-
-# gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.2)
-# sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-
-# def load_config(path):
-#     with open(path, 'r') as ymlfile:
-#         return yaml.load(ymlfile)
-#
-#
-# parser = argparse.ArgumentParser()
-# parser.add_argument('-c', '--config_path', type=str,
-#                     help='Provide the file path to the configuration')
-#
-# args = parser.parse_args()
-# config = load_config(args.config_path)
-#
-# skip_processing = config['skip_processing_labels']
-# image_path = config['image_path']
-# classication_labels_path = config['classication_labels_path']
-# localization_labels_path = config['localization_labels_path']
-# results_path = config['results_path']
-# processed_labels_path = config['processed_labels_path']
-# train_mode = config['train_mode']
-# test_single_image = config['test_single_image']
-# prediction_skip_processing = config['prediction_skip_processing']
-# predict_res_path = config['prediction_results_path']
+############################RAW PREDICTIONS###########################################
 
 
-#######################################################################
+def predict_patch_and_save_results(saved_model, file_unique_name, data_set, processed_y,
+                            test_batch_size, box_size, image_size, res_path):
+    test_generator = gen.BatchGenerator(
+        instances=data_set.values,
+        batch_size=test_batch_size,
+        net_h=image_size,
+        net_w=image_size,
+        box_size=box_size,
+        norm=keras_utils.normalize,
+        processed_y=processed_y)
+
+    predictions = saved_model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
+    np.save(res_path + 'predictions_' + file_unique_name, predictions)
+
+    all_img_ind = []
+    all_patch_labels = []
+    for batch_ind in range(test_generator.__len__()):
+        x, y = test_generator.__getitem__(batch_ind)
+        y_cast = y.astype(np.float32)
+        res_img_ind = test_generator.get_batch_image_indices(batch_ind)
+        all_img_ind = combine_predictions_each_batch(res_img_ind, all_img_ind, batch_ind)
+        all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
+
+    np.save(res_path + 'image_indices_' + file_unique_name, all_img_ind)
+    np.save(res_path + 'patch_labels_' + file_unique_name, all_patch_labels)
+
+#################################################################
 def load_npy(file_name, res_path):
     return np.load(res_path + file_name, allow_pickle=True)
 

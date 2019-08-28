@@ -61,7 +61,7 @@ def converto_3_color_channels(img):
     return stacked_img
 
 
-def get_classification_labels(label_dir="C:/Users/s161590/Desktop/Data/X_Ray/Data_Entry_2017.csv", preprocessed_csv=False):
+def get_classification_labels(label_dir, preprocessed_csv=False):
     Y = load_csv(label_dir)
     # TODO: turn into new preparation function
     if not preprocessed_csv:
@@ -243,17 +243,15 @@ def separate_localization_classification_labels(Y):
     return Y.loc[Y['Bbox']==0], Y.loc[Y['Bbox']==1]
 
 
-def keep_only_diagnose_columns(Y):
-    return Y[['Atelectasis_loc', 'Cardiomegaly_loc', 'Consolidation_loc', 'Edema_loc',
-        'Effusion_loc', 'Emphysema_loc','Fibrosis_loc', 'Hernia_loc', 'Infiltration_loc', 'Mass_loc',
-        'Nodule_loc', 'Pleural_Thickening_loc', 'Pneumonia_loc', 'Pneumothorax_loc']]
-
-
 # THIS METHOD IS USED FOR KERAS TESTING
 def keep_index_and_diagnose_columns(Y):
     return Y[['Dir Path', 'Atelectasis_loc', 'Cardiomegaly_loc', 'Consolidation_loc', 'Edema_loc',
         'Effusion_loc', 'Emphysema_loc','Fibrosis_loc', 'Hernia_loc', 'Infiltration_loc', 'Mass_loc',
         'Nodule_loc', 'Pleural_Thickening_loc', 'Pneumonia_loc', 'Pneumothorax_loc']]
+
+
+def keep_index_and_1diagnose_columns(Y):
+    return Y[['Dir Path', 'Consolidation_loc']]
 
 
 # Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate
@@ -268,13 +266,10 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
     print(df_bbox_test.shape)
 
     train_clas_idx, _, df_class_train, df_class_val = split_test_train_v2(df_class_train, test_ratio=0.2, random_state=random_state)
-    # train_bbox_idx, _, df_bbox_train, df_bbox_val = split_test_train_v2(df_bbox_train, test_ratio=0.2, random_state=random_state)
 
     train_idx = np.concatenate((train_clas_idx, train_bbox_idx), axis=None)
     df_train = pd.concat([df_class_train, df_bbox_train])
     df_val = df_class_val
-    # df_train= df_train.reindex(np.random.permutation(df_train.index))
-    # df_val = df_val.reindex(np.random.permutation(df_val.index))
 
     if do_stats and res_path is not None:
         visualize_population(Y, 'whole_df_group', res_path, FINDINGS)
@@ -284,190 +279,12 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
         visualize_population(df_class_test, 'test_class_group', res_path, FINDINGS)
         visualize_population(pd.concat([df_bbox_test, df_class_test]), 'test_group', res_path, FINDINGS)
 
-    train_set, val_set = keep_index_and_diagnose_columns(df_train), keep_index_and_diagnose_columns(df_val)
-    bbox_test, class_test = keep_index_and_diagnose_columns(df_bbox_test), keep_index_and_diagnose_columns(df_class_test)
-    bbox_train =keep_index_and_diagnose_columns(df_bbox_train)
+    train_set, val_set = keep_index_and_1diagnose_columns(df_train), keep_index_and_1diagnose_columns(df_val)
+    bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test), keep_index_and_1diagnose_columns(df_class_test)
+    bbox_train = keep_index_and_1diagnose_columns(df_bbox_train)
+
     return train_idx, train_set, val_set, bbox_test, class_test, bbox_train
 
 
-def sample_patients(max_observations_drop, df):
-    patient_unq_indices = df['Patient ID'].unique()
-    print("patient unique ind")
-    print(patient_unq_indices)
 
 
-    np.random.seed(2)
-    max_drop_patients_ind = np.random.choice(patient_unq_indices, max_observations_drop,
-                                         replace=False)
-
-    nr_obs_dropped = 0
-    last_pat_ind = 0
-
-    for i in range(0, len(max_drop_patients_ind)):
-        nr_obs_dropped += df.loc[df['Patient ID'] == max_drop_patients_ind[i]].shape[0]
-        last_pat_ind = i
-        ratio = nr_obs_dropped/max_observations_drop
-        if 1.1 <= ratio <= 0.9:
-            max_drop_patients_ind = max_drop_patients_ind[0:i + 1]
-
-    return max_drop_patients_ind, nr_obs_dropped, max_observations_drop
-
-
-def create_overlap_testing_v2(min_overlap, start_seed, init_df, enrich_df):
-    # pat_drop_ub = np.math.floor((1 - min_overlap) * len(init_df['Patient ID'].unique()))
-    max_obs_drop = np.math.floor((1 - min_overlap) * init_df.shape[0])
-
-    drop_patients_ind, nr_obs_dropped, max_obs_todrop= sample_patients(max_obs_drop, init_df)
-
-    # print(df.loc[df['Patient ID']==pat_ind] for pat_ind in drop_patients_ind)
-
-    nr_obs_dropped = np.sum([init_df.loc[init_df['Patient ID']==pat_ind].shape[0] for pat_ind in drop_patients_ind])
-    print("patients to drop")
-    print(drop_patients_ind)
-    print(nr_obs_dropped)
-    # add_patients_ind, nr_obs_added, max_pat_todrop= sample_patients(min_overlap, init_df)
-
-    add_patients_ind, nr_obs_added, max_obs_toadd = sample_patients(nr_obs_dropped, enrich_df)
-    #
-    # patient_unq_indices_enrich = enrich_df['Patient ID'].unique()
-    # print(patient_unq_indices_enrich)
-    # np.random.seed(1)
-    # new_patients_ind = np.random.choice(patient_unq_indices_enrich, nr_obs_added, replace=False) # for _ in range(total_drop_patients)]
-    # print("new patients id")
-    # print(new_patients_ind)
-    # nr_obs_added = 0
-    #
-    # for pat_ind in new_patients_ind:
-    #     print("for loop 2")
-    #     print(enrich_df.loc[enrich_df['Patient ID'] == pat_ind].shape[0])
-    #     nr_obs_added += enrich_df.loc[enrich_df['Patient ID'] == pat_ind].shape[0]
-    #     if (nr_obs_added >= nr_obs_dropped):
-    #         ratio_init_df = (init_df.shape[0]-nr_obs_dropped)/init_df.shape[0]
-    #         ratio_enriched_df = (init_df.shape[0]-nr_obs_dropped)/(init_df.shape[0]-nr_obs_dropped + nr_obs_added)
-    #         print("ratios")
-    #         print(ratio_init_df)
-    #         print(ratio_enriched_df)
-    #         # break
-    #     print("added")
-    # print(nr_obs_added)
-
-
-
-# def create_overlapping_test_set(init_train_idx, start_seed, max_overlap, min_overlap, df):
-#     print("train indices")
-#     print(init_train_idx)
-#     seed = start_seed
-#     new_train_idx = []
-#     overlap = np.intersect1d(init_train_idx,new_train_idx)
-#     overlap_ratio = float(len(overlap)) / len(init_train_idx)
-#     print("overlap ratio is:")
-#     print(overlap_ratio)
-#     while(not(max_overlap > overlap_ratio and overlap_ratio>min_overlap)):
-#         seed+=1
-#         _, df_train, df_val, df_bbox_test, df_class_test = get_train_test(df, random_state=seed, do_stats=False, res_path=None)
-#         new_train_idx = df_train['Dir Path'].index.values
-#         overlap = np.intersect1d(init_train_idx, new_train_idx)
-#         overlap_ratio = float(len(overlap)) / len(init_train_idx)
-#         print("overlap ratio is:")
-#         print(overlap_ratio)
-#         print(seed)
-#         if (seed== (start_seed+1)*1000):
-#             print("No overlapping training test can be constructed within 10000 iterations")
-#             break
-#     return seed, new_train_idx
-
-
-# def create_overlapping_set(init_train_idx, start_seed, max_overlap, min_overlap, df):
-#     print("train indices")
-#     print(init_train_idx)
-#     seed = start_seed
-#     new_train_idx = []
-#     overlap = np.intersect1d(init_train_idx,new_train_idx)
-#     overlap_ratio = float(len(overlap)) / len(init_train_idx)
-#     while(not(max_overlap > overlap_ratio and overlap_ratio>min_overlap)):
-#         seed+=1
-#         new_train_idx, _, _, _, _ = get_train_test(df, random_state=seed, do_stats=False, res_path=None)
-#         overlap = np.intersect1d(init_train_idx, new_train_idx)
-#         overlap_ratio = float(len(overlap)) / len(init_train_idx)
-#         print(seed)
-#         if (seed== (start_seed+1)*1000):
-#             print("No overlapping training test can be constructed within 10000 iterations")
-#             break
-#     return seed, new_train_idx
-
-
-def keep_only_classification_columns(Y):
-    return Y[['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema',
-              'Effusion', 'Emphysema', 'Fibrosis', 'Hernia', 'Infiltration', 'Mass',
-              'Nodule', 'Pleural_Thickening', 'Pneumonia', 'Pneumothorax']]
-
-
-def reorder_Y(Y):
-    newarr = []
-    for i in range(0, Y.shape[0]):  # (14)
-        single_obs = []
-        for j in range(Y.shape[1]):  # 1 -> (16, 16)
-            single_obs.append(Y.iloc[i,j])
-        newarr.append(single_obs)
-    return np.transpose(np.asarray(newarr), [0, 2, 3, 1])
-
-
-#################### processing loaded data ######################
-
-
-def select_y_class_columns(df):
-    return df[['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 'Emphysema',
-                      'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 'Nodule', 'Pleural_Thickening',
-                      'Pneumonia', 'Pneumothorax']].astype(np.int64)
-
-
-def multilabel_stratification(df, Y, splitnr, rnd_seed = 0):
-    mskf = MultilabelStratifiedKFold(n_splits=splitnr, random_state=rnd_seed)
-
-    for train_index, test_index in mskf.split(np.zeros(Y.shape[0]), Y.values):
-        df_train, df_test = df.iloc[train_index], df.iloc[test_index]
-        # y_train, y_test = Y[train_index], Y[test_index]
-        return train_index, test_index, df_train, df_test
-
-
-def train_test_stratification(xray_df, rnd_seed=0):
-    classification, bbox = separate_localization_classification_labels(xray_df)
-    y_class = select_y_class_columns(classification)
-    y_bbox = select_y_class_columns(bbox)
-    # print("testing stratification")
-    # print("classif train val - test")
-    ### 50% unannotated images to train model
-    _, _, df_class_trainval, df_class_test = multilabel_stratification(classification, y_class, 2, rnd_seed=rnd_seed)
-
-    ### 80% annotated images for training
-    _, _, df_bbox_trainval, df_bbox_test = multilabel_stratification(bbox, y_bbox, 5, rnd_seed=rnd_seed)
-    # print("classif train -val ")
-
-    ### 20% of train data is validation - split = 5
-    _, _, df_class_train, df_class_val = multilabel_stratification(df_class_trainval, select_y_class_columns(df_class_trainval), 5, rnd_seed=rnd_seed)
-
-    ## 20% of train data is validation - split = 5
-    _, _, df_bbox_train, df_bbox_val = multilabel_stratification(df_bbox_trainval, select_y_class_columns(df_bbox_trainval), 5, rnd_seed=rnd_seed)
-
-    df_train = pd.concat([df_class_train, df_bbox_train])
-    df_val = pd.concat([df_class_val, df_bbox_val])
-
-
-    return df_train.reindex(np.random.permutation(df_train.index)), df_val.reindex(np.random.permutation(df_val.index)), \
-           df_class_test, df_bbox_test
-
-
-def get_train_test_strata(xray_df, random_state=0, do_stats=True, res_path= None):
-    df_train, df_val, df_class_test, df_bbox_test = train_test_stratification(xray_df, rnd_seed=random_state)
-
-    if do_stats and res_path is not None:
-        visualize_population(xray_df, 'whole_df_strata', res_path, FINDINGS)
-        visualize_population(df_train, 'train_strata', res_path, FINDINGS)
-        visualize_population(df_val, 'validation_strata', res_path, FINDINGS)
-        visualize_population(df_bbox_test, 'test_bbox_strata', res_path, FINDINGS)
-        visualize_population(df_class_test, 'test_class_strata', res_path, FINDINGS)
-
-    train_set, val_set = keep_index_and_diagnose_columns(df_train), keep_index_and_diagnose_columns(df_val)
-    bbox_test, class_test = keep_index_and_diagnose_columns(df_bbox_test), keep_index_and_diagnose_columns(
-        df_class_test)
-    return train_set, val_set, bbox_test, class_test
