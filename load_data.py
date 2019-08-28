@@ -25,7 +25,11 @@ PATCH_SIZE = 16
 
 
 def load_csv(file_path):
+    print('Loading data ...')
+
     bbox = pd.read_csv(file_path)
+    print('Cardiomegaly label division')
+    print(bbox['Cardiomegaly'].value_counts())
     return bbox.dropna(axis=1)
 
 

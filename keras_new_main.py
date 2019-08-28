@@ -53,8 +53,8 @@ trained_models_path = config['trained_models_path']
 
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 2
-BATCH_SIZE_TEST = 2
+BATCH_SIZE = 10
+BATCH_SIZE_TEST = 10
 BOX_SIZE = 16
 
 if skip_processing:
@@ -65,9 +65,10 @@ else:
     xray_df = ld.couple_location_labels(localization_labels_path, processed_df, ld.PATCH_SIZE, results_path)
 print(xray_df.shape)
 print("Splitting data ...")
-init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(xray_df, random_state=0,
-                                                                                       do_stats=True,
-                                                                                       res_path = generated_images_path)
+init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(xray_df,
+                                                                                                      random_state=0,
+                                                                                                      do_stats=True,
+                                                                                                      res_path = generated_images_path)
 df_train=df_train_init
 print('Training set: '+ str(df_train_init.shape))
 print('Validation set: '+ str(df_val.shape))
@@ -82,7 +83,7 @@ init_train_idx = df_train['Dir Path'].index.values
 
 if train_mode:
     train_generator = gen.BatchGenerator(
-        instances=df_class_test.values,
+        instances=df_train.values,
         batch_size=BATCH_SIZE,
         net_h=IMAGE_SIZE,
         net_w=IMAGE_SIZE,
@@ -120,8 +121,8 @@ if train_mode:
         period=1
     )
 
-    filepath = trained_models_path + "saved-model-{epoch:02d}-{val_loss:.2f}.hdf5"
-    checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='max')
+    filepath = trained_models_path + "single_class-{epoch:02d}-{val_loss:.2f}.hdf5"
+    checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
 
     lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
     print("df train STEPS")
@@ -131,7 +132,7 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=2,
+        epochs=100,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
@@ -148,7 +149,7 @@ if train_mode:
                                   history.history['val_loss'],
                                   'train loss', 'validation loss', 'loss', 'loss', results_path)
 else:
-    model = load_model(trained_models_path+'best_model_100.h5', custom_objects={
+    model = load_model(trained_models_path+'best_model_single_100.h5', custom_objects={
         'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
     model = keras_model.compile_model(model)
 
