@@ -113,8 +113,8 @@ def accuracy_bbox_IOU(y_pred, instance_labels_ground, P, iou_threshold):
     return acc_per_class
 
 
-def accuracy_bbox_IOU_v2(y_pred, instance_labels_ground, P, iou_threshold):
-    _, _, has_bbox = compute_ground_truth(instance_labels_ground, P * P)
+def accuracy_bbox_IOU_v2(y_pred, instance_labels_ground, P, iou_threshold, class_nr):
+    _, _, has_bbox = compute_ground_truth(instance_labels_ground, P * P, class_nr)
     iou_scores = tf.where(has_bbox, compute_IoU(y_pred, instance_labels_ground, P), tf.zeros(tf.shape(has_bbox)))
     image_label_pred = tf.cast(tf.greater_equal(iou_scores, iou_threshold), tf.float32)
 
@@ -168,7 +168,8 @@ def acc_average(y_true, y_pred):
 
 def list_localization_accuracy(y_true, y_pred):
     localization_classes = [0, 1, 4, 8, 9, 10, 12, 13]
-    accuracy_all_cl, acc_predictions, local_present = accuracy_bbox_IOU_v2(y_pred, y_true, P=16, iou_threshold=0.1)
+    accuracy_all_cl, acc_predictions, local_present = accuracy_bbox_IOU_v2(y_pred, y_true, P=16, iou_threshold=0.1,
+                                                                           class_nr=1)
     acc_loc = [accuracy_all_cl[i] for i in localization_classes]
     acc_preds = [acc_predictions[ind] for ind in localization_classes]
     nr_bbox_present = [local_present[ind] for ind in localization_classes]
@@ -192,7 +193,7 @@ def test_function_acc_class(y_pred, instance_labels_ground, P, iou_threshold):
 
 def image_prob_active_patches(nn_output, P, class_nr):
     detected_active_patches = tf.cast(tf.greater(nn_output, 0.5), tf.float32)
-    sum_detected_actgive_patches, _, detected_bbox = compute_ground_truth(detected_active_patches, P*P, class_nr)
+    sum_detected_active_patches, _, detected_bbox = compute_ground_truth(detected_active_patches, P*P, class_nr)
     return compute_image_label_prediction(detected_bbox, nn_output, detected_active_patches, P, class_nr )
 
 
@@ -222,7 +223,7 @@ def compute_image_probability_production(nn_output,instance_label_ground_truth, 
     :return: image probability per class computed using the active patches
     '''
     m = P*P
-    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m, class_nr)
+    _, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m, class_nr)
     img_label_prob = image_prob_active_patches(nn_output, P, class_nr)
     return class_label_ground_truth, img_label_prob
 

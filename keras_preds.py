@@ -21,7 +21,8 @@ def predict_patch_and_save_results(saved_model, file_unique_name, data_set, proc
         net_w=image_size,
         box_size=box_size,
         norm=keras_utils.normalize,
-        processed_y=processed_y)
+        processed_y=processed_y,
+        shuffle=False)
 
     predictions = saved_model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
     np.save(res_path + 'predictions_' + file_unique_name, predictions)
@@ -60,9 +61,9 @@ def get_index_label_prediction(file_set_name, res_path):
 
 def get_label_prediction_image_level(preds, patch_labs, img_pred_as_loss):
     if img_pred_as_loss== 'as_loss':
-        img_labels, img_prob_preds_v1 = compute_image_probability_asloss(preds, patch_labs, P=16)
+        img_labels, img_prob_preds_v1 = compute_image_probability_asloss(preds, patch_labs, P=16, class_nr=1)
     elif img_pred_as_loss== 'as_production':
-        img_labels, img_prob_preds_v1 = compute_image_probability_production(preds, patch_labs, P=16)
+        img_labels, img_prob_preds_v1 = compute_image_probability_production(preds, patch_labs, P=16, class_nr=1)
     return img_labels, img_prob_preds_v1
 
 

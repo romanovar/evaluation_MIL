@@ -20,7 +20,7 @@ from custom_accuracy import keras_accuracy, compute_image_probability_asloss, co
     compute_auc, compute_image_probability_production, \
     test_function_acc_class, accuracy_bbox_IOU, compute_image_probability_production_v2, compute_IoU, \
     acc_atelectasis, acc_cardiomegaly, acc_infiltration, acc_average, acc_effusion, \
-    acc_mass, acc_nodule, acc_pneumonia, acc_pneumothorax
+    acc_mass, acc_nodule, acc_pneumonia, acc_pneumothorax, accuracy_asloss, accuracy_asproduction, keras_binary_accuracy
 from custom_loss import keras_loss, test_compute_ground_truth_per_class_numpy
 from keras_preds import predict_patch_and_save_results
 
@@ -151,9 +151,15 @@ if train_mode:
                                   history.history['val_loss'],
                                   'train loss', 'validation loss', 'loss', 'loss', results_path)
 else:
-    model = load_model(trained_models_path+'best_model_single_100.h5', custom_objects={
-        'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
-    model = keras_model.compile_model(model)
+    # model = load_model(trained_models_path+'best_model_single_100.h5', custom_objects={
+    #     'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
+    # model = keras_model.compile_model(model)
+
+    model = load_model(trained_models_path + 'single_class-25-2.96.hdf5', custom_objects={
+        'keras_loss': keras_loss, 'keras_accuracy': keras_accuracy, 'keras_binary_accuracy': keras_binary_accuracy,
+        'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
+
+    model = keras_model.compile_model_accuracy(model)
 
     if not test_single_image:
         ########################################### TRAINING SET########################################################
