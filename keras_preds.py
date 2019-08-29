@@ -168,7 +168,7 @@ def process_prediction_v2(file_unique_name, res_path, img_pred_as_loss, batch_si
     print('Total full slices')
     print(predictions.shape)
     print(total_full_slices)
-    for k in range(3, total_full_slices):
+    for k in range(0, total_full_slices):
         start_ind = k*slice_size
         end_ind = start_ind+slice_size
         predictions_slice = predictions[start_ind:end_ind, :, :, :]
@@ -397,7 +397,7 @@ def process_prediction_v2_image_level(file_unique_name, res_path, img_pred_as_lo
     print('Total full slices')
     print(predictions.shape)
     print(total_full_slices)
-    for k in range(3, total_full_slices):
+    for k in range(0, total_full_slices):
         start_ind = k*slice_size
         end_ind = start_ind+slice_size
         predictions_slice = predictions[start_ind:end_ind, :, :, :]
