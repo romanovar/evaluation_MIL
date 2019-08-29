@@ -6,7 +6,7 @@ import keras_utils
 import os
 import tensorflow as tf
 from custom_accuracy import keras_accuracy, compute_image_probability_asloss, combine_predictions_each_batch, \
-    compute_auc, list_localization_accuracy, compute_image_probability_production
+    compute_auc, list_localization_accuracy, compute_image_probability_production, list_localization_accuracy_1cat
 import keras_generators as gen
 
 ############################RAW PREDICTIONS###########################################
@@ -77,7 +77,7 @@ def process_prediction_per_batch(predictions, patch_labels, img_pred_as_loss, l_
                                                                             img_pred_as_loss)
 
 
-    _, acc_preds, nr_bbox_present = list_localization_accuracy(batch_patch_lab, batch_pred)
+    _, acc_preds, nr_bbox_present = list_localization_accuracy_1cat(batch_patch_lab, batch_pred)
 
     with tf.Session().as_default():
         batch_image_labels, batch_image_predictions_v1 = batch_img_labels.eval(), batch_img_preds_v1.eval()

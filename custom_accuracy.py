@@ -169,6 +169,16 @@ def acc_average(y_true, y_pred):
 def list_localization_accuracy(y_true, y_pred):
     localization_classes = [0, 1, 4, 8, 9, 10, 12, 13]
     accuracy_all_cl, acc_predictions, local_present = accuracy_bbox_IOU_v2(y_pred, y_true, P=16, iou_threshold=0.1,
+                                                                           class_nr=14)
+    acc_loc = [accuracy_all_cl[i] for i in localization_classes]
+    acc_preds = [acc_predictions[ind] for ind in localization_classes]
+    nr_bbox_present = [local_present[ind] for ind in localization_classes]
+    return acc_loc, acc_preds, nr_bbox_present
+
+
+def list_localization_accuracy_1cat(y_true, y_pred):
+    localization_classes = [0]
+    accuracy_all_cl, acc_predictions, local_present = accuracy_bbox_IOU_v2(y_pred, y_true, P=16, iou_threshold=0.1,
                                                                            class_nr=1)
     acc_loc = [accuracy_all_cl[i] for i in localization_classes]
     acc_preds = [acc_predictions[ind] for ind in localization_classes]
