@@ -115,7 +115,7 @@ def accuracy_bbox_IOU(y_pred, instance_labels_ground, P, iou_threshold):
 
 def accuracy_bbox_IOU_v2(y_pred, instance_labels_ground, P, iou_threshold, class_nr):
     _, _, has_bbox = compute_ground_truth(instance_labels_ground, P * P, class_nr)
-    iou_scores = tf.where(has_bbox, compute_IoU(y_pred, instance_labels_ground, P), tf.zeros(tf.shape(has_bbox)))
+    iou_scores = tf.where(has_bbox, compute_IoU(y_pred, instance_labels_ground, P, class_nr), tf.zeros(tf.shape(has_bbox)))
     image_label_pred = tf.cast(tf.greater_equal(iou_scores, iou_threshold), tf.float32)
 
     # compare image_label prediction and has_bbox

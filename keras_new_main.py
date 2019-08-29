@@ -146,6 +146,10 @@ if train_mode:
     keras_utils.plot_train_validation(history.history['keras_accuracy'],
                                   history.history['val_keras_accuracy'],
                                   'train accuracy', 'validation accuracy', 'accuracy','accuracy', results_path)
+    keras_utils.plot_train_validation(history.history['accuracy_asproduction'],
+                                      history.history['val_accuracy_asproduction'],
+                                      'train accuracy', 'validation accuracy',
+                                      'accuracy_asproduction', 'accuracy_asproduction', results_path)
 
     keras_utils.plot_train_validation(history.history['loss'],
                                   history.history['val_loss'],
