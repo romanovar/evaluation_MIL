@@ -4,7 +4,7 @@ from keras.models import Model
 from keras.optimizers import Adam
 from custom_loss import keras_loss, keras_loss_reg
 from custom_accuracy import keras_accuracy,acc_atelectasis, acc_cardiomegaly, acc_effusion, acc_infiltration, acc_mass, \
-    acc_nodule, acc_pneumonia,  acc_pneumothorax,  acc_average
+    acc_nodule, acc_pneumonia,  acc_pneumothorax,  acc_average, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction
 
 
 def build_model():
@@ -43,9 +43,15 @@ def compile_model(model):
     model.compile(optimizer=optimizer,
                   loss=keras_loss,
                   metrics=[keras_accuracy])
-
     return model
 
+
+def compile_model_accuracy(model):
+    optimizer = Adam(lr=0.001)
+    model.compile(optimizer=optimizer,
+                  loss=keras_loss,
+                  metrics=[keras_accuracy, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction])
+    return model
 
 def compile_model_regularization(model):
     optimizer = Adam(lr=0.001)

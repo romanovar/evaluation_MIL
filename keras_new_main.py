@@ -59,6 +59,8 @@ BOX_SIZE = 16
 
 if skip_processing:
     xray_df = ld.load_csv(processed_labels_path)
+    print('Cardiomegaly label division')
+    print(xray_df['Cardiomegaly'].value_counts())
 else:
     label_df = ld.get_classification_labels(classication_labels_path, False)
     processed_df = ld.preprocess_labels(label_df, image_path)
@@ -103,7 +105,7 @@ if train_mode:
     model = keras_model.build_model()
     # model.summary()
 
-    model = keras_model.compile_model(model)
+    model = keras_model.compile_model_accuracy(model)
     #model = keras_model.compile_model_regularization(model)
 
     early_stop = EarlyStopping(monitor='val_loss',
@@ -113,7 +115,7 @@ if train_mode:
                                verbose=1)
 
     checkpoint = ModelCheckpoint(
-        filepath=trained_models_path+ 'best_model_100.h5',
+        filepath=trained_models_path+ 'best_model_single_100.h5',
         monitor='val_loss',
         verbose=1,
         save_best_only=True,

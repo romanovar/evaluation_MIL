@@ -192,11 +192,11 @@ def test_function_acc_class(y_pred, instance_labels_ground, P, iou_threshold):
 
 def image_prob_active_patches(nn_output, P, class_nr):
     detected_active_patches = tf.cast(tf.greater(nn_output, 0.5), tf.float32)
-    sum_detected_actgive_patches, _, detected_bbox = compute_ground_truth(detected_active_patches, P*P)
+    sum_detected_actgive_patches, _, detected_bbox = compute_ground_truth(detected_active_patches, P*P, class_nr)
     return compute_image_label_prediction(detected_bbox, nn_output, detected_active_patches, P, class_nr )
 
 
-def compute_image_probability_asloss(nn_output, instance_label_ground_truth, P):
+def compute_image_probability_asloss(nn_output, instance_label_ground_truth, P, class_nr):
     '''
     Computes image probability the same way it is computed in the loss, this function has testing purposes only
     :param nn_output:
@@ -205,9 +205,10 @@ def compute_image_probability_asloss(nn_output, instance_label_ground_truth, P):
     :return:
     '''
     # m = P * P
-    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, P*P)
+    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, P*P,
+                                                                                  class_nr)
 
-    img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, P)
+    img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, P, class_nr)
     return class_label_ground_truth, img_label_pred
 
 
@@ -221,7 +222,7 @@ def compute_image_probability_production(nn_output,instance_label_ground_truth, 
     :return: image probability per class computed using the active patches
     '''
     m = P*P
-    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m)
+    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m, class_nr)
     img_label_prob = image_prob_active_patches(nn_output, P, class_nr)
     return class_label_ground_truth, img_label_prob
 
@@ -255,3 +256,21 @@ def combine_predictions_each_batch(current_batch, prev_batches_arr, batch_ind):
         return current_batch
     else:
         return np.concatenate((prev_batches_arr, current_batch))
+
+#####################################################################
+
+def keras_binary_accuracy(y_true, y_pred):
+    print("high level")
+    print(y_true.shape)
+    print(y_pred.shape)
+    return compute_accuracy_keras(y_pred, y_true, P=16, iou_threshold=0.1, class_nr=1)
+
+
+def accuracy_asloss(y_true, y_pred):
+    class_label_ground_truth, img_label_pred = compute_image_probability_asloss(y_pred, y_true,16, class_nr=1)
+    return K.metrics.binary_accuracy(class_label_ground_truth, img_label_pred)
+
+
+def accuracy_asproduction(y_true, y_pred):
+    class_label_ground_truth, img_label_pred = compute_image_probability_production(y_pred, y_true, 16, class_nr=1)
+    return K.metrics.binary_accuracy(class_label_ground_truth, img_label_pred)
