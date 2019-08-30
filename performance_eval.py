@@ -42,19 +42,23 @@ predict_res_path = config['prediction_results_path']
 #do_predictions_set(dataset_name, prediction_skip_processing, image_prediction_method)
 
 ################# STEP 1 ###########################
-dataset_name = 'single_5050'
+predict_res_path = 'C:/Users/s161590/Desktop/Project_li/single_class/5050/'
+
+dataset_name = 'single_5050_train_set'
 image_prediction_method = 'as_loss'
 keras_preds.process_prediction_v2(dataset_name, predict_res_path, img_pred_as_loss=image_prediction_method,
                                   batch_size=10)
 image_prediction_method2 = 'as_production'
-keras_preds.process_prediction_v2_image_level(dataset_name, predict_res_path, img_pred_as_loss=image_prediction_method2,
-                                              batch_size=10)
+# keras_preds.process_prediction_v2_image_level(dataset_name, predict_res_path, img_pred_as_loss=image_prediction_method2,
+#                                               batch_size=10)
 
 ################# STEP 2 ###########################
-# dataset_name = '100_e17train_set'
-# image_prediction_method = 'as_production'
-# keras_preds.combine_npy_accuracy(dataset_name, results_path)
-# keras_preds.combine_npy_auc(dataset_name, image_prediction_method, results_path)
+# dataset_name = 'single_5050_train_set'
+# image_prediction_method = 'as_loss'
+# image_prediction_method2 = 'as_production'
+# predict_res_path = 'C:/Users/s161590/Desktop/Project_li/single_class/5050/'
+# keras_preds.combine_npy_accuracy_1class(dataset_name, predict_res_path)
+# keras_preds.combine_npy_auc_1class(dataset_name, image_prediction_method, predict_res_path)
 
 #dataset_name = 'val_set'
 #image_prediction_method = 'as_loss'

@@ -26,6 +26,7 @@ def compute_image_label_from_localization_NORM(nn_output, y_true, P, clas_nr):
 
 def compute_image_label_in_classification_NORM(nn_output, P, clas_nr):
     # epsilon = tf.pow(tf.cast(10, tf.float32), -15)
+    print("normalizinng probability")
     subtracted_prob = 1 - nn_output
     flat_mat = tf.reshape(subtracted_prob, (-1, P * P, clas_nr))
 

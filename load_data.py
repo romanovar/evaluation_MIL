@@ -252,7 +252,7 @@ def keep_index_and_diagnose_columns(Y):
 
 
 def keep_index_and_1diagnose_columns(Y):
-    return Y[['Dir Path', 'Consolidation_loc']]
+    return Y[['Dir Path', 'Cardiomegaly_loc']]
 
 
 # Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate

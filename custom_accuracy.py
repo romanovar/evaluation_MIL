@@ -13,16 +13,11 @@ from load_data import FINDINGS, PATCH_SIZE
 
 
 def convert_predictions_to_binary(preds, thres):
-    print(preds.shape)
-    print("predictions")
     #return tf.where(preds > thres, tf.ones(tf.shape(preds)), tf.zeros(tf.shape(preds)))
     return tf.cast(tf.greater_equal(preds, thres), tf.float32)
 
 
 def reshape_and_convert_to_binary_predictions(predictions, labels, P, threshold_binary, class_nr):
-    print("labels shape")
-    print(labels.shape)
-    print(predictions.shape)
     patches_binary_pred = tf.reshape(convert_predictions_to_binary(predictions, thres=threshold_binary),
                                      (-1, P * P, class_nr))
     return patches_binary_pred, tf.reshape(labels, (-1, P * P, class_nr))
@@ -33,9 +28,6 @@ def compute_IoU(predictions, labels, P, class_nr):
     patches_binary_pred, labels_xy_flatten = reshape_and_convert_to_binary_predictions(predictions, labels, P,
                                                                                        threshold_binary=0.5,
                                                                                        class_nr=class_nr)
-    print(labels_xy_flatten.shape)
-    print("labelsxy")
-    print(patches_binary_pred.shape)
 
     correct_prediction = tf.cast(tf.equal(patches_binary_pred, labels_xy_flatten), tf.float32)
     #check only active patches from the labels and see if the prediction there agrees with the labels
@@ -48,13 +40,8 @@ def compute_IoU(predictions, labels, P, class_nr):
 
 
 def compute_accuracy_image_bbox(predictions, labels, class_ground_truth, P, iou_threshold, class_nr):
-    print(predictions.shape)
     IoU = compute_IoU(predictions, labels, P, class_nr)
-    print("IOU")
-    print(IoU.shape)
     image_class_pred = tf.cast(tf.greater_equal(IoU, iou_threshold), tf.float32)
-    print(image_class_pred.shape)
-    print(class_ground_truth.shape)
     correct_prediction = tf.equal(image_class_pred, class_ground_truth)
     return IoU, tf.cast(correct_prediction, "float")
 
@@ -78,12 +65,8 @@ def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold
     m=P*P
     sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m, class_nr)
     IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold, class_nr)
-    print(accuracy_bbox.shape)
     img_pred_norm = compute_image_label_in_classification_NORM(predictions, P, class_nr)
     img_pred_bin = tf.cast(img_pred_norm > 0.5, tf.float32)
-    print("img pred bin")
-    print(img_pred_bin.shape)
-    print(class_label_ground.shape)
     correct_prediction_img = tf.cast(tf.equal(img_pred_bin, class_label_ground), tf.float32)
 
     accuracy_per_obs_per_class = tf.where(has_bbox, accuracy_bbox, correct_prediction_img)
@@ -93,9 +76,6 @@ def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold
 
 
 def keras_accuracy(y_true, y_pred):
-    print("high level")
-    print(y_true.shape)
-    print(y_pred.shape)
     return compute_accuracy_keras(y_pred, y_true, P=16, iou_threshold=0.1, class_nr=1)
 
 
@@ -259,6 +239,14 @@ def compute_auc(labels_all_classes, img_predictions_all_classes):
         auc_all_classes.append(auc_score)
     return auc_all_classes
 
+
+def compute_auc_1class(labels_all_classes, img_predictions_all_classes):
+    auc_all_classes = []
+    print(labels_all_classes.shape)
+    for ind in range(0, 1):
+        auc_score = roc_auc_score(labels_all_classes[:, ind], img_predictions_all_classes[:, ind])
+        auc_all_classes.append(auc_score)
+    return auc_all_classes
 
 ###################################### HANDLING PREDICTIONS ############################################################
 

@@ -289,3 +289,12 @@ def drop_rows(init_train_df, ind_to_drop):
 def create_overlap_set_bootstrap(init_train_df, overlap_pat_ratio, seed):
     rows_drop = return_rows_to_drop_bootstrap(init_train_df, overlap_pat_ratio, seed)
     return drop_rows(init_train_df, rows_drop)
+
+
+def save_evaluation_results_1class(col_names, col_values,  file_name, out_dir,add_col=None, add_value=None):
+    eval_df = pd.DataFrame()
+    for i in range(0, len(col_names)):
+        eval_df[col_names[i]] = pd.Series(col_values[i])
+    if add_col is not None:
+        eval_df[add_col] = add_value
+    eval_df.to_csv(out_dir + '/' + file_name)
