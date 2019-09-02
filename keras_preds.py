@@ -1,3 +1,6 @@
+import glob
+from pathlib import Path
+
 import numpy as np
 import load_data as ld
 import yaml
@@ -30,6 +33,7 @@ def predict_patch_and_save_results(saved_model, file_unique_name, data_set, proc
 
     all_img_ind = []
     all_patch_labels = []
+    countbbox = 0
     for batch_ind in range(test_generator.__len__()):
         x, y = test_generator.__getitem__(batch_ind)
         y_cast = y.astype(np.float32)
@@ -39,6 +43,8 @@ def predict_patch_and_save_results(saved_model, file_unique_name, data_set, proc
         if not(np.array_equal(y_cast, np.ones((16, 16, 1))) or np.array_equal(y_cast, np.zeros((16, 16, 1)))):
             print(res_img_ind)
             print(y_cast)
+            countbbox += 1
+    print(countbbox)
     np.save(res_path + 'image_indices_' + file_unique_name, all_img_ind)
     np.save(res_path + 'patch_labels_' + file_unique_name, all_patch_labels)
 
@@ -326,14 +332,9 @@ def combine_npy_accuracy(data_set_name, res_path):
     coll_accuracy = 0
     coll_bbox_pres = 0
     for ind in range(0,1):
-        # print(ind)
         acc_local, bbox_present = load_accuracy_localization_v2(data_set_name, str(ind), res_path)
-        # print(bbox_present)
-        # print(type(bbox_present))
-        # print(np.sum(bbox_present))
         coll_accuracy = combine_predictions_each_batch(acc_local, coll_accuracy, ind)
         coll_bbox_pres = combine_predictions_each_batch(bbox_present, coll_bbox_pres, ind)
-    # print(np.sum(coll_accuracy))
     print("accuracy bbox present vs accurate")
     print(np.sum(coll_bbox_pres))
     print(np.sum(coll_accuracy))
@@ -341,23 +342,18 @@ def combine_npy_accuracy(data_set_name, res_path):
     compute_save_accuracy(coll_accuracy, coll_bbox_pres, data_set_name, res_path)
 
 
-def combine_npy_accuracy_1class(data_set_name, res_path):
+def combine_npy_accuracy_1class(data_set_name, res_path, nr_files):
     coll_accuracy = 0
     coll_bbox_pres = 0
-    for ind in range(0,1):
-        # print(ind)
+    for ind in range(0,nr_files):
         acc_local, bbox_present = load_accuracy_localization_v2(data_set_name, str(ind), res_path)
-        # print(bbox_present)
-        # print(type(bbox_present))
-        # print(np.sum(bbox_present))
+
         coll_accuracy = combine_predictions_each_batch(acc_local, coll_accuracy, ind)
         coll_bbox_pres = combine_predictions_each_batch(bbox_present, coll_bbox_pres, ind)
-    # print(np.sum(coll_accuracy))
     print("accuracy bbox present vs accurate")
     print(np.sum(coll_bbox_pres))
     print(np.sum(coll_accuracy))
 
-    #compute_save_accuracy(coll_accuracy, coll_bbox_pres, data_set_name, res_path)
     sum_acc_loc = np.sum(coll_accuracy, axis=0)
     sum_bbox_pres = np.sum(coll_bbox_pres, axis=0)
     sum_acc_local_all = np.sum(coll_accuracy)
@@ -369,6 +365,10 @@ def combine_npy_accuracy_1class(data_set_name, res_path):
     print("ACCURACY RESULTS FROM BBOX")
     print(acc_class)
     print(acc_avg)
+
+    keras_utils.save_evaluation_results(["accuracy"], acc_class, "accuracy_" + data_set_name + '.csv', res_path,
+                                        add_col=None, add_value=None)
+
 
 def combine_npy_auc(data_set_name, image_pred_method, res_path):
     coll_image_labels = 0
@@ -386,13 +386,11 @@ def combine_npy_auc(data_set_name, image_pred_method, res_path):
                                         res_path)
 
 
-def combine_npy_auc_1class(data_set_name, image_pred_method, res_path):
+def combine_npy_auc_1class(data_set_name, image_pred_method, res_path, nr_files):
     coll_image_labels = 0
     coll_image_preds = 0
-
-    for ind in range(0, 1):
+    for ind in range(0, nr_files):
         img_labels, img_preds = load_img_pred_labels_v2(data_set_name, image_pred_method, str(ind), res_path)
-        # img_labels2, img_preds2 = load_img_pred_labels_v2(data_set_name, image_pred_method, str(ind+1), res_path)
 
         coll_image_preds = combine_predictions_each_batch(img_preds, coll_image_preds, ind)
         coll_image_labels = combine_predictions_each_batch(img_labels, coll_image_labels, ind)
@@ -401,6 +399,14 @@ def combine_npy_auc_1class(data_set_name, image_pred_method, res_path):
     keras_utils.save_evaluation_results([ld.FINDINGS[1]], auc_all_classes_v1, 'auc_prob_' + data_set_name + '_v1.csv',
                                         res_path)
 
+
+def combine_auc_accuracy_1class(data_set_name, image_pred_method, res_path):
+    file_count = 0
+    for file in Path(res_path).glob("image_predictions_" + data_set_name + "_" + image_pred_method+"*.npy"):
+        file_count += 1
+    print("Combining "+ str(file_count) + " .npy files ...")
+    combine_npy_accuracy_1class(data_set_name, res_path, file_count)
+    combine_npy_auc_1class(data_set_name, image_pred_method, res_path, file_count)
 
 ###################################################################################33
 

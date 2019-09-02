@@ -37,63 +37,22 @@ predict_res_path = config['prediction_results_path']
 
 #########################################################
 
-#dataset_name = 'test_set'
-#image_prediction_method = 'as_loss'
-#do_predictions_set(dataset_name, prediction_skip_processing, image_prediction_method)
 
 ################# STEP 1 ###########################
-predict_res_path = 'C:/Users/s161590/Desktop/Project_li/single_class/5050/'
+# predict_res_path = 'C:/Users/s161590/Desktop/Project_li/single_class/5050/'
 
 dataset_name = 'single_5050_train_set'
 image_prediction_method = 'as_loss'
-keras_preds.process_prediction_v2(dataset_name, predict_res_path, img_pred_as_loss=image_prediction_method,
-                                  batch_size=10)
-image_prediction_method2 = 'as_production'
+# keras_preds.process_prediction_v2(dataset_name, predict_res_path, img_pred_as_loss=image_prediction_method,
+#                                   batch_size=10)
+# image_prediction_method2 = 'as_production'
 # keras_preds.process_prediction_v2_image_level(dataset_name, predict_res_path, img_pred_as_loss=image_prediction_method2,
 #                                               batch_size=10)
 
 ################# STEP 2 ###########################
-# dataset_name = 'single_5050_train_set'
-# image_prediction_method = 'as_loss'
+dataset_name = 'single_patient_train_set'
+image_prediction_method = 'as_loss'
 # image_prediction_method2 = 'as_production'
-# predict_res_path = 'C:/Users/s161590/Desktop/Project_li/single_class/5050/'
-# keras_preds.combine_npy_accuracy_1class(dataset_name, predict_res_path)
-# keras_preds.combine_npy_auc_1class(dataset_name, image_prediction_method, predict_res_path)
+# predict_res_path = 'C:/Users/s161590/Desktop/Project_li/predictions/'
 
-#dataset_name = 'val_set'
-#image_prediction_method = 'as_loss'
-#do_predictions_set(dataset_name, prediction_skip_processing, image_prediction_method)
-
-#################################################################
-#dataset_name = 'test_set'
-#image_prediction_method = 'as_production'
-#do_predictions_set(dataset_name, prediction_skip_processing, image_prediction_method)
-
-#
-# dataset_name = 'train_set'
-# image_prediction_method = 'as_production'
-# do_predictions_set(dataset_name, prediction_skip_processing, image_prediction_method)
-
-#dataset_name = 'val_set'
-#image_prediction_method = 'as_production'
-#do_predictions_set(dataset_name, prediction_skip_processing, image_prediction_method)
-############################################################3
-
-
-
-
-############################# TEST SET ########################
-
-# auc_v1_test, auc_v2_test, auc_v3_test, acc_test = process_prediction('test_set', results_path)
-
-# auc_v1_val, auc_v2_val, auc_v3_val, acc_val = process_prediction('val_set', results_path)
-
-# auc_v1_train, auc_v2_train, auc_v3_train, acc_train = process_prediction('train_set', results_path)
-
-
-
-# keras_utils.plot_grouped_bar_auc(auc_v1_train, auc_v1_val, auc_v1_test, 'auc_v1', results_path, ld.FINDINGS)
-# keras_utils.plot_grouped_bar_auc(auc_v2_train, auc_v2_val, auc_v2_test, 'auc_v2', results_path, ld.FINDINGS)
-# keras_utils.plot_grouped_bar_auc(auc_v3_train, auc_v3_val, auc_v3_test, 'auc_v3', results_path, ld.FINDINGS)
-#
-# keras_utils.plot_grouped_bar_accuracy(acc_train, acc_val, acc_test, 'accuracy', results_path, ld.FINDINGS)
+keras_preds.combine_auc_accuracy_1class(dataset_name, image_prediction_method, predict_res_path)
