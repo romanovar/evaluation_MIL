@@ -143,6 +143,8 @@ if train_mode:
     print("history")
     print(history.history)
     print(history.history['keras_accuracy'])
+    np.save(results_path + 'train_info.npy', history.history)
+
     keras_utils.plot_train_validation(history.history['keras_accuracy'],
                                   history.history['val_keras_accuracy'],
                                   'train accuracy', 'validation accuracy', 'accuracy','accuracy', results_path)
