@@ -40,10 +40,10 @@ def predict_patch_and_save_results(saved_model, file_unique_name, data_set, proc
         res_img_ind = test_generator.get_batch_image_indices(batch_ind)
         all_img_ind = combine_predictions_each_batch(res_img_ind, all_img_ind, batch_ind)
         all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
-        if not(np.array_equal(y_cast, np.ones((16, 16, 1))) or np.array_equal(y_cast, np.zeros((16, 16, 1)))):
-            print(res_img_ind)
-            print(y_cast)
-            countbbox += 1
+        # if not(np.array_equal(y_cast, np.ones((1,16, 16, 1))) or np.array_equal(y_cast, np.zeros((1, 16, 16, 1)))):
+        #     print(res_img_ind)
+        #     print(y_cast)
+        #     countbbox += 1
     print(countbbox)
     np.save(res_path + 'image_indices_' + file_unique_name, all_img_ind)
     np.save(res_path + 'patch_labels_' + file_unique_name, all_patch_labels)

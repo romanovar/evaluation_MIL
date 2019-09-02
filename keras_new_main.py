@@ -102,7 +102,7 @@ if train_mode:
         norm=keras_utils.normalize,
         processed_y=skip_processing)
 
-    model = keras_model.build_model()
+    model = keras_model.build_model(weight_reg= 0.1)
     # model.summary()
 
     model = keras_model.compile_model_accuracy(model)
@@ -110,7 +110,7 @@ if train_mode:
 
     early_stop = EarlyStopping(monitor='val_loss',
                                min_delta=0.001,
-                               patience=15,
+                               patience=60,
                                mode='min',
                                verbose=1)
 
