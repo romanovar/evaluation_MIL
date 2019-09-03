@@ -7,7 +7,7 @@ from custom_accuracy import keras_accuracy,acc_atelectasis, acc_cardiomegaly, ac
     acc_nodule, acc_pneumonia,  acc_pneumothorax,  acc_average, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction
 from keras import regularizers
 
-def build_model(weight_reg):
+def build_model():
     #base_model = ResNet50V2(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
 
     base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
@@ -15,10 +15,10 @@ def build_model(weight_reg):
 
     downsamp = MaxPooling2D(pool_size=1, strides=1, padding='Valid')(last)
 
-    recg_net = Conv2D(512, kernel_size=(3,3), padding='same',  kernel_regularizer= regularizers.l2(weight_reg))(downsamp)
+    recg_net = Conv2D(512, kernel_size=(3,3), padding='same')(downsamp)
     recg_net = BatchNormalization()(recg_net)
     recg_net = ReLU()(recg_net)
-    recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid',  kernel_regularizer= regularizers.l2(weight_reg))(recg_net) #, activity_regularizer=l2(0.001)
+    recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
 
     model = Model(base_model.input, recg_net)
 
@@ -53,10 +53,11 @@ def compile_model_accuracy(model):
                   metrics=[keras_accuracy, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction])
     return model
 
+
 def compile_model_regularization(model):
     optimizer = Adam(lr=0.001)
     model.compile(optimizer=optimizer,
                   loss=keras_loss_reg,
-                  metrics=[keras_accuracy])
+                  metrics=[keras_accuracy, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction])
 
     return model

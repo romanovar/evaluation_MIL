@@ -53,7 +53,7 @@ trained_models_path = config['trained_models_path']
 
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 10
+BATCH_SIZE = 1
 BATCH_SIZE_TEST = 10
 BOX_SIZE = 16
 
@@ -102,11 +102,14 @@ if train_mode:
         norm=keras_utils.normalize,
         processed_y=skip_processing)
 
-    model = keras_model.build_model(weight_reg= 0.1)
+    model = keras_model.build_model()
     # model.summary()
 
-    model = keras_model.compile_model_accuracy(model)
-    #model = keras_model.compile_model_regularization(model)
+    #model = keras_model.compile_model_accuracy(model)
+    model = keras_model.compile_model_regularization(model)
+
+    total_epochs = int(500000*BATCH_SIZE/train_generator.__len__())
+    print("Total number of iterations: "+ str(total_epochs))
 
     early_stop = EarlyStopping(monitor='val_loss',
                                min_delta=0.001,
