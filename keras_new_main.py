@@ -53,7 +53,7 @@ trained_models_path = config['trained_models_path']
 
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 1
+BATCH_SIZE = 10
 BATCH_SIZE_TEST = 10
 BOX_SIZE = 16
 
@@ -107,6 +107,8 @@ if train_mode:
 
     #model = keras_model.compile_model_accuracy(model)
     model = keras_model.compile_model_regularization(model)
+    model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
+                                            samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
 
     total_epochs = int(500000*BATCH_SIZE/train_generator.__len__())
     print("Total number of iterations: "+ str(total_epochs))
@@ -118,7 +120,7 @@ if train_mode:
                                verbose=1)
 
     checkpoint = ModelCheckpoint(
-        filepath=trained_models_path+ 'best_model_single_100.h5',
+        filepath=trained_models_path+ 'best_model_single_patient_reg.h5',
         monitor='val_loss',
         verbose=1,
         save_best_only=True,
@@ -126,7 +128,7 @@ if train_mode:
         period=1
     )
 
-    filepath = trained_models_path + "single_class-{epoch:02d}-{val_loss:.2f}.hdf5"
+    filepath = trained_models_path + "single_class_patient_reg-{epoch:02d}-{val_loss:.2f}.hdf5"
     checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
 
     lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
@@ -137,7 +139,7 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=100,
+        epochs=60,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,

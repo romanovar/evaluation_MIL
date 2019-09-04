@@ -6,6 +6,8 @@ from custom_loss import keras_loss, keras_loss_reg
 from custom_accuracy import keras_accuracy,acc_atelectasis, acc_cardiomegaly, acc_effusion, acc_infiltration, acc_mass, \
     acc_nodule, acc_pneumonia,  acc_pneumothorax,  acc_average, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction
 from keras import regularizers
+from AdamW import AdamW
+
 
 def build_model():
     #base_model = ResNet50V2(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
@@ -36,6 +38,15 @@ def step_decay(epoch, lr):
     if(epoch%10==0):
         lrate = lr * decay
     return lrate
+
+
+def compile_model_adamw(model, weight_dec, batch_size, samples_epoch, epochs):
+    optimizer = AdamW(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None,decay=0., weight_decay=weight_dec,
+                      batch_size=batch_size, samples_per_epoch=samples_epoch, epochs=epochs)
+    model.compile(optimizer=optimizer,
+                  loss=keras_loss,
+                  metrics=[keras_accuracy])
+    return model
 
 
 def compile_model(model):
