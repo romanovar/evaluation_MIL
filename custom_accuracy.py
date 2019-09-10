@@ -218,6 +218,7 @@ def compute_image_probability_production(nn_output,instance_label_ground_truth, 
     return class_label_ground_truth, img_label_prob
 
 
+##TODO: TO Remove, it should NOT be used
 def compute_image_probability_production_v2(nn_output,instance_label_ground_truth, P):
     '''
     Computing image probability prediction considering all patches as equally important

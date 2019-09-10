@@ -47,9 +47,19 @@ def custom_CE_loss(is_localization, labels, preds):
 
     loss_loc = -(L_bbox * labels * (tf.log(preds + epsilon))) - (
         L_bbox * (1 - labels) * (tf.log(1 - preds + epsilon)))
+    batch_weight_pos = 1
+    batch_weight_neg = 1
 
-    loss_classification = - (labels * (tf.log(preds + epsilon))) - (
-        (1 - labels) * (tf.log(1 - preds + epsilon)))
+    # to get nr positive labels
+    pos_labels = tf.reduce_sum(labels, axis=1)
+    print(pos_labels)
+    # to get nr of neg labels
+    res = tf.ones(tf.shape(labels)) - labels
+    neg_labels = tf.reduce_sum(res, axis=1)
+    batch_weight_pos = (pos_labels+neg_labels)/pos_labels
+    batch_weight_neg = (pos_labels+neg_labels)/neg_labels
+    loss_classification = - (batch_weight_pos*labels * (tf.log(preds + epsilon))) - (
+        batch_weight_neg*(1 - labels) * (tf.log(1 - preds + epsilon)))
 
     loss_class = tf.where(is_localization, loss_loc, loss_classification)
     return loss_class
@@ -151,7 +161,7 @@ def keras_loss_reg(y_true, y_pred):
     loss =  compute_loss_keras(y_pred, y_true, P=16, class_nr=1)
     vars = tf.trainable_variables()
     lossL2 = tf.add_n([ tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in vars
-                    if 'bias' not in v.name ]) * 0.0001
+                    if 'bias' not in v.name ]) * 0.001
     # reg_l2 = 0.01 * tf.nn.l2_loss(tf.hidden_weights) + 0.01 * tf.nn.l2_loss(out_weights)
     return loss+lossL2
 
