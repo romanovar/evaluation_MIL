@@ -45,7 +45,7 @@ def compile_model_adamw(model, weight_dec, batch_size, samples_epoch, epochs):
                       batch_size=batch_size, samples_per_epoch=samples_epoch, epochs=epochs)
     model.compile(optimizer=optimizer,
                   loss=keras_loss,
-                  metrics=[keras_accuracy])
+                  metrics=[keras_accuracy, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction])
     return model
 
 

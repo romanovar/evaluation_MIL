@@ -51,13 +51,13 @@ def custom_CE_loss(is_localization, labels, preds):
     batch_weight_neg = 1
 
     # to get nr positive labels
-    pos_labels = tf.reduce_sum(labels, axis=1)
-    print(pos_labels)
+    pos_labels = tf.reduce_sum(labels, axis=0)
+
     # to get nr of neg labels
-    res = tf.ones(tf.shape(labels)) - labels
-    neg_labels = tf.reduce_sum(res, axis=1)
-    batch_weight_pos = (pos_labels+neg_labels)/pos_labels
-    batch_weight_neg = (pos_labels+neg_labels)/neg_labels
+    neg_labels = tf.reduce_sum(tf.ones(tf.shape(labels)) - labels, axis=0)
+    batch_weight_pos = tf.where(tf.greater(pos_labels, 0), (pos_labels+neg_labels)/pos_labels, tf.ones(tf.shape(pos_labels)))
+    batch_weight_neg = tf.where(tf.greater(neg_labels, 0), (pos_labels+neg_labels)/neg_labels, tf.ones(tf.shape(neg_labels)))
+
     loss_classification = - (batch_weight_pos*labels * (tf.log(preds + epsilon))) - (
         batch_weight_neg*(1 - labels) * (tf.log(1 - preds + epsilon)))
 
