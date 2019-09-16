@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 from sklearn.utils import resample
-
+import tensorflow as tf
 #normalize between [-1, 1]
 import pandas as pd
-
-from custom_loss import test_compute_ground_truth_per_class_numpy
+import matplotlib.cm as cm
+from custom_loss import test_compute_ground_truth_per_class_numpy, compute_ground_truth
 
 
 def normalize(im):
@@ -128,53 +128,96 @@ def visualize_population(df, file_name, res_path, findings_list):
     plot_pie_population(df, file_name, res_path, findings_list)
 
 
-def visualize_single_image_all_classes(xy_df_row, img_ind, results_path, prediction, img_prob,
-                                       img_label, acc_per_class_sc,iou_score):
-    for row in xy_df_row.values:
+def get_image_index_from_pathstring(string_path):
+    '''
+    :param string_path: string of the directory path where the image is
+    :return: returns the image index
+    0000PAT_IND.png = 4 symbols + 3 symbols + _ + 8 first number = 4+4+8 = 16 symbols and skipping '.png'
+    '''
+
+    return string_path[-16:-4]
+
+
+# The function is redundant and can be more efficient
+# it is uses same code as in the generator - so it is a test that everything works adequately
+def prepare_labels_all_classes(instance, processed_y):
+    instances_classes =[]
+    for i in range(1, instance.shape[0]):  # (15)
+        if processed_y:
+            g = process_loaded_labels(instance[i])
+            instances_classes.append(g)
+        else:
+            instances_classes.append(instance[i])
+    return np.transpose(np.asarray(instances_classes), [1, 2, 0])
+
+
+def visualize_single_image_all_classes(batch_df, img_ind, results_path, batch_predictions, batch_img_prob,
+                                       img_label, skip_process):
+    ind = 0
+    # for each row/observation in the batch
+    for row in batch_df.values:
         labels_df = []
+
+        instance_labels_gt = prepare_labels_all_classes(row, skip_process)
+        sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_labels_gt, 256,1)
 
         #for each class
         for i in range(1, row.shape[0]):  # (15)
-            g = process_loaded_labels(row[i])
 
-            sum_active_patches, class_label_ground, has_bbox = test_compute_ground_truth_per_class_numpy(g, 16 * 16)
+            init_op = tf.global_variables_initializer()
+            with tf.Session() as sess:
+                sess.run(init_op)
 
+                # slicing on index 0 it will have shape of (1, class_number)
+                class_gt = class_label_ground_truth[0, i - 1].eval()
+                # instance labels have shape of [16, 16, class_nr]
+                instance_gt = instance_labels_gt[:, :, i-1]
+                total_active_patches = sum_active_patches[0, i-1].eval()
+                has_segmentation = has_bbox[0, i-1].eval()
+                img_probab = batch_img_prob[ind].eval()
+                img_label_test = img_label[ind].eval()
+
+                assert img_label_test == class_gt
+
+                print(img_probab)
+                print(batch_predictions[ind, :, :, i-1])
             fig, axs = plt.subplots(2, 2, figsize=(10, 10))
             ## show prediction active patches
             ax1 = plt.subplot(2, 2, 1)
             ax1.set_title('Original image', {'fontsize': 8})
 
-            img_dir = Path(xy_df_row['Dir Path'].values[0]).__str__()
+            img_dir = Path(batch_df['Dir Path'].values[0]).__str__()
             img = plt.imread(img_dir)
             ax1.imshow(img, 'bone')
 
             ## PREDICTION
             ax2 = plt.subplot(2, 2, 2)
-            ax2.set_title('Predictions: ' + xy_df_row.columns.values[i], {'fontsize': 8})
-            im2 = ax2.imshow(prediction[0, :, :, i - 1], 'BuPu')
-            fig.colorbar(im2, ax=ax2, norm=0)
-            ax2.set_xlabel("Image prediction : " + str(img_prob[0, i - 1]))
+            ax2.set_title('Predictions: ' + batch_df.columns.values[i], {'fontsize': 8})
+            im2 = ax2.imshow(batch_predictions[ind, :, :, i - 1], 'BuPu', vmin=0, vmax=1)
+            fig.colorbar(im2,ax=ax2)
+            ax2.set_xlabel("Image prediction : " + str(img_probab))
 
             ## LABELS
             ax3 = plt.subplot(2, 2, 3)
-            ax3.set_title('Labels: ' + xy_df_row.columns.values[i], {'fontsize': 8})
+            # class_gt = class_label_ground_truth.eval()
+            ax3.set_title('Labels: ' + batch_df.columns.values[i], {'fontsize': 8})
             ax3.set_xlabel(
-                "Image label: " + str(class_label_ground) + str(img_label[0, i - 1]) + " Bbox available: " + str(
-                    has_bbox))
-            im3 = ax3.imshow(g)
-            fig.colorbar(im3, ax=ax3, norm=0)
+                "Image label: " + str(class_gt) + str(img_label_test) + " Bbox available: " + str(
+                    has_segmentation))
+            im3 = ax3.imshow(instance_gt, vmin=0, vmax=1)
+            fig.colorbar(im3, ax=ax3)
 
             ## BBOX of prediction and label
             ax4 = plt.subplot(2, 2, 4)
             ax4.set_title('Bounding boxes', {'fontsize': 8})
 
-            y = (np.where(g == g.max()))[0]
-            x = (np.where(g == g.max()))[1]
+            y = (np.where(instance_gt == instance_gt.max()))[0]
+            x = (np.where(instance_gt == instance_gt.max()))[1]
 
             upper_left_x = np.min(x)
-            width = np.amax(x) - upper_left_x + 1
+            # width = np.amax(x) - upper_left_x + 1
             upper_left_y = np.amin(y)
-            height = np.amax(y) - upper_left_y + 1
+            # height = np.amax(y) - upper_left_y + 1
             # todo: to draw using pyplot
             img4_labels = cv2.rectangle(img, (upper_left_x * 64, upper_left_y * 64),
                                         ((np.amax(x) + 1) * 64, (np.amax(y) + 1) * 64), (0, 255, 0), 5)
@@ -182,18 +225,18 @@ def visualize_single_image_all_classes(xy_df_row, img_ind, results_path, predict
                                         ((np.amax(x) + 1) * 64, (np.amax(y) + 1) * 64), (0, 255, 0), 5)
             ax4.imshow(img, 'bone')
             # ax4.imshow(img4_labels, 'GnBu')
-            pred_resized = np.kron(prediction[0, :, :, i - 1], np.ones((64, 64), dtype=float))
+            pred_resized = np.kron(batch_predictions[ind, :, :, i - 1], np.ones((64, 64), dtype=float))
             img4_mask = ax4.imshow(pred_resized, 'BuPu', zorder=0, alpha=0.4)
 
-            fig.text(0, 0, " Image prediction : " + str(img_prob[0, i - 1]) + '\n image label: ' +
-                     str(img_label[0, i - 1]) + '\n IoU: ' + str(iou_score) +
-                     '\n accuracy: ' + str(acc_per_class_sc), horizontalalignment='center',
+            fig.text(0, 0, " Image prediction : " + str(img_probab) + '\n image label: ' +
+                     str(class_gt), horizontalalignment='center',
                      verticalalignment='center', fontsize=9)
 
             plt.tight_layout()
-            fig.savefig(results_path + '/images/' + img_ind + '_' + xy_df_row.columns.values[i] + '.jpg',
+            fig.savefig(results_path + get_image_index_from_pathstring(img_ind[ind]) + '_' + batch_df.columns.values[i][:-4] + '.jpg',
                         bbox_inches='tight')
             plt.close(fig)
+        ind += 1
 
 
 def save_evaluation_results(col_names, col_values,  file_name, out_dir,add_col=None, add_value=None):
