@@ -217,22 +217,53 @@ def get_process_annotated_png(ann_list, path_to_png="C:/Users/s161590/Desktop/Da
     print("Annotated images found: " + str(np.array(png_files).shape))
     return np.array(png_files)
 
+#
+# def split_test_train(X, Y, test_ratio=0.2):
+#     # shuffle split ensuring that same patient ID is only in test or train
+#     train_inds, test_inds = next(GroupShuffleSplit(test_size=test_ratio, random_state=0).split(Y, groups=Y['Patient ID']))
+#     Y = drop_extra_label_columns(Y)
+#
+#     X_train = np.take(X, train_inds, axis=0)
+#     X_test = np.take(X, test_inds, axis=0)
+#     return X_train, X_test, Y.iloc[train_inds], Y.iloc[test_inds]
 
-def split_test_train(X, Y, test_ratio=0.2):
-    # shuffle split ensuring that same patient ID is only in test or train
-    train_inds, test_inds = next(GroupShuffleSplit(test_size=test_ratio, random_state=0).split(Y, groups=Y['Patient ID']))
-    Y = drop_extra_label_columns(Y)
-
-    X_train = np.take(X, train_inds, axis=0)
-    X_test = np.take(X, test_inds, axis=0)
-    return X_train, X_test, Y.iloc[train_inds], Y.iloc[test_inds]
+# shuffle split ensuring that same patient ID is only in test or train
 
 
 def split_test_train_v2(df, test_ratio=0.2, random_state=None):
-    # shuffle split ensuring that same patient ID is only in test or train
-    train_inds, test_inds = next(GroupShuffleSplit(test_size=test_ratio, random_state=random_state).split(df, groups=df['Patient ID']))
+    train_inds, test_inds = next(
+        GroupShuffleSplit(test_size=test_ratio, random_state=random_state).split(df, groups=df['Patient ID']))
 
     return train_inds, test_inds, df.iloc[train_inds], df.iloc[test_inds]
+
+
+def split_test_train_v3(df, splits_nr, test_ratio=0.2, random_state=None):
+    '''
+        :param df:
+        :param splits_nr: the number of fold validation to make
+        :param test_ratio:
+        :param random_state: seed
+        :return: If the splits_nr = 1: then it returns two arrays - of training indices and test indices
+                If splits_nr > 1: the it return two lists. Each element is an arrays with training/test indices
+                for each fold of the data
+    '''
+    # shuffle split ensuring that same patient ID is only in test or train
+    gss = GroupShuffleSplit(n_splits=splits_nr, test_size=test_ratio, random_state=random_state)
+    splits_iter = gss.split(df, groups=df['Patient ID'])
+
+    if splits_nr == 1:
+        train_inds, test_inds = next(splits_iter)
+        return train_inds, test_inds, df.iloc[train_inds], df.iloc[test_inds]
+    else:
+        train_ind_col = []
+        test_ind_col = []
+        for split in splits_iter:
+            train_inds, test_inds = split
+            train_ind_col.append(train_inds)
+            test_ind_col.append(test_inds)
+        print(type(train_ind_col))
+        return train_ind_col, test_ind_col
+        # return train_inds, test_inds, df.iloc[train_inds], df.iloc[test_inds]
 
 
 def split_test_train_stratified(df, test_ration, random_state = None):
@@ -251,8 +282,12 @@ def keep_index_and_diagnose_columns(Y):
         'Nodule_loc', 'Pleural_Thickening_loc', 'Pneumonia_loc', 'Pneumothorax_loc']]
 
 
-def keep_index_and_1diagnose_columns(Y):
-    return Y[['Dir Path', 'Cardiomegaly_loc']]
+def keep_index_and_1diagnose_columns(Y, y_column_name):
+    return Y[['Dir Path', y_column_name]]
+
+
+def get_rows_from_indices(df, train_inds, test_inds):
+    return df.iloc[train_inds], df.iloc[test_inds]
 
 
 # Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate
@@ -280,12 +315,63 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
         visualize_population(df_class_test, 'test_class_group', res_path, FINDINGS)
         visualize_population(pd.concat([df_bbox_test, df_class_test]), 'test_group', res_path, FINDINGS)
 
-    train_set, val_set = keep_index_and_1diagnose_columns(df_train), keep_index_and_1diagnose_columns(df_val)
-    bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test), keep_index_and_1diagnose_columns(df_class_test)
-    bbox_train = keep_index_and_1diagnose_columns(df_bbox_train)
+    train_set, val_set = keep_index_and_1diagnose_columns(df_train,  'Cardiomegaly_loc'),\
+                         keep_index_and_1diagnose_columns(df_val,  'Cardiomegaly_loc')
+    bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test,  'Cardiomegaly_loc'),\
+                            keep_index_and_1diagnose_columns(df_class_test,  'Cardiomegaly_loc')
+    bbox_train = keep_index_and_1diagnose_columns(df_bbox_train,  'Cardiomegaly_loc')
 
     return train_idx, train_set, val_set, bbox_test, class_test, bbox_train
 
 
+def construct_train_test_CV(df_class, class_train_col, class_test_col, df_bbox, bbox_train_col,
+                                          bbox_test_col, splits_nr, random_state, diagnose_col):
+    print("classification")
+    print(class_train_col[splits_nr])
+    print(class_test_col[splits_nr])
+    df_class_train, df_class_test = get_rows_from_indices(df_class, class_train_col[splits_nr],
+                                                          class_test_col[splits_nr])
+    df_bbox_train, df_bbox_test = get_rows_from_indices(df_bbox, bbox_train_col[splits_nr], bbox_test_col[splits_nr])
+    print("bbox")
+    print(bbox_train_col[splits_nr])
+    print(bbox_test_col[splits_nr])
+
+
+    train_clas_idx, _, df_class_train, df_class_val = split_test_train_v3(df_class_train, 1, test_ratio=0.2,
+                                                                          random_state=random_state)
+
+    # train_idx = np.concatenate((train_clas_idx, train_bbox_idx), axis=None)
+    df_train = pd.concat([df_class_train, df_bbox_train])
+    df_val = df_class_val
+    df_test = pd.concat([df_class_test, df_bbox_test])
+
+
+    train_set, val_set = keep_index_and_1diagnose_columns(df_train, diagnose_col), \
+                         keep_index_and_1diagnose_columns(df_val, diagnose_col)
+    test_set = keep_index_and_1diagnose_columns(df_test, diagnose_col)
+
+    # bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test, diagnose_col),\
+    #                         keep_index_and_1diagnose_columns(df_class_test, diagnose_col)
+    # bbox_train = keep_index_and_1diagnose_columns(df_bbox_train, diagnose_col)
+
+    return train_set, val_set, test_set #bbox_test, class_test, bbox_train
+
+
+
+
+# Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate
+#  on the other 20% annotated images in each fold.
+def get_train_test_CV(Y, splits_nr, split, random_state):
+    classification, bbox = separate_localization_classification_labels(Y)
+
+    class_train_col, class_test_col = split_test_train_v3(classification, splits_nr=splits_nr, test_ratio=0.5,
+                                                          random_state=random_state)
+    bbox_train_col, bbox_test_col = split_test_train_v3(bbox, splits_nr, test_ratio=0.2,
+                                                        random_state=random_state)
+
+    train_set, val_set, test_set = construct_train_test_CV(classification, class_train_col, class_test_col, bbox,
+                                                           bbox_train_col, bbox_test_col,
+                                                           split, random_state, 'Cardiomegaly_loc')
+    return train_set, val_set, test_set
 
 
