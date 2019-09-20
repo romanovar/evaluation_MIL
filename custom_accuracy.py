@@ -260,9 +260,6 @@ def combine_predictions_each_batch(current_batch, prev_batches_arr, batch_ind):
 #####################################################################
 
 def keras_binary_accuracy(y_true, y_pred):
-    print("high level")
-    print(y_true.shape)
-    print(y_pred.shape)
     return compute_accuracy_keras(y_pred, y_true, P=16, iou_threshold=0.1, class_nr=1)
 
 
