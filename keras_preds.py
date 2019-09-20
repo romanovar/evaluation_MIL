@@ -396,7 +396,8 @@ def combine_npy_auc_1class(data_set_name, image_pred_method, res_path, nr_files)
         coll_image_labels = combine_predictions_each_batch(img_labels, coll_image_labels, ind)
 
     auc_all_classes_v1 = compute_auc_1class(coll_image_labels, coll_image_preds)
-    keras_utils.save_evaluation_results([ld.FINDINGS[1]], auc_all_classes_v1, 'auc_prob_' + data_set_name + '_v1.csv',
+    keras_utils.save_evaluation_results([ld.FINDINGS[1]], auc_all_classes_v1, 'auc_prob_' + data_set_name + '_'
+                                        + image_pred_method+ '.csv',
                                         res_path)
 
 
