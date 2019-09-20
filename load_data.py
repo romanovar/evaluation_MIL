@@ -270,7 +270,6 @@ def split_test_train_stratified(df, test_ration, random_state = None):
     sss = StratifiedShuffleSplit(n_splits=5, test_size=0.5, random_state=0)
 
 
-
 def separate_localization_classification_labels(Y):
     return Y.loc[Y['Bbox']==0], Y.loc[Y['Bbox']==1]
 
@@ -292,7 +291,7 @@ def get_rows_from_indices(df, train_inds, test_inds):
 
 # Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate
 #  on the other 20% annotated images in each fold.
-def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
+def get_train_test(Y, random_state=None, do_stats=False, res_path =None, label_col=None):
     classification, bbox = separate_localization_classification_labels(Y)
 
     _, _, df_class_train, df_class_test = split_test_train_v2(classification, test_ratio=0.5, random_state=random_state)
@@ -315,11 +314,12 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None):
         visualize_population(df_class_test, 'test_class_group', res_path, FINDINGS)
         visualize_population(pd.concat([df_bbox_test, df_class_test]), 'test_group', res_path, FINDINGS)
 
-    train_set, val_set = keep_index_and_1diagnose_columns(df_train,  'Cardiomegaly_loc'),\
-                         keep_index_and_1diagnose_columns(df_val,  'Cardiomegaly_loc')
-    bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test,  'Cardiomegaly_loc'),\
-                            keep_index_and_1diagnose_columns(df_class_test,  'Cardiomegaly_loc')
-    bbox_train = keep_index_and_1diagnose_columns(df_bbox_train,  'Cardiomegaly_loc')
+    if label_col is not None:
+        train_set, val_set = keep_index_and_1diagnose_columns(df_train, label_col),\
+                             keep_index_and_1diagnose_columns(df_val,  label_col)
+        bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test,  label_col),\
+                                keep_index_and_1diagnose_columns(df_class_test,  label_col)
+        bbox_train = keep_index_and_1diagnose_columns(df_bbox_train, label_col)
 
     return train_idx, train_set, val_set, bbox_test, class_test, bbox_train
 
