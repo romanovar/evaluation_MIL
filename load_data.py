@@ -130,11 +130,14 @@ def couple_location_labels(Y_loc_dir, Y_class, P, out_dir):
 def create_label_matrix_classification(row, label, P):
     if row[label]==1:
         im_q = np.ones((P, P), np.float)
-        return im_q
+        # str(test_str).replace('\n', '')
+        return str(im_q).replace('\n', '')
+        # return im_q
+
     else:
         im_q = np.zeros((P, P), np.float)
-        return im_q
-
+        # return im_q
+        return str(im_q).replace('\n', '')
 
 def make_label_matrix_localization_v2(P, x_min, y_min, x_max, y_max):
     im_q = np.zeros((P, P), np.float)
@@ -163,7 +166,9 @@ def integrate_annotations(row, Y_loc, diagnosis, P):
             y_mat = all_rows.apply(lambda x: create_label_matrix_localization(x, row_classif_df, diagnosis, P), axis=1)
 
             result_image_class.append(y_mat.dropna().values[0])
-            return [y_mat.dropna().values[0], 1]
+            # return [np.array2string(y_mat.dropna().values[0], separator=' '), 1]
+            return [str(y_mat.dropna().values[0]).replace('\n', ''), 1]
+
         else:
             y_mat = create_label_matrix_classification(row, diagnosis, P)
             result_image_class.append(y_mat)

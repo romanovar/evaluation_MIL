@@ -77,7 +77,13 @@ class BatchGenerator(Sequence):
                         g = process_loaded_labels(train_instance[i])
                         train_instances_classes.append(g)
                     else:
-                        train_instances_classes.append(train_instance[i])
+                        print(train_instance[i])
+                        print(type(train_instance[i]))
+                        # labels = np.fromstring(train_instance[i], dtype=int, sep=' ')
+                        # train_instances_classes.append(train_instance[i])
+                        labels = process_loaded_labels(train_instance[i])
+
+                        train_instances_classes.append(labels)
                 y_batch[instance_count] = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
             else:
                 y_batch[instance_count]= None

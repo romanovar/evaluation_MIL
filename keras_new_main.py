@@ -70,7 +70,7 @@ print(xray_df.shape)
 print("Splitting data ...")
 init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(xray_df,
                                                                                                       random_state=1,
-                                                                                                      do_stats=True,
+                                                                                                      do_stats=False,
                                                                                                       res_path = generated_images_path,
                                                                                                       label_col = 'Cardiomegaly_loc')
 df_train=df_train_init
