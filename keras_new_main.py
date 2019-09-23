@@ -72,7 +72,7 @@ init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test, df_bbox_trai
                                                                                                       random_state=1,
                                                                                                       do_stats=False,
                                                                                                       res_path = generated_images_path,
-                                                                                                      label_col = 'Cardiomegaly_loc')
+                                                                                                      label_col = 'Cardiomegaly')
 df_train=df_train_init
 print('Training set: '+ str(df_train_init.shape))
 print('Validation set: '+ str(df_val.shape))

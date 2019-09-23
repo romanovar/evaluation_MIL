@@ -123,7 +123,7 @@ def couple_location_labels(Y_loc_dir, Y_class, P, out_dir):
     for diagnosis in FINDINGS:
         Y_class[[diagnosis + '_loc','Bbox']]= Y_class.apply(lambda x: pd.Series(integrate_annotations(x, Y_loc, diagnosis, P)), axis=1)
 
-    Y_class.to_csv(out_dir+'/processed_Y.csv')
+    Y_class.to_csv(out_dir+'/processed_new_Y.csv')
     return Y_class
 
 
@@ -275,9 +275,11 @@ def split_test_train_stratified(df, test_ration, random_state = None):
     sss = StratifiedShuffleSplit(n_splits=5, test_size=0.5, random_state=0)
 
 
-def separate_localization_classification_labels(Y):
-    return Y.loc[Y['Bbox']==0], Y.loc[Y['Bbox']==1]
-
+def separate_localization_classification_labels(Y, single_class=None):
+    if single_class is None:
+        return Y.loc[Y['Bbox']==0], Y.loc[Y['Bbox']==1]
+    else:
+        return Y.loc[Y[single_class+'_bbox']==0], Y.loc[Y[single_class+'_bbox']==1]
 
 # THIS METHOD IS USED FOR KERAS TESTING
 def keep_index_and_diagnose_columns(Y):
@@ -319,27 +321,61 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None, label_c
         visualize_population(df_class_test, 'test_class_group', res_path, FINDINGS)
         visualize_population(pd.concat([df_bbox_test, df_class_test]), 'test_group', res_path, FINDINGS)
 
+    label_patches = label_col + '_loc'
     if label_col is not None:
-        train_set, val_set = keep_index_and_1diagnose_columns(df_train, label_col),\
-                             keep_index_and_1diagnose_columns(df_val,  label_col)
-        bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test,  label_col),\
-                                keep_index_and_1diagnose_columns(df_class_test,  label_col)
-        bbox_train = keep_index_and_1diagnose_columns(df_bbox_train, label_col)
+        train_set, val_set = keep_index_and_1diagnose_columns(df_train, label_patches),\
+                             keep_index_and_1diagnose_columns(df_val,  label_patches)
+        bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test,  label_patches),\
+                                keep_index_and_1diagnose_columns(df_class_test,  label_patches)
+        bbox_train = keep_index_and_1diagnose_columns(df_bbox_train, label_patches)
 
     return train_idx, train_set, val_set, bbox_test, class_test, bbox_train
 
 
+def get_train_test_v2(Y, random_state=None, do_stats=False, res_path =None, label_col=None):
+    classification, bbox = separate_localization_classification_labels(Y, label_col)
+
+    _, _, df_class_train, df_class_test = split_test_train_v2(classification, test_ratio=0.5, random_state=random_state)
+    train_bbox_idx, _, df_bbox_train, df_bbox_test = split_test_train_v2(bbox, test_ratio=0.2, random_state=random_state)
+    print("BBO TRAIN")
+    print(df_bbox_train.shape)
+    print(df_bbox_test.shape)
+
+    train_clas_idx, _, df_class_train, df_class_val = split_test_train_v2(df_class_train, test_ratio=0.2, random_state=random_state)
+
+    train_idx = np.concatenate((train_clas_idx, train_bbox_idx), axis=None)
+    df_train = pd.concat([df_class_train, df_bbox_train])
+    df_val = df_class_val
+
+    if do_stats and res_path is not None:
+        visualize_population(Y, 'whole_df_group', res_path, FINDINGS)
+        visualize_population(df_train, 'train_group', res_path, FINDINGS)
+        visualize_population(df_val, 'validation_group', res_path, FINDINGS)
+        visualize_population(df_bbox_test, 'test_bbox_group', res_path, FINDINGS)
+        visualize_population(df_class_test, 'test_class_group', res_path, FINDINGS)
+        visualize_population(pd.concat([df_bbox_test, df_class_test]), 'test_group', res_path, FINDINGS)
+
+    label_patches = label_col + '_loc'
+    if label_col is not None:
+        train_set, val_set = keep_index_and_1diagnose_columns(df_train, label_patches),\
+                             keep_index_and_1diagnose_columns(df_val,  label_patches)
+        bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test,  label_patches),\
+                                keep_index_and_1diagnose_columns(df_class_test,  label_patches)
+        bbox_train = keep_index_and_1diagnose_columns(df_bbox_train, label_patches)
+
+    return train_idx, train_set, val_set, bbox_test, class_test, bbox_train
+
 def construct_train_test_CV(df_class, class_train_col, class_test_col, df_bbox, bbox_train_col,
                                           bbox_test_col, splits_nr, random_state, diagnose_col):
-    print("classification")
-    print(class_train_col[splits_nr])
-    print(class_test_col[splits_nr])
+    # print("classification")
+    # print(class_train_col[splits_nr])
+    # print(class_test_col[splits_nr])
     df_class_train, df_class_test = get_rows_from_indices(df_class, class_train_col[splits_nr],
                                                           class_test_col[splits_nr])
     df_bbox_train, df_bbox_test = get_rows_from_indices(df_bbox, bbox_train_col[splits_nr], bbox_test_col[splits_nr])
-    print("bbox")
-    print(bbox_train_col[splits_nr])
-    print(bbox_test_col[splits_nr])
+    # print("bbox")
+    # print(bbox_train_col[splits_nr])
+    # print(bbox_test_col[splits_nr])
 
 
     train_clas_idx, _, df_class_train, df_class_val = split_test_train_v3(df_class_train, 1, test_ratio=0.2,
@@ -366,8 +402,8 @@ def construct_train_test_CV(df_class, class_train_col, class_test_col, df_bbox, 
 
 # Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate
 #  on the other 20% annotated images in each fold.
-def get_train_test_CV(Y, splits_nr, split, random_state):
-    classification, bbox = separate_localization_classification_labels(Y)
+def get_train_test_CV(Y, splits_nr, split, random_state,  label_col):
+    classification, bbox = separate_localization_classification_labels(Y,  label_col)
 
     class_train_col, class_test_col = split_test_train_v3(classification, splits_nr=splits_nr, test_ratio=0.5,
                                                           random_state=random_state)
@@ -376,7 +412,7 @@ def get_train_test_CV(Y, splits_nr, split, random_state):
 
     train_set, val_set, test_set = construct_train_test_CV(classification, class_train_col, class_test_col, bbox,
                                                            bbox_train_col, bbox_test_col,
-                                                           split, random_state, 'Cardiomegaly_loc')
+                                                           split, random_state, label_col+'_loc')
     return train_set, val_set, test_set
 
 

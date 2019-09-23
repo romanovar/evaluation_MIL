@@ -13,7 +13,7 @@ import tensorflow as tf
 
 from keras_preds import predict_patch_and_save_results
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 def load_config(path):
@@ -41,7 +41,7 @@ test_single_image = config['test_single_image']
 trained_models_path = config['trained_models_path']
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 1
+BATCH_SIZE = 10
 BATCH_SIZE_TEST = 10
 BOX_SIZE = 16
 
@@ -55,15 +55,16 @@ else:
     xray_df = ld.couple_location_labels(localization_labels_path, processed_df, ld.PATCH_SIZE, results_path)
 print(xray_df.shape)
 print("Splitting data ...")
-# init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(xray_df,
-#                                                                                                       random_state=1234,
-#                                                                                                       do_stats=True,
-#                                                                                                       res_path = generated_images_path)
+# init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test_v2(xray_df,
+#                                                                                                          random_state=1234,
+#                                                                                                          do_stats=False,
+#                                                                                                          res_path = generated_images_path,
+#                                                                                                          label_col='Cardiomegaly')
 
 
 CV_SPLITS = 5
 for split in range(0, CV_SPLITS):
-    df_train, df_val, df_test = ld.get_train_test_CV(xray_df, CV_SPLITS, split, random_state=1)
+    df_train, df_val, df_test = ld.get_train_test_CV(xray_df, CV_SPLITS, split, random_state=1,  label_col='Cardiomegaly')
 
     print('Training set: ' + str(df_train.shape))
     print('Validation set: ' + str(df_val.shape))
@@ -97,20 +98,20 @@ for split in range(0, CV_SPLITS):
     #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
 
 
-    early_stop = EarlyStopping(monitor='val_loss',
-                               min_delta=0.001,
-                               patience=15,
-                               mode='min',
-                               verbose=1)
-
-    checkpoint = ModelCheckpoint(
-        filepath=trained_models_path+ 'best_model_single_patient_reg.h5',
-        monitor='val_loss',
-        verbose=2,
-        save_best_only=True,
-        mode='min',
-        period=1
-    )
+    # early_stop = EarlyStopping(monitor='val_loss',
+    #                            min_delta=0.001,
+    #                            patience=10,
+    #                            mode='min',
+    #                            verbose=1)
+    #
+    # checkpoint = ModelCheckpoint(
+    #     filepath=trained_models_path+ 'best_model_single_patient_reg.h5',
+    #     monitor='val_loss',
+    #     verbose=2,
+    #     save_best_only=True,
+    #     mode='min',
+    #     period=1
+    # )
 
     filepath = trained_models_path + "CV_patient_split_"+str(split)+"_-{epoch:02d}-{val_loss:.2f}.hdf5"
     checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
@@ -123,11 +124,11 @@ for split in range(0, CV_SPLITS):
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=15,
+        epochs=10,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
-        callbacks=[checkpoint, checkpoint_on_epoch_end, early_stop, lrate]
+        callbacks=[checkpoint_on_epoch_end, lrate]
     )
 
     print("history")
