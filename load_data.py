@@ -258,15 +258,20 @@ def split_test_train_v3(df, splits_nr, test_ratio=0.2, random_state=None):
 
     if splits_nr == 1:
         train_inds, test_inds = next(splits_iter)
+        print("train inds")
+        print(train_inds)
+        print("test inds")
+        print(test_inds)
         return train_inds, test_inds, df.iloc[train_inds], df.iloc[test_inds]
     else:
         train_ind_col = []
         test_ind_col = []
         for split in splits_iter:
+            print((split))
             train_inds, test_inds = split
             train_ind_col.append(train_inds)
             test_ind_col.append(test_inds)
-        print(type(train_ind_col))
+        # print(type(train_ind_col))
         return train_ind_col, test_ind_col
         # return train_inds, test_inds, df.iloc[train_inds], df.iloc[test_inds]
 
@@ -365,27 +370,71 @@ def get_train_test_v2(Y, random_state=None, do_stats=False, res_path =None, labe
 
     return train_idx, train_set, val_set, bbox_test, class_test, bbox_train
 
-def construct_train_test_CV(df_class, class_train_col, class_test_col, df_bbox, bbox_train_col,
-                                          bbox_test_col, splits_nr, random_state, diagnose_col):
+
+def calculate_observations_to_keep(train_clas_idx, bbox_train_size, ratio_keep):
+    '''
+    :param train_clas_idx:  set of all train indices from which we will chose a ratio to keep
+    :param bbox_train_size: bbox observations for training, they are separately from train_clas_idx
+    :param ratio_keep: a ration between 0 and 1
+    :return: computing total number of observations such we know how many observations to keep,
+    and how many from CLASSIFICATION images we can keep, as we DO NOT drop any images with segmentation
+    '''
+    # print("class train indices are: " + str(len(train_clas_idx)))
+    # print("Bbox train indices are: " + str(bbox_train_size))
+
+    total_train_obs = len(train_clas_idx) + bbox_train_size
+    # print("total train opbservations" + str(total_train_obs))
+
+    # TOTAL OBSERVATIONS OF THE NEW TRAIN SET
+    obs_to_keep = np.ceil(ratio_keep * total_train_obs)
+    # print("observations to keep" + str(obs_to_keep))
+
+    # TOTAL observations which we need to draw from the classification train set
+    obs_from_class_train = obs_to_keep - bbox_train_size
+    # print("observation to keep in "+ str(obs_from_class_train))
+    return obs_from_class_train
+
+
+def construct_train_test_CV(df_class, class_train_col, class_test_col, df_bbox, bbox_train_col, bbox_test_col,
+                            split, random_state, diagnose_col, train_subset_ratio=None):
     # print("classification")
     # print(class_train_col[splits_nr])
     # print(class_test_col[splits_nr])
-    df_class_train, df_class_test = get_rows_from_indices(df_class, class_train_col[splits_nr],
-                                                          class_test_col[splits_nr])
-    df_bbox_train, df_bbox_test = get_rows_from_indices(df_bbox, bbox_train_col[splits_nr], bbox_test_col[splits_nr])
+    df_class_train, df_class_test = get_rows_from_indices(df_class, class_train_col[split],
+                                                          class_test_col[split])
+    df_bbox_train, df_bbox_test = get_rows_from_indices(df_bbox, bbox_train_col[split], bbox_test_col[split])
     # print("bbox")
     # print(bbox_train_col[splits_nr])
     # print(bbox_test_col[splits_nr])
-
-
-    train_clas_idx, _, df_class_train, df_class_val = split_test_train_v3(df_class_train, 1, test_ratio=0.2,
+    print("BBO TRAIN")
+    print(df_bbox_train.shape)
+    print(df_bbox_test.shape)
+    #     TODO: RENAMED DF_CLASS+TRAIN TO OLD_DF_CLASS_TRAIN
+    train_clas_idx, _, complete_df_class_train, df_class_val = split_test_train_v3(df_class_train, 1, test_ratio=0.2,
                                                                           random_state=random_state)
 
-    # train_idx = np.concatenate((train_clas_idx, train_bbox_idx), axis=None)
-    df_train = pd.concat([df_class_train, df_bbox_train])
+    if train_subset_ratio is not None:
+        obs_to_keep = calculate_observations_to_keep(train_clas_idx, bbox_train_col[split].size, train_subset_ratio)
+        # assert obs_to_keep > 0, "No observations can be dropped"
+        if obs_to_keep > 0:
+            class_train_ind_keep = np.random.choice(train_clas_idx, int(obs_to_keep), replace=False)
+        else:
+            class_train_ind_keep = train_clas_idx
+
+        new_df_class_train = df_class_train.iloc[class_train_ind_keep]
+        # print("old train df: "+str(complete_df_class_train.shape))
+        # print("new train df "+str(new_df_class_train.shape))
+
+        # train_idx = np.concatenate((train_clas_idx, train_bbox_idx), axis=None)
+        print("Original training set size: "+ str(complete_df_class_train.shape[0]+df_bbox_train.shape[0]))
+        df_train = pd.concat([new_df_class_train, df_bbox_train])
+        print("New training set size: "+ str(df_train.shape[0]))
+    else:
+        df_train = pd.concat([complete_df_class_train, df_bbox_train])
+
+
     df_val = df_class_val
     df_test = pd.concat([df_class_test, df_bbox_test])
-
 
     train_set, val_set = keep_index_and_1diagnose_columns(df_train, diagnose_col), \
                          keep_index_and_1diagnose_columns(df_val, diagnose_col)
@@ -398,11 +447,20 @@ def construct_train_test_CV(df_class, class_train_col, class_test_col, df_bbox, 
     return train_set, val_set, test_set #bbox_test, class_test, bbox_train
 
 
-
-
 # Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate
 #  on the other 20% annotated images in each fold.
-def get_train_test_CV(Y, splits_nr, split, random_state,  label_col):
+def get_train_test_CV(Y, splits_nr, split, random_state,  label_col, ratio_to_keep=None):
+    '''
+    Returns a train-test separation in cross validation settings, for a specific split #
+    If ratio_to_keep is specified, then (1-ratio) observations from the TRAIN set are dropped
+    :param Y:
+    :param splits_nr:
+    :param split:
+    :param random_state:
+    :param label_col:
+    :param ratio_to_keep: If None
+    :return:
+    '''
     classification, bbox = separate_localization_classification_labels(Y,  label_col)
 
     class_train_col, class_test_col = split_test_train_v3(classification, splits_nr=splits_nr, test_ratio=0.5,
@@ -410,9 +468,11 @@ def get_train_test_CV(Y, splits_nr, split, random_state,  label_col):
     bbox_train_col, bbox_test_col = split_test_train_v3(bbox, splits_nr, test_ratio=0.2,
                                                         random_state=random_state)
 
+
     train_set, val_set, test_set = construct_train_test_CV(classification, class_train_col, class_test_col, bbox,
                                                            bbox_train_col, bbox_test_col,
-                                                           split, random_state, label_col+'_loc')
+                                                           split, random_state, label_col+'_loc',
+                                                           train_subset_ratio=ratio_to_keep)
     return train_set, val_set, test_set
 
 
