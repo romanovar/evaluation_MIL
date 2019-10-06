@@ -1,8 +1,4 @@
-from pathlib import Path
-
 import numpy as np
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.engine.saving import load_model
 import load_data as ld
 
 from keras.callbacks import LearningRateScheduler
@@ -12,10 +8,6 @@ import argparse
 import keras_utils
 import keras_model
 import os
-import tensorflow as tf
-
-from custom_accuracy import keras_accuracy, accuracy_asloss, accuracy_asproduction, keras_binary_accuracy
-from custom_loss import keras_loss
 from keras_preds import predict_patch_and_save_results
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -64,6 +56,8 @@ print("Splitting data ...")
 
 class_name = "Cardiomegaly"
 overlap_ratio = 0.35
+
+## USING CV SPLIT TO USE A SPECIFIC TRAIN AND TEST DATA
 
 CV_SPLITS = 5
 for split in range(0, CV_SPLITS):
@@ -156,5 +150,5 @@ for split in range(0, CV_SPLITS):
         #                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 
         ########################################### TESTING SET########################################################
-        predict_patch_and_save_results(model, 'test_set_' + str(split), df_test, skip_processing,
-                                       BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+        predict_patch_and_save_results(model, 'subset_test_set_CV' + str(split)+'_'+str(overlap_ratio), df_test,
+                                       skip_processing, BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)

@@ -304,11 +304,11 @@ def get_rows_from_indices(df, train_inds, test_inds):
 # Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate
 #  on the other 20% annotated images in each fold.
 def get_train_test(Y, random_state=None, do_stats=False, res_path =None, label_col=None):
-    classification, bbox = separate_localization_classification_labels(Y)
+    classification, bbox = separate_localization_classification_labels(Y, label_col)
 
     _, _, df_class_train, df_class_test = split_test_train_v2(classification, test_ratio=0.5, random_state=random_state)
     train_bbox_idx, _, df_bbox_train, df_bbox_test = split_test_train_v2(bbox, test_ratio=0.2, random_state=random_state)
-    print("BBO TRAIN")
+    print("BBO TRAIN train test")
     print(df_bbox_train.shape)
     print(df_bbox_test.shape)
 

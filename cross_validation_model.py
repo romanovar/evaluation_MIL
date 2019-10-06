@@ -67,11 +67,11 @@ print("Splitting data ...")
 #                                                                                                          label_col='Cardiomegaly')
 
 
-## USING CV SPLIT TO USE A SPECIFIC TRAIN AND TEST DATA
+class_name = 'Cardiomegaly'
 CV_SPLITS = 5
 for split in range(0, CV_SPLITS):
 
-    df_train, df_val, df_test = ld.get_train_test_CV(xray_df, CV_SPLITS, split, random_state=1,  label_col='Cardiomegaly')
+    df_train, df_val, df_test = ld.get_train_test_CV(xray_df, CV_SPLITS, split, random_state=1,  label_col=class_name)
 
     print('Training set: ' + str(df_train.shape))
     print('Validation set: ' + str(df_val.shape))
@@ -157,15 +157,15 @@ for split in range(0, CV_SPLITS):
 
         ############################################    PREDICTIONS      #############################################
         ########################################### TRAINING SET########################################################
-        predict_patch_and_save_results(model, 'train_set_CV'+str(split), df_train, skip_processing,
-                                       BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
-
-        # ########################################### VALIDATION SET######################################################
-        predict_patch_and_save_results(model, 'val_set_CV'+str(split), df_val, skip_processing,
-                                       BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+        # predict_patch_and_save_results(model, 'train_set_CV'+str(split), df_train, skip_processing,
+        #                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+        #
+        ########################################### VALIDATION SET######################################################
+        # predict_patch_and_save_results(model, 'val_set_CV'+str(split), df_val, skip_processing,
+        #                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 
         ########################################### TESTING SET########################################################
-        predict_patch_and_save_results(model, 'test_set_CV'+str(split), df_test, skip_processing,
+        predict_patch_and_save_results(model, 'test_set_'+ class_name+'_CV'+str(split), df_test, skip_processing,
                                        BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
     else:
         files_found=0
@@ -180,6 +180,6 @@ for split in range(0, CV_SPLITS):
                                 'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
         model = keras_model.compile_model_accuracy(model)
 
-        predict_patch_and_save_results(model, "test_set", df_test, skip_processing,
+        predict_patch_and_save_results(model, "test_set_CV"+(str(split)), df_test, skip_processing,
                                        BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 
