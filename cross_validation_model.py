@@ -60,18 +60,13 @@ else:
     xray_df = ld.couple_location_labels(localization_labels_path, processed_df, ld.PATCH_SIZE, results_path)
 print(xray_df.shape)
 print("Splitting data ...")
-# init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test_v2(xray_df,
-#                                                                                                          random_state=1234,
-#                                                                                                          do_stats=False,
-#                                                                                                          res_path = generated_images_path,
-#                                                                                                          label_col='Cardiomegaly')
 
 
 class_name = 'Cardiomegaly'
 CV_SPLITS = 5
 for split in range(0, CV_SPLITS):
 
-    df_train, df_val, df_test = ld.get_train_test_CV(xray_df, CV_SPLITS, split, random_state=1,  label_col=class_name)
+    df_train, df_val, df_test, _,_, _ = ld.get_train_test_CV(xray_df, CV_SPLITS, split, random_seed=1,  label_col=class_name)
 
     print('Training set: ' + str(df_train.shape))
     print('Validation set: ' + str(df_val.shape))
@@ -98,28 +93,12 @@ for split in range(0, CV_SPLITS):
             processed_y=skip_processing)
 
         model = keras_model.build_model()
-        # model.summary()
 
         model = keras_model.compile_model_accuracy(model)
         # model = keras_model.compile_model_regularization(model)
         # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
         #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
 
-
-        # early_stop = EarlyStopping(monitor='val_loss',
-        #                            min_delta=0.001,
-        #                            patience=10,
-        #                            mode='min',
-        #                            verbose=1)
-        #
-        # checkpoint = ModelCheckpoint(
-        #     filepath=trained_models_path+ 'best_model_single_patient_reg.h5',
-        #     monitor='val_loss',
-        #     verbose=2,
-        #     save_best_only=True,
-        #     mode='min',
-        #     period=1
-        # )
 
         filepath = trained_models_path + "CV_patient_split_"+str(split)+"_-{epoch:02d}-{val_loss:.2f}.hdf5"
         checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')

@@ -4,7 +4,6 @@ import argparse
 import tensorflow as tf
 from keras.engine.saving import load_model
 import keras_generators as gen
-
 import keras_model
 import keras_utils
 import os
@@ -13,6 +12,7 @@ from custom_accuracy import keras_accuracy, compute_image_probability_production
     keras_binary_accuracy, accuracy_asloss, accuracy_asproduction
 from custom_loss import keras_loss
 import numpy as np
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 
@@ -39,6 +39,9 @@ prediction_results_path = config['prediction_results_path']
 train_mode = config['train_mode']
 test_single_image = config['test_single_image']
 trained_models_path = config['trained_models_path']
+
+
+################## LOAD & COMPILE SAVED MODEL AND MAKE PREDICTIONS ##########################
 
 BATCH_SIZE_TEST = 2
 IMAGE_SIZE = 512
@@ -68,60 +71,59 @@ print('Classification testing set: '+ str(df_class_test.shape))
 # df_train = keras_utils.create_overlap_set_bootstrap(df_train_init, 0.9, seed=2)
 init_train_idx = df_train['Dir Path'].index.values
 
-#LOAD & COMPILE SAVED MODEL
+
 model = load_model(trained_models_path+'best_model_single_patient_inbatch-weight8.h5', custom_objects={
         'keras_loss': keras_loss, 'keras_accuracy': keras_accuracy, 'keras_binary_accuracy': keras_binary_accuracy,
         'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
 model = keras_model.compile_model(model)
 
-if not test_single_image:
 
-    test_set = pd.concat([df_bbox_test, df_class_test])
-    # test_set = pd.concat([df_train])
+test_set = pd.concat([df_bbox_test, df_class_test])
+# test_set = pd.concat([df_train])
 
-    test_generator = gen.BatchGenerator(
-        instances=test_set.values,
-        batch_size=BATCH_SIZE_TEST,
-        net_h=IMAGE_SIZE,
-        net_w=IMAGE_SIZE,
-        box_size=BOX_SIZE,
-        norm=keras_utils.normalize,
-        processed_y=skip_processing,
-        shuffle=False)
+test_generator = gen.BatchGenerator(
+    instances=test_set.values,
+    batch_size=BATCH_SIZE_TEST,
+    net_h=IMAGE_SIZE,
+    net_w=IMAGE_SIZE,
+    box_size=BOX_SIZE,
+    norm=keras_utils.normalize,
+    processed_y=skip_processing,
+    shuffle=False)
 
-    predictions = model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
-    predictions_tf = tf.cast(predictions, tf.float32)
-    predictions_np = predictions.astype(float)
-    np.save(results_path+'/predictions_XY', predictions)
+predictions = model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
+predictions_tf = tf.cast(predictions, tf.float32)
+predictions_np = predictions.astype(float)
+np.save(results_path+'/predictions_XY', predictions)
 
-    print("PREDICTION SHAPE")
-    print(len(predictions))
-    #res_df = create_empty_dataset_results(len(predictions))
+print("PREDICTION SHAPE")
+print(len(predictions))
+#res_df = create_empty_dataset_results(len(predictions))
 
 
-    patch_labels_all_batches = []
-    img_ind_all_batches = []
-    for batch_ind in range(test_generator.__len__()):
-        print("new batch")
-        print(batch_ind)
-        x, y = test_generator.__getitem__(batch_ind)
-        y = tf.cast(y, tf.float32)
-        res_img_ind = test_generator.get_batch_image_indices(batch_ind)
+patch_labels_all_batches = []
+img_ind_all_batches = []
+for batch_ind in range(test_generator.__len__()):
+    print("new batch")
+    print(batch_ind)
+    x, y = test_generator.__getitem__(batch_ind)
+    y = tf.cast(y, tf.float32)
+    res_img_ind = test_generator.get_batch_image_indices(batch_ind)
 
-        l_bound = batch_ind * BATCH_SIZE_TEST
-        r_bound = (batch_ind + 1) * BATCH_SIZE_TEST
-        img_labels_v1, img_prob_preds_v1 = compute_image_probability_asloss(predictions_tf[l_bound:r_bound, :, :, :], y,
-                                                                            P=16, class_nr=1)
-        img_labels_v2, img_prob_preds_v2 = compute_image_probability_production(predictions_tf[l_bound:r_bound, :, :, :],
-                                                                                y, P=16, class_nr=1)
-        # img_labels_v3, img_prob_preds_v3 = compute_image_probability_production_v2(predictions_tf[l_bound:r_bound, :, :, :], y, P=16)
+    l_bound = batch_ind * BATCH_SIZE_TEST
+    r_bound = (batch_ind + 1) * BATCH_SIZE_TEST
+    img_labels_v1, img_prob_preds_v1 = compute_image_probability_asloss(predictions_tf[l_bound:r_bound, :, :, :], y,
+                                                                        P=16, class_nr=1)
+    img_labels_v2, img_prob_preds_v2 = compute_image_probability_production(predictions_tf[l_bound:r_bound, :, :, :],
+                                                                            y, P=16, class_nr=1)
+    # img_labels_v3, img_prob_preds_v3 = compute_image_probability_production_v2(predictions_tf[l_bound:r_bound, :, :, :], y, P=16)
 
-        col_values = []
-        ##### NEW
-        test_generator[batch_ind]
-        keras_utils.visualize_single_image_all_classes(test_set.iloc[l_bound:r_bound], res_img_ind,
-                                                       results_path, predictions_np[l_bound:r_bound],
-                                                       img_prob_preds_v2, img_labels_v2, skip_processing)
+    col_values = []
+    ##### NEW
+    test_generator[batch_ind]
+    keras_utils.visualize_single_image_all_classes(test_set.iloc[l_bound:r_bound], res_img_ind,
+                                                   results_path, predictions_np[l_bound:r_bound],
+                                                   img_prob_preds_v2, img_labels_v2, skip_processing)
     #     for i in range(0, BATCH_SIZE_TEST):
     #         col_values = [res_img_ind[i]]
     #
