@@ -417,8 +417,10 @@ def construct_train_test_CV(df_class, class_train_col, class_test_col,
     train_set, val_set = keep_index_and_1diagnose_columns(df_train, diagnose_col), \
                          keep_index_and_1diagnose_columns(df_val, diagnose_col)
     test_set = keep_index_and_1diagnose_columns(df_test, diagnose_col)
-
-    return train_set, val_set, test_set, df_bbox_train, df_bbox_test, complete_df_class_train
+    bbox_train  = keep_index_and_1diagnose_columns(df_bbox_train, diagnose_col)
+    bbox_test  = keep_index_and_1diagnose_columns(df_bbox_test, diagnose_col)
+    complete_class_train = keep_index_and_1diagnose_columns(complete_df_class_train, diagnose_col)
+    return train_set, val_set, test_set, bbox_train, bbox_test, complete_class_train
 
 
 # Lastly, We use 80% annotated images and 50% unanno-tated images to train the model and evaluate
