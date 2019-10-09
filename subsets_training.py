@@ -79,7 +79,9 @@ for split in range(0, CV_SPLITS):
         print("new subset is :" + str(class_train_subset.shape))
         train_ind_coll.append(class_train_subset)
         df_train = pd.concat([df_bbox_train, class_train_subset])
-
+        print(df_bbox_train.shape)
+        print(class_train_subset.shape)
+        print("before i start learning")
         if train_mode and split==0:
             ##O##O##_##O#O##_################################ TRAIN ###########################################################
             train_generator = gen.BatchGenerator(
@@ -99,6 +101,7 @@ for split in range(0, CV_SPLITS):
                 box_size=BOX_SIZE,
                 norm=keras_utils.normalize,
                 processed_y=skip_processing)
+
 
             model = keras_model.build_model()
             model = keras_model.compile_model_accuracy(model)
