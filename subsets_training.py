@@ -39,7 +39,7 @@ trained_models_path = config['trained_models_path']
 
 IMAGE_SIZE = 512
 BATCH_SIZE = 1
-BATCH_SIZE_TEST = 10
+BATCH_SIZE_TEST = 1
 BOX_SIZE = 16
 
 if skip_processing:
@@ -80,7 +80,7 @@ for split in range(0, CV_SPLITS):
         train_ind_coll.append(class_train_subset)
         df_train = pd.concat([df_bbox_train, class_train_subset])
 
-        if train_mode:
+        if train_mode and split==0:
             ##O##O##_##O#O##_################################ TRAIN ###########################################################
             train_generator = gen.BatchGenerator(
                 instances=df_train.values,

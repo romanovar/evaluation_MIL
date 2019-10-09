@@ -71,7 +71,6 @@ for split in range(0, CV_SPLITS):
     print('Training set: ' + str(df_train.shape))
     print('Validation set: ' + str(df_val.shape))
     print('Localization testing set: ' + str(df_test.shape))
-    # TRAINING ON 4TH SPLIT
     if train_mode:
         ############################################ TRAIN ###########################################################
         train_generator = gen.BatchGenerator(
@@ -99,7 +98,7 @@ for split in range(0, CV_SPLITS):
         # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
         #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
 
-
+        #   checkpoint on every epoch is not really needed here, CALLBACK REMOVED from the generator
         filepath = trained_models_path + "CV_patient_split_"+str(split)+"_-{epoch:02d}-{val_loss:.2f}.hdf5"
         checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
 
@@ -115,9 +114,10 @@ for split in range(0, CV_SPLITS):
             validation_data=valid_generator,
             validation_steps=valid_generator.__len__(),
             verbose=1,
-            callbacks=[checkpoint_on_epoch_end, lrate]
+            callbacks=[lrate]
         )
-
+        filepath = trained_models_path + class_name +"CV_"+str(split)+".hdf5"
+        model.save()
         print("history")
         print(history.history)
         print(history.history['keras_accuracy'])
