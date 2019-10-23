@@ -74,14 +74,18 @@ for split in range(0, CV_SPLITS):
     np.save(results_path + 'subsets_seed_CV' + str(split) + '_' + str(number_classifiers), seeds)
     train_ind_coll = []
     for curr_classifier in range(0, number_classifiers):
-        class_train_subset = ld.get_train_subset(train_only_class, df_bbox_train.shape[0],
-                                                 random_seed=seeds[curr_classifier], ratio_to_keep=overlap_ratio)
-        print("new subset is :" + str(class_train_subset.shape))
-        train_ind_coll.append(class_train_subset)
-        df_train = pd.concat([df_bbox_train, class_train_subset])
-        print(df_bbox_train.shape)
-        print(class_train_subset.shape)
-        print("before i start learning")
+        if split==0:
+            print("#####################################################")
+            print("SPLIT :" + str(split))
+            print("classifier #: " + str(curr_classifier))
+            class_train_subset = ld.get_train_subset(train_only_class, df_bbox_train.shape[0],
+                                                     random_seed=seeds[curr_classifier], ratio_to_keep=overlap_ratio)
+            print("new subset is :" + str(class_train_subset.shape))
+            train_ind_coll.append(class_train_subset)
+            df_train = pd.concat([df_bbox_train, class_train_subset])
+            print(df_bbox_train.shape)
+            print(class_train_subset.shape)
+            print("before i start learning")
         if train_mode and split==0:
             ##O##O##_##O#O##_################################ TRAIN ###########################################################
             train_generator = gen.BatchGenerator(
