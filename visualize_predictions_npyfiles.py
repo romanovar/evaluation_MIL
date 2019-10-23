@@ -2,7 +2,7 @@ import yaml
 import argparse
 import keras_utils
 import os
-import stability_predictions
+import instance_stability_predictions
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
@@ -33,14 +33,13 @@ trained_models_path = config['trained_models_path']
 
 
 ################################ LOAD PREDICTION FILES ##################################
-stability_predictions.raw_predictions_1
-stability_predictions.raw_predictions_95
+instance_stability_predictions.raw_predictions_1
+instance_stability_predictions.raw_predictions_2
 
-print(stability_predictions.image_ind_1[-3:])
-stability_predictions.image_ind_95
+instance_stability_predictions.image_ind_2
 
-stability_predictions.labels_1
-stability_predictions.labels_95
+instance_stability_predictions.labels_1
+instance_stability_predictions.labels_2
 
 path = 'C:/Users/s161590/Documents/Project_li/bbox_images/'
 # keras_utils.visualize_single_image_1class(stability_predictions.image_ind_1[-3:],
@@ -56,13 +55,38 @@ path = 'C:/Users/s161590/Documents/Project_li/bbox_images/'
 #                                           stability_predictions.jaccard_indices[-3:], stability_predictions.corr_col[-3:])
 #
 
-keras_utils.visualize_single_image_1class_2predictions(stability_predictions.image_ind_1[-1:],
-                                                       stability_predictions.labels_1[-1:],
-                                                       stability_predictions.raw_predictions_1[-1:], "1",
-                                                       stability_predictions.auc_coll1[-1:],
-                                                       stability_predictions.raw_predictions_95[-1:], "0.95",
-                                                       stability_predictions.auc_coll95[-1:],
-                                                       path, results_path, 'Cardiomegaly', "_combo2",
-                                                       stability_predictions.jaccard_indices[-1:],
-                                                       stability_predictions.corr_col[-1:])
+jaccard_indices, corrected_pos_jacc, corrected_jacc_pigeonhole, overlap_coeff, corrected_overlap, corrected_iou = \
+    instance_stability_predictions.get_binary_scores_forthreshold(0.5, instance_stability_predictions.raw_predictions_1,
+                                                                  instance_stability_predictions.raw_predictions_2)
 
+keras_utils.visualize_single_image_1class_2predictions(instance_stability_predictions.image_ind_1[14:15],
+                                                       instance_stability_predictions.labels_1[14:15],
+                                                       instance_stability_predictions.raw_predictions_1[14:15], "0",
+                                                       instance_stability_predictions.a1[14:15],
+                                                       instance_stability_predictions.raw_predictions_2[14:15], "1",
+                                                       instance_stability_predictions.a2[14:15],
+                                                       path, results_path, 'Cardiomegaly', "_combo2",
+                                                       jaccard_indices[14:15],
+                                                       corrected_pos_jacc[14:15],
+                                                       corrected_jacc_pigeonhole[14:15],
+                                                       corrected_iou[14:15],
+                                                       overlap_coeff[14:15],
+                                                       corrected_overlap[14:15],
+                                                       instance_stability_predictions.pearson_corr[14:15],
+                                                       instance_stability_predictions.spearman_rank_corr[14:15])
+
+keras_utils.visualize_single_image_1class_2predictions(instance_stability_predictions.image_ind_1,
+                                                       instance_stability_predictions.labels_1,
+                                                       instance_stability_predictions.raw_predictions_1, "0",
+                                                       instance_stability_predictions.a1,
+                                                       instance_stability_predictions.raw_predictions_2, "1",
+                                                       instance_stability_predictions.a2, path, results_path,
+                                                       'Cardiomegaly', "_combo2",
+                                                       jaccard_indices,
+                                                       corrected_pos_jacc,
+                                                       corrected_jacc_pigeonhole,
+                                                       corrected_iou,
+                                                       overlap_coeff,
+                                                       corrected_overlap,
+                                                       instance_stability_predictions.pearson_corr,
+                                                       instance_stability_predictions.spearman_rank_corr)
