@@ -414,9 +414,12 @@ def plot_grouped_bar_auc(auc_train, auc_val, auc_test, file_name, res_path, find
 def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_predictions_coll, classifier_name,
                                                auc_score, raw_predictions_coll2, classifier_name2, auc_score2,
                                                img_path, results_path, class_name,
-                                               image_title_suffix,  jaccard_ind, corr_coef):
+                                               image_title_suffix,  jaccard_ind, corrected_jaccard,
+                                               corrected_jaccard_pigeonhole,  corrected_iou, overlap_ind, corr_overlap,
+                                               pearson_corr_coef, spearman_corr_coef):
     # for each row/observation in the batch
     for ind in range(0, img_ind_coll.shape[0]):
+        print(ind)
         threshold_transparency = 0.01
 
         instance_label_gt = labels_coll[ind, :, :,0]
@@ -427,20 +430,12 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         raw_prediction2 = raw_predictions_coll2[ind, :, :, 0]
         auc2 = auc_score2[ind]
 
-        # fix
-        # img_dir = Path(batch_df['Dir Path'].values[0]).__str__()
         img_dir = Path(img_path + get_image_index_from_pathstring(img_ind) + '.png').__str__()
         img = plt.imread(img_dir)
 
-
-        # todo: introduce scale factor
-        # height, width = img.shape[:2]
         scale_width = int(img.shape[1]/16)
         scale_height =int(img.shape[0]/16)
         fig, axs = plt.subplots(2, 2, figsize=(10, 10))
-
-        ## show prediction active patches
-
 
 
         ## PREDICTIONS: BBOX of prediction and label
@@ -455,17 +450,6 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         upper_left_y = np.amin(y)
         width = np.amax(x) - upper_left_x
         height = np.amax(y) - upper_left_y
-        print(np.min(x))
-        print(np.min(y))
-        print(np.max(x))
-        print(np.max(y))
-        # https: // pillow.readthedocs.io / en / 4.2.x / reference / ImageDraw.html  # PIL.ImageDraw.PIL.ImageDraw.Draw.rectangle
-        # ImageDraw.ImageDraw.rectangle([(5, 5), (6, 6)], fill=None, outline=(255, 0, 0))
-
-        # matplotlib
-        # bbox= matplotlib.patches.Rectangle((upper_left_x , upper_left_y ),
-        #                             (np.amax(x) + 1) , (np.amax(y) + 1),linewidth=15,edgecolor='r')
-        # ax1.add_patch(bbox)
 
 
         # OPENCV
@@ -473,33 +457,20 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         cv2.rectangle(img_bbox, (upper_left_x * scale_width, upper_left_y * scale_height),
                                  ((np.amax(x) + 1) * scale_width, (np.amax(y) + 1) * scale_height), (125, 0, 0), 5)
 
-        # img_b = img_b*(255.0)
-
-        # ax4.imshow(img4_labels, 'GnBu')
-        # ax1.imshow(img_rbg, 'bone')
-        # tag_img = cv2.imread(img_b, 1)
 
         ax1.imshow(img_bbox)
         red_patch = matplotlib.patches.Patch(color='red', label='Ground truth annotation')
-        # ax1.legend(handles=[red_patch]) bbox_to_anchor=(0, 1),
         plt.legend(handles=[red_patch], bbox_to_anchor=(-0.2, -0.2), loc='lower right', borderaxespad=0.)
 
         pred_resized = np.kron(raw_prediction, np.ones((64, 64), dtype=float))
         pred_resized[pred_resized < threshold_transparency] = np.nan
-        img1_mask = ax1.imshow(pred_resized, 'BuPu', zorder=0, alpha = 0.8)
+        img1_mask = ax1.imshow(pred_resized, 'BuPu', zorder=0, alpha = 0.8, vmin=0, vmax=1)
         ax1.set_xlabel("AUC instance score: "+ ("{0:.3f}".format(auc)))
-        fig.colorbar(img1_mask,ax=ax1)
+        fig.colorbar(img1_mask,ax=ax1, )
 
         fig.text(-0.2, 0.5, '\n Only patches with prediction score above '+ str(threshold_transparency) +" are shown! ",
                  horizontalalignment='center',
                  verticalalignment='center', fontsize=9)
-        # ## PREDICTION
-        # ax2 = plt.subplot(2, 2, 2)
-        # ax2.set_title('Predictions: ' + class_name, {'fontsize': 8})
-        # im2 = ax2.imshow(raw_prediction, 'BuPu', vmin=0, vmax=1)
-        # fig.colorbar(im2,ax=ax2)
-        #
-        # # ax2.set_xlabel("Image prediction : " + str(img_probab))
 
         ## PREDICTIONS: BBOX of prediction and label
         ax2 = plt.subplot(2, 2, 2)
@@ -508,17 +479,13 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         ax2.imshow(img_bbox, 'bone')
         pred_resized2 = np.kron(raw_prediction2, np.ones((64, 64), dtype=float))
         pred_resized2[pred_resized2 < threshold_transparency] = np.nan
-        img2_mask = ax2.imshow(pred_resized2, 'RdPu', zorder=0, alpha=0.8,  vmin=0, vmax=1)
+        img2_mask = ax2.imshow(pred_resized2, 'BuPu', zorder=0, alpha=0.8,  vmin=0, vmax=1)
         ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
         fig.colorbar(img2_mask, ax=ax2)
 
         ## LABELS
         ax3 = plt.subplot(2, 2, 3)
-        # class_gt = class_label_ground_truth.eval()
         ax3.set_title('Labels: ' + class_name, {'fontsize': 8})
-        # ax3.set_xlabel(
-        #     "Image label: " + str(class_gt) + str(img_label_test) + " Bbox available: " + str(
-        #         has_segmentation))
         im3 = ax3.imshow(instance_label_gt, vmin=0, vmax=1)
         fig.colorbar(im3, ax=ax3)
 
@@ -539,14 +506,18 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         img4_labels = cv2.rectangle(img, (upper_left_x * 64, upper_left_y * 64),
                                     ((np.amax(x) + 1) * 64, (np.amax(y) + 1) * 64), (0, 255, 0), 5)
         ax4.imshow(img, 'bone')
-        # ax4.imshow(img4_labels, 'GnBu')
         pred_resized = np.kron(raw_prediction2, np.ones((64, 64), dtype=float))
         img4_mask = ax4.imshow(pred_resized, 'BuPu', zorder=0, alpha=0.4)
 
-        fig.text(0, 0, '\n Jaccard index: ' +
-                 str(jaccard_ind[ind])+ '\n Correlation coefficient: ' +
-                 str(corr_coef[ind]), horizontalalignment='center',
-                 verticalalignment='center', fontsize=9)
+        fig.text(0, 0, '\n Overlap index: ' + "{:.2f}".format(overlap_ind[ind])+
+                 '\n Corrected overlap index: ' + "{:.2f}".format(corr_overlap[ind])+
+                  '\n positive Jaccard distance: ' + "{:.2f}".format(jaccard_ind[ind])+
+                 '\n Corrected positive Jaccard distance: ' + "{:.2f}".format(corrected_jaccard[ind])+
+                 '\n Corrected positive Jaccard using pigeonhole: ' + "{:.2f}".format(corrected_jaccard_pigeonhole[ind])+
+                 '\n Corrected IoU: ' + "{:.2f}".format(corrected_iou[ind]) +
+                 '\n Pearson correlation coefficient: ' + "{:.2f}".format(pearson_corr_coef[ind])+
+                 '\n Spearman rank correlation coefficient: ' + "{:.2f}".format(spearman_corr_coef[ind]),
+                 horizontalalignment='center', verticalalignment='center', fontsize=9)
 
         plt.tight_layout()
         fig.savefig(results_path + get_image_index_from_pathstring(img_ind) + '_' + class_name + image_title_suffix + '.jpg',
