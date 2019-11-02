@@ -3,11 +3,13 @@ from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU
 from keras.models import Model
 from keras.optimizers import Adam
 # from keras.optimizers_v2 import Adam
-from custom_loss import keras_loss, keras_loss_reg
-from custom_accuracy import keras_accuracy,acc_atelectasis, acc_cardiomegaly, acc_effusion, acc_infiltration, acc_mass, \
-    acc_nodule, acc_pneumonia,  acc_pneumothorax,  acc_average, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction
+from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_reg
+from cnn.nn_architecture.custom_performance_metrics import keras_accuracy,acc_atelectasis, acc_cardiomegaly,\
+    acc_effusion, acc_infiltration, acc_mass, acc_nodule, acc_pneumonia,  acc_pneumothorax,  acc_average,\
+    keras_binary_accuracy, accuracy_asloss, accuracy_asproduction
 from keras import regularizers
-from AdamW import AdamW
+from cnn.nn_architecture.AdamW import AdamW
+
 
 def build_model():
     #base_model = ResNet50V2(weights='imagenet', include_top=False, input_shape=(512, 512, 3))

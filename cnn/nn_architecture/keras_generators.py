@@ -1,32 +1,17 @@
+"""
+inspired by https://github.com/neuralmed/learning_with_bbox
+"""
 import numpy as np
 from keras.utils import Sequence
 from keras.preprocessing.image import load_img, img_to_array
 
-from keras_utils import process_loaded_labels
+from cnn.keras_utils import process_loaded_labels
 
 
 class BatchGenerator(Sequence):
-    def __init__(self,
-                 instances,
-                 batch_size=16,
-                 shuffle=True,
-                 norm=None,
-                 net_h=512,
-                 net_w=512,
-                 box_size=16,
-                 processed_y = None
-                 ):
-        '''
+    def __init__(self, instances, batch_size=16, shuffle=True,
+                 norm=None, net_h=512, net_w=512, box_size=16, processed_y = None):
 
-        :param instances: Lista em que a primeira posicao sao as imagens e a segunda sao os labels
-        :param downsample:
-        :param batch_size:
-        :param min_net_size:
-        :param max_net_size:
-        :param shuffle:
-        :param jitter:
-        :param norm:
-        '''
         self.instances = instances
         self.batch_size = batch_size
         self.shuffle = shuffle

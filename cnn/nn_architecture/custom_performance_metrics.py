@@ -1,15 +1,11 @@
-import sklearn
-import tensorflow as tf
-import keras_utils
-from custom_loss import compute_ground_truth, compute_image_label_prediction, \
-    compute_image_label_in_classification_NORM, compute_image_label_from_localization_NORM
 import keras as K
-from sklearn.metrics import roc_auc_score
-import tensorflow as tf
 import numpy as np
-import pandas as pd
+import tensorflow as tf
+from sklearn.metrics import roc_auc_score
 
-from load_data import FINDINGS, PATCH_SIZE
+from cnn.nn_architecture.custom_loss import compute_ground_truth, compute_image_label_prediction, \
+    compute_image_label_in_classification_NORM
+from cnn.preprocessor.load_data import FINDINGS
 
 
 def convert_predictions_to_binary(preds, thres):

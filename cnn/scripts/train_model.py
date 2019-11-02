@@ -1,29 +1,21 @@
-from pathlib import Path
-
-import pandas as pd
-import numpy as np
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.engine.saving import load_model
-from sklearn.metrics import roc_auc_score
-
-import load_data as ld
-from AdamW import AdamW
-from load_data import FINDINGS
-from keras.callbacks import LearningRateScheduler
-import keras_generators as gen
-import yaml
 import argparse
-import keras_utils
-import keras_model
 import os
-import tensorflow as tf
-from custom_accuracy import keras_accuracy, compute_image_probability_asloss, combine_predictions_each_batch, \
-    compute_auc, compute_image_probability_production, \
-    test_function_acc_class, accuracy_bbox_IOU, compute_image_probability_production_v2, compute_IoU, \
-    acc_atelectasis, acc_cardiomegaly, acc_infiltration, acc_average, acc_effusion, \
-    acc_mass, acc_nodule, acc_pneumonia, acc_pneumothorax, accuracy_asloss, accuracy_asproduction, keras_binary_accuracy
-from custom_loss import keras_loss, test_compute_ground_truth_per_class_numpy
-from keras_preds import predict_patch_and_save_results
+
+import cnn.nn_architecture.keras_generators as gen
+from cnn.nn_architecture import keras_model
+import numpy as np
+import pandas as pd
+import yaml
+from cnn.nn_architecture.custom_loss import keras_loss
+from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, \
+    keras_binary_accuracy
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import LearningRateScheduler
+from keras.engine.saving import load_model
+
+from cnn import keras_utils
+import cnn.preprocessor.load_data as ld
+from cnn.keras_preds import predict_patch_and_save_results
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
@@ -55,7 +47,7 @@ trained_models_path = config['trained_models_path']
 
 IMAGE_SIZE = 512
 BATCH_SIZE = 1
-BATCH_SIZE_TEST = 10
+BATCH_SIZE_TEST = 1
 BOX_SIZE = 16
 
 if skip_processing:
@@ -68,11 +60,10 @@ else:
     xray_df = ld.couple_location_labels(localization_labels_path, processed_df, ld.PATCH_SIZE, results_path)
 print(xray_df.shape)
 print("Splitting data ...")
-init_train_idx, df_train_init, df_val, df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(xray_df,
-                                                                                                      random_state=1,
-                                                                                                      do_stats=False,
-                                                                                                      res_path = generated_images_path,
-                                                                                                      label_col = 'Cardiomegaly')
+init_train_idx, df_train_init, df_val, \
+df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(xray_df, random_state=1, do_stats=False,
+                                                               res_path = generated_images_path,
+                                                               label_col = 'Cardiomegaly')
 df_train=df_train_init
 print('Training set: '+ str(df_train_init.shape))
 print('Validation set: '+ str(df_val.shape))
@@ -107,10 +98,10 @@ if train_mode:
     model = keras_model.build_model()
     model.summary()
 
-    model = keras_model.compile_model_accuracy(model)
-    model = keras_model.compile_model_regularization(model)
     model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
                                             samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
+    model = keras_model.compile_model_regularization(model)
+    model = keras_model.compile_model_accuracy(model)
 
     total_epochs = int(500000/train_generator.__len__())
     print("Total number of iterations: "+ str(total_epochs))
@@ -141,7 +132,7 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=2,
+        epochs=1,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
@@ -167,12 +158,11 @@ else:
     # model = load_model(trained_models_path+'best_model_single_100.h5', custom_objects={
     #     'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
     # model = keras_model.compile_model(model)
-    opt = AdamW(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0., weight_decay=0.075,
-          batch_size=BATCH_SIZE, samples_per_epoch=8000, epochs=46)
-
-    model = load_model('C:/Users/s161590/Desktop/' + 'single_class_patient_adamw10-3-75-08-2.01.hdf5', custom_objects={
+    # opt = AdamW(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0., weight_decay=0.075,
+    #       batch_size=BATCH_SIZE, samples_per_epoch=8000, epochs=46)
+    model = load_model(trained_models_path + 'best_model_single_patient_reg.h5', custom_objects={
         'keras_loss': keras_loss, 'keras_accuracy': keras_accuracy, 'keras_binary_accuracy': keras_binary_accuracy,
-        'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction, 'AdamW':opt})
+        'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
 
     # model = keras_model.compile_model_adamw(model, 0.075, 8000, 46)
 
@@ -186,12 +176,12 @@ else:
 
         # ########################################### VALIDATION SET######################################################
 
-        predict_patch_and_save_results(model, 'val_set', df_val, skip_processing,
+        predict_patch_and_save_results(model, 'val_setBLL', df_val, skip_processing,
                                        BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 
 
         ########################################### TESTING SET########################################################
         test_set = pd.concat([df_bbox_test, df_class_test])
-        predict_patch_and_save_results(model, 'test_set', test_set, skip_processing,
+        predict_patch_and_save_results(model, 'test_setBLL', test_set, skip_processing,
                                        BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 

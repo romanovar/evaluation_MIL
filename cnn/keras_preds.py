@@ -2,29 +2,30 @@ import glob
 from pathlib import Path
 
 import numpy as np
-import load_data as ld
+import cnn.preprocessor.load_data as ld
 import yaml
 import argparse
-import keras_utils
+import cnn.keras_utils
 import os
 import tensorflow as tf
-from custom_accuracy import keras_accuracy, compute_image_probability_asloss, combine_predictions_each_batch, \
-    compute_auc, list_localization_accuracy, compute_image_probability_production, list_localization_accuracy_1cat, \
-    compute_auc_1class
-import keras_generators as gen
-
+from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, compute_image_probability_asloss, \
+    combine_predictions_each_batch, compute_auc, list_localization_accuracy, compute_image_probability_production,\
+    list_localization_accuracy_1cat,  compute_auc_1class
+import cnn.nn_architecture.keras_generators as gen
+from cnn.keras_utils import normalize, save_evaluation_results
 ############################RAW PREDICTIONS###########################################
 
 
 def predict_patch_and_save_results(saved_model, file_unique_name, data_set, processed_y,
                             test_batch_size, box_size, image_size, res_path):
+    print(res_path)
     test_generator = gen.BatchGenerator(
         instances=data_set.values,
         batch_size=test_batch_size,
         net_h=image_size,
         net_w=image_size,
         box_size=box_size,
-        norm=keras_utils.normalize,
+        norm= normalize,
         processed_y=processed_y,
         shuffle=False)
 
@@ -222,29 +223,29 @@ def process_prediction_v2(file_unique_name, res_path, img_pred_as_loss, batch_si
         print(total_bbox_all_batches)
 
 
-def process_prediction(file_unique_name, res_path, img_pred_as_loss, batch_size):
-
-    predictions, image_indices, patch_labels = get_index_label_prediction(file_unique_name, res_path)
-    # start_ind = 20000
-    # end_ind = start_ind+10000
-    # #CHANGE THIS
-    # predictions = predictions[start_ind:end_ind, :, :, :]
-    # patch_labels = patch_labels[start_ind:end_ind, :, :, :]
-    print("sgape loaded models")
-    print(predictions.shape)
-    print(patch_labels.shape)
-
-    coll_image_labels, coll_image_predictions, coll_accurate_preds, coll_bbox = process_prediction_all_batches(
-        predictions,
-        patch_labels, img_pred_as_loss, batch_size,
-        file_unique_name)
-
-    accurate_pred_all_batches = np.sum(coll_accurate_preds, axis=0)
-
-    total_bbox_all_batches = np.sum(coll_bbox, axis=0)
-    print("accurate pred all batches")
-    print(accurate_pred_all_batches)
-    print(total_bbox_all_batches)
+# def process_prediction(file_unique_name, res_path, img_pred_as_loss, batch_size):
+#
+#     predictions, image_indices, patch_labels = get_index_label_prediction(file_unique_name, res_path)
+#     # start_ind = 20000
+#     # end_ind = start_ind+10000
+#     # #CHANGE THIS
+#     # predictions = predictions[start_ind:end_ind, :, :, :]
+#     # patch_labels = patch_labels[start_ind:end_ind, :, :, :]
+#     print("sgape loaded models")
+#     print(predictions.shape)
+#     print(patch_labels.shape)
+#
+#     coll_image_labels, coll_image_predictions, coll_accurate_preds, coll_bbox = process_prediction_all_batches(
+#         predictions,
+#         patch_labels, img_pred_as_loss, batch_size,
+#         file_unique_name)
+#
+#     accurate_pred_all_batches = np.sum(coll_accurate_preds, axis=0)
+#
+#     total_bbox_all_batches = np.sum(coll_bbox, axis=0)
+#     print("accurate pred all batches")
+#     print(accurate_pred_all_batches)
+#     print(total_bbox_all_batches)
 
 
 def load_img_pred_labels(file_set, img_pred_as_loss, res_path):
@@ -293,7 +294,7 @@ def compute_save_accuracy(acc_loc, bbox_pres, file_unq_name, res_path):
         acc_class = sum_acc_loc / sum_bbox_pres
         acc_avg = sum_acc_local_all/sum_bbox_present_all
     local_col_names = [ld.FINDINGS[i] for i in [0, 1, 4, 8, 9, 10, 12, 13]]
-    keras_utils.save_evaluation_results(local_col_names, acc_class, 'accuracy_' + file_unq_name + '.csv',
+    save_evaluation_results(local_col_names, acc_class, 'accuracy_' + file_unq_name + '.csv',
                                         res_path, add_col='Avg_accuracy', add_value=acc_avg)
 
 
@@ -306,7 +307,7 @@ def do_predictions_set(data_set_name, skip_pred_process, img_pred_as_loss, res_p
 
     compute_save_accuracy(acc_local, bbox_present, data_set_name)
     auc_all_classes_v1 = compute_auc(img_labels, img_preds)
-    keras_utils.save_evaluation_results(ld.FINDINGS, auc_all_classes_v1, 'auc_prob_' + data_set_name + '_v1.csv',
+    save_evaluation_results(ld.FINDINGS, auc_all_classes_v1, 'auc_prob_' + data_set_name + '_v1.csv',
                                         res_path)
 
 
@@ -366,7 +367,7 @@ def combine_npy_accuracy_1class(data_set_name, res_path, nr_files):
     print(acc_class)
     print(acc_avg)
 
-    keras_utils.save_evaluation_results(["accuracy"], acc_class, "accuracy_" + data_set_name + '.csv', res_path,
+    save_evaluation_results(["accuracy"], acc_class, "accuracy_" + data_set_name + '.csv', res_path,
                                         add_col=None, add_value=None)
 
 
@@ -382,7 +383,7 @@ def combine_npy_auc(data_set_name, image_pred_method, res_path):
         coll_image_labels = combine_predictions_each_batch(img_labels, coll_image_labels, ind)
 
     auc_all_classes_v1 = compute_auc(coll_image_labels, coll_image_preds)
-    keras_utils.save_evaluation_results(ld.FINDINGS, auc_all_classes_v1, 'auc_prob_' + data_set_name + '_v1.csv',
+    save_evaluation_results(ld.FINDINGS, auc_all_classes_v1, 'auc_prob_' + data_set_name + '_v1.csv',
                                         res_path)
 
 
@@ -396,7 +397,7 @@ def combine_npy_auc_1class(data_set_name, image_pred_method, res_path, nr_files)
         coll_image_labels = combine_predictions_each_batch(img_labels, coll_image_labels, ind)
 
     auc_all_classes_v1 = compute_auc_1class(coll_image_labels, coll_image_preds)
-    keras_utils.save_evaluation_results([ld.FINDINGS[1]], auc_all_classes_v1, 'auc_prob_' + data_set_name + '_'
+    save_evaluation_results([ld.FINDINGS[1]], auc_all_classes_v1, 'auc_prob_' + data_set_name + '_'
                                         + image_pred_method+ '.csv',
                                         res_path)
 

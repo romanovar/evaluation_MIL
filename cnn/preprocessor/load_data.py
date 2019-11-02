@@ -10,7 +10,7 @@ from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.model_selection import GroupShuffleSplit
 import imagesize
 
-from keras_utils import visualize_population
+from cnn.keras_utils import visualize_population
 np.random.seed(0)
 FINDINGS = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 'Emphysema',
             'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 'Nodule', 'Pleural_Thickening',

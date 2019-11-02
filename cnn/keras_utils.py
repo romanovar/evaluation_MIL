@@ -11,7 +11,7 @@ import tensorflow as tf
 #normalize between [-1, 1]
 import pandas as pd
 import matplotlib.cm as cm
-from custom_loss import test_compute_ground_truth_per_class_numpy, compute_ground_truth
+from cnn.nn_architecture.custom_loss import test_compute_ground_truth_per_class_numpy, compute_ground_truth
 import matplotlib
 
 def normalize(im):
@@ -439,7 +439,7 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
 
 
         ## PREDICTIONS: BBOX of prediction and label
-        ax1 = plt.subplot(2, 2, 1)
+        ax1 = plt.subplot(1, 2, 1)
         ax1.set_title('Prediction Classifier '+ classifier_name, {'fontsize': 9})
         y = (np.where(instance_label_gt == instance_label_gt.max()))[0]
         x = (np.where(instance_label_gt == instance_label_gt.max()))[1]
@@ -466,14 +466,14 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         pred_resized[pred_resized < threshold_transparency] = np.nan
         img1_mask = ax1.imshow(pred_resized, 'BuPu', zorder=0, alpha = 0.8, vmin=0, vmax=1)
         ax1.set_xlabel("AUC instance score: "+ ("{0:.3f}".format(auc)))
-        fig.colorbar(img1_mask,ax=ax1, )
+        fig.colorbar(img1_mask,ax=ax1, fraction=0.046)
 
         fig.text(-0.2, 0.5, '\n Only patches with prediction score above '+ str(threshold_transparency) +" are shown! ",
                  horizontalalignment='center',
                  verticalalignment='center', fontsize=9)
 
         ## PREDICTIONS: BBOX of prediction and label
-        ax2 = plt.subplot(2, 2, 2)
+        ax2 = plt.subplot(1, 2, 2)
         ax2.set_title('Prediction Classifier '+ classifier_name2, {'fontsize': 9})
 
         ax2.imshow(img_bbox, 'bone')
@@ -481,35 +481,35 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         pred_resized2[pred_resized2 < threshold_transparency] = np.nan
         img2_mask = ax2.imshow(pred_resized2, 'BuPu', zorder=0, alpha=0.8,  vmin=0, vmax=1)
         ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
-        fig.colorbar(img2_mask, ax=ax2)
+        fig.colorbar(img2_mask, ax=ax2, fraction=0.046)
 
-        ## LABELS
-        ax3 = plt.subplot(2, 2, 3)
-        ax3.set_title('Labels: ' + class_name, {'fontsize': 8})
-        im3 = ax3.imshow(instance_label_gt, vmin=0, vmax=1)
-        fig.colorbar(im3, ax=ax3)
+        # ## LABELS
+        # ax3 = plt.subplot(2, 2, 3)
+        # ax3.set_title('Labels: ' + class_name, {'fontsize': 8})
+        # im3 = ax3.imshow(instance_label_gt, vmin=0, vmax=1)
+        # fig.colorbar(im3, ax=ax3)
+        #
+        # ## BBOX of prediction and label
+        # ax4 = plt.subplot(2, 2, 4)
+        # ax4.set_title('Predictions classifer '+ classifier_name2, {'fontsize': 8})
+        #
+        # y = (np.where(instance_label_gt == instance_label_gt.max()))[0]
+        # x = (np.where(instance_label_gt == instance_label_gt.max()))[1]
+        #
+        # upper_left_x = np.min(x)
+        # # width = np.amax(x) - upper_left_x + 1
+        # upper_left_y = np.amin(y)
+        # # height = np.amax(y) - upper_left_y + 1
+        # # todo: to draw using pyplot
+        # img4_labels = cv2.rectangle(img, (upper_left_x * 64, upper_left_y * 64),
+        #                             ((np.amax(x) + 1) * 64, (np.amax(y) + 1) * 64), (0, 255, 0), 5)
+        # img4_labels = cv2.rectangle(img, (upper_left_x * 64, upper_left_y * 64),
+        #                             ((np.amax(x) + 1) * 64, (np.amax(y) + 1) * 64), (0, 255, 0), 5)
+        # ax4.imshow(img, 'bone')
+        # pred_resized = np.kron(raw_prediction2, np.ones((64, 64), dtype=float))
+        # img4_mask = ax4.imshow(pred_resized, 'BuPu', zorder=0, alpha=0.4)
 
-        ## BBOX of prediction and label
-        ax4 = plt.subplot(2, 2, 4)
-        ax4.set_title('Predictions classifer '+ classifier_name2, {'fontsize': 8})
-
-        y = (np.where(instance_label_gt == instance_label_gt.max()))[0]
-        x = (np.where(instance_label_gt == instance_label_gt.max()))[1]
-
-        upper_left_x = np.min(x)
-        # width = np.amax(x) - upper_left_x + 1
-        upper_left_y = np.amin(y)
-        # height = np.amax(y) - upper_left_y + 1
-        # todo: to draw using pyplot
-        img4_labels = cv2.rectangle(img, (upper_left_x * 64, upper_left_y * 64),
-                                    ((np.amax(x) + 1) * 64, (np.amax(y) + 1) * 64), (0, 255, 0), 5)
-        img4_labels = cv2.rectangle(img, (upper_left_x * 64, upper_left_y * 64),
-                                    ((np.amax(x) + 1) * 64, (np.amax(y) + 1) * 64), (0, 255, 0), 5)
-        ax4.imshow(img, 'bone')
-        pred_resized = np.kron(raw_prediction2, np.ones((64, 64), dtype=float))
-        img4_mask = ax4.imshow(pred_resized, 'BuPu', zorder=0, alpha=0.4)
-
-        fig.text(0, 0, '\n Overlap index: ' + "{:.2f}".format(overlap_ind[ind])+
+        fig.text(-0.2, 0.43, '\n Overlap index: ' + "{:.2f}".format(overlap_ind[ind])+
                  '\n Corrected overlap index: ' + "{:.2f}".format(corr_overlap[ind])+
                   '\n positive Jaccard distance: ' + "{:.2f}".format(jaccard_ind[ind])+
                  '\n Corrected positive Jaccard distance: ' + "{:.2f}".format(corrected_jaccard[ind])+
@@ -523,6 +523,7 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         fig.savefig(results_path + get_image_index_from_pathstring(img_ind) + '_' + class_name + image_title_suffix + '.jpg',
                     bbox_inches='tight')
         plt.close(fig)
+
 
 
 ##################### BOOTSTRAP OVERLAP #########################################################
