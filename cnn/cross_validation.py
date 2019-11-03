@@ -6,13 +6,13 @@ from keras.callbacks import LearningRateScheduler
 from keras.callbacks import ModelCheckpoint
 from keras.engine.saving import load_model
 
-import keras_generators as gen
-import keras_model
-import keras_utils
-import load_data as ld
-from custom_accuracy import keras_accuracy, accuracy_asloss, accuracy_asproduction, keras_binary_accuracy
-from custom_loss import keras_loss
-from keras_preds import predict_patch_and_save_results
+import cnn.nn_architecture.keras_generators as gen
+from cnn.nn_architecture import keras_model
+from cnn import keras_utils
+import cnn.preprocessor.load_data as ld
+from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, keras_binary_accuracy
+from cnn.nn_architecture.custom_loss import keras_loss
+from cnn.keras_preds import predict_patch_and_save_results
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
