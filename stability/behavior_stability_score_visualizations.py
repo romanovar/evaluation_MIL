@@ -1,8 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-results_path = 'C:/Users/s161590/Documents/Project_li/out/'
-
 
 def plot_line_graph(line1, label1, line2, label2, line3, label3, line4, label4, line5, label5,  line6, label6,
                     x_axis_data, x_label, results_path, fig_name, text_string):
@@ -139,7 +137,7 @@ def corrected_Jaccard_pigeonhole(n00, n10, n01, n11):
 ################################################### fixing agreement ration n00 and n11 ########################
 import math
 
-def simulate_distributions_n01_n10_extreme():
+def simulate_distributions_n01_n10_extreme(res_path):
     overlap_coll = []
     jacc_coll = []
     corr_overlap_col = []
@@ -191,10 +189,10 @@ def simulate_distributions_n01_n10_extreme():
                     corr_overlap_col, 'Corrected Overlap coefficient' ,corr_jaccard_coll,
                     'Corrected Positive Jaccard distance', corr_iou_coll, "Corrected IoU",
                     corr_jaccard_pgn_coll, "Corrected Positive Jaccard using Pigeonhole",
-                    set1_size_col, 'n01', results_path, 'distribution_Ns_extreme', fig_text)
+                    set1_size_col, 'n01', res_path, 'distribution_Ns_extreme', fig_text)
 
 
-def simulate_distributions_n01_n10_equal_distribution():
+def simulate_distributions_n01_n10_equal_distribution(res_path):
     overlap_coll = []
     jacc_coll = []
     corr_overlap_col = []
@@ -245,14 +243,15 @@ def simulate_distributions_n01_n10_equal_distribution():
                 corr_overlap_col, 'Corrected Overlap coefficient' ,corr_jaccard_coll,
                 'Corrected Positive Jaccard distance', corr_iou_coll, "Corrected IoU",
                     corr_jaccard_pgn_coll, "Corrected Positive Jaccard using Pigeonhole",
-                    set1_size_col, 'n01', results_path, 'distribution_Ns_equal_distribution',
+                    set1_size_col, 'n01', res_path, 'distribution_Ns_equal_distribution',
                 fig_text)
     # plot_line_graph(overlap_coll, 'Overlap coefficient', jacc_coll, 'Positive Jaccard distance',
     #                 corr_overlap_col, 'Corrected Overlap coefficient',None, None, None, None, None,None,
     #                 set1_size_col, 'n01', results_path, 'distribution_Ns_equal_distribution',
     #                 fig_text)
 
-def simulate_distributions_n01_n10():
+
+def simulate_distributions_n01_n10(res_path):
 
     N = 200
     n11= n00 = 5
@@ -314,11 +313,12 @@ def simulate_distributions_n01_n10():
                         corr_overlap_col, 'Corrected Overlap coefficient' ,corr_jaccard_coll,
                         'Corrected Positive Jaccard distance', corr_iou_coll, "Corrected IoU",
                         corr_jaccard_pgn_coll, "Corrected Positive Jaccard using Pigeonhole",
-                        set1_size_col, 'n01', results_path, 'varying_n01_n10_'+str(step_agreement), fig_text)
+                        set1_size_col, 'n01', res_path, 'varying_n01_n10_'+str(step_agreement), fig_text)
         n00 +=step_size
         n11 += step_size
 
-def simulate_distributions_n11_n0():
+
+def simulate_distributions_n11_n0(res_path):
 
     N = 200
     new_n01= new_n10 = 5
@@ -380,7 +380,7 @@ def simulate_distributions_n11_n0():
                         corr_overlap_col, 'Corrected Overlap coefficient' ,corr_jaccard_coll,
                         'Corrected Positive Jaccard distance', corr_iou_coll, "Corrected IoU",
                         corr_jaccard_pgn_coll, "Corrected Positive Jaccard using Pigeonhole",
-                        set1_size_col, 'n11', results_path, 'varying_n11_n00_'+str(step_agreement), fig_text)
+                        set1_size_col, 'n11', res_path, 'varying_n11_n00_'+str(step_agreement), fig_text)
         new_n10 +=step_size
         new_n01 += step_size
 
