@@ -98,8 +98,8 @@ if train_mode:
     model = keras_model.build_model()
     model.summary()
 
-    model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
-                                            samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
+    # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
+    #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
     model = keras_model.compile_model_regularization(model)
     # model = keras_model.compile_model_accuracy(model)
 
@@ -121,7 +121,7 @@ if train_mode:
         period=1
     )
 
-    filepath = trained_models_path + "single_class_patient_reg-{epoch:02d}-{val_loss:.2f}.hdf5"
+    filepath = trained_models_path + "new_single_class_patient_reg-{epoch:02d}-{val_loss:.2f}.hdf5"
     checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
 
     lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
@@ -132,7 +132,7 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=100,
+        epochs=70,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
