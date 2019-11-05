@@ -161,7 +161,7 @@ def keras_loss_reg(y_true, y_pred):
     loss =  compute_loss_keras(y_pred, y_true, P=16, class_nr=1)
     vars = tf.trainable_variables()
     lossL2 = tf.add_n([ tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in vars
-                    if 'bias' not in v.name ]) * 0.001
+                    if 'bias' not in v.name ]) * 0.0001
     # reg_l2 = 0.01 * tf.nn.l2_loss(tf.hidden_weights) + 0.01 * tf.nn.l2_loss(out_weights)
     return loss+lossL2
 

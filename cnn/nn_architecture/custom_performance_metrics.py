@@ -9,7 +9,7 @@ from cnn.preprocessor.load_data import FINDINGS
 
 
 def convert_predictions_to_binary(preds, thres):
-    #return tf.where(preds > thres, tf.ones(tf.shape(preds)), tf.zeros(tf.shape(preds)))
+    # return tf.where(preds > thres, tf.ones(tf.shape(preds)), tf.zeros(tf.shape(preds)))
     return tf.cast(tf.greater_equal(preds, thres), tf.float32)
 
 
@@ -20,19 +20,19 @@ def reshape_and_convert_to_binary_predictions(predictions, labels, P, threshold_
 
 
 def compute_IoU(predictions, labels, P, class_nr):
-
     patches_binary_pred, labels_xy_flatten = reshape_and_convert_to_binary_predictions(predictions, labels, P,
                                                                                        threshold_binary=0.5,
                                                                                        class_nr=class_nr)
 
     correct_prediction = tf.cast(tf.equal(patches_binary_pred, labels_xy_flatten), tf.float32)
-    #check only active patches from the labels and see if the prediction there agrees with the labels
-    intersection = tf.reduce_sum(tf.where(tf.greater(labels_xy_flatten, 0), tf.reshape(correct_prediction, (-1, P*P, class_nr)),
-                                          tf.zeros((tf.shape(labels_xy_flatten)))), 1)
+    # check only active patches from the labels and see if the prediction there agrees with the labels
+    intersection = tf.reduce_sum(
+        tf.where(tf.greater(labels_xy_flatten, 0), tf.reshape(correct_prediction, (-1, P * P, class_nr)),
+                 tf.zeros((tf.shape(labels_xy_flatten)))), 1)
 
     union = tf.reduce_sum(patches_binary_pred, 1) + tf.reduce_sum(labels_xy_flatten, 1) - intersection
 
-    return intersection/union
+    return intersection / union
 
 
 def compute_accuracy_image_bbox(predictions, labels, class_ground_truth, P, iou_threshold, class_nr):
@@ -58,9 +58,10 @@ def compute_accuracy_on_image_level(predictions, class_ground_truth, P):
 
 # EVEN if the evaluation is not used, it is needed for compiling the model
 def compute_accuracy_keras(predictions, instance_labels_ground, P, iou_threshold, class_nr):
-    m=P*P
+    m = P * P
     sum_active_patches, class_label_ground, has_bbox = compute_ground_truth(instance_labels_ground, m, class_nr)
-    IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P, iou_threshold, class_nr)
+    IoU, accuracy_bbox = compute_accuracy_image_bbox(predictions, instance_labels_ground, class_label_ground, P,
+                                                     iou_threshold, class_nr)
     img_pred_norm = compute_image_label_in_classification_NORM(predictions, P, class_nr)
     img_pred_bin = tf.cast(img_pred_norm > 0.5, tf.float32)
     correct_prediction_img = tf.cast(tf.equal(img_pred_bin, class_label_ground), tf.float32)
@@ -91,7 +92,8 @@ def accuracy_bbox_IOU(y_pred, instance_labels_ground, P, iou_threshold):
 
 def accuracy_bbox_IOU_v2(y_pred, instance_labels_ground, P, iou_threshold, class_nr):
     _, _, has_bbox = compute_ground_truth(instance_labels_ground, P * P, class_nr)
-    iou_scores = tf.where(has_bbox, compute_IoU(y_pred, instance_labels_ground, P, class_nr), tf.zeros(tf.shape(has_bbox)))
+    iou_scores = tf.where(has_bbox, compute_IoU(y_pred, instance_labels_ground, P, class_nr),
+                          tf.zeros(tf.shape(has_bbox)))
     image_label_pred = tf.cast(tf.greater_equal(iou_scores, iou_threshold), tf.float32)
 
     # compare image_label prediction and has_bbox
@@ -172,15 +174,17 @@ def test_function_acc_class(y_pred, instance_labels_ground, P, iou_threshold):
     acc_pred = tf.reduce_sum(image_label_pred, axis=0)
     true_labels = tf.reduce_sum(tf.cast(has_bbox, tf.float32), axis=0)
 
-    acc_per_class = tf.where(tf.greater(true_labels, 0), acc_pred / true_labels, tf.zeros(tf.shape(true_labels))) # tf.constant(-1.0, shape=(tf.shape(true_labels)))
-    return  has_bbox, true_labels, acc_pred, acc_per_class #, tf.reduce_mean(acc_per_class)
+    acc_per_class = tf.where(tf.greater(true_labels, 0), acc_pred / true_labels,
+                             tf.zeros(tf.shape(true_labels)))  # tf.constant(-1.0, shape=(tf.shape(true_labels)))
+    return has_bbox, true_labels, acc_pred, acc_per_class  # , tf.reduce_mean(acc_per_class)
+
 
 ######################################################### AUC ###########################################
-
+# TODO: delete, obsolete code
 def image_prob_active_patches(nn_output, P, class_nr):
     detected_active_patches = tf.cast(tf.greater(nn_output, 0.5), tf.float32)
-    sum_detected_active_patches, _, detected_bbox = compute_ground_truth(detected_active_patches, P*P, class_nr)
-    return compute_image_label_prediction(detected_bbox, nn_output, detected_active_patches, P, class_nr )
+    sum_detected_active_patches, _, detected_bbox = compute_ground_truth(detected_active_patches, P * P, class_nr)
+    return compute_image_label_prediction(detected_bbox, nn_output, detected_active_patches, P, class_nr)
 
 
 def compute_image_probability_asloss(nn_output, instance_label_ground_truth, P, class_nr):
@@ -192,43 +196,54 @@ def compute_image_probability_asloss(nn_output, instance_label_ground_truth, P, 
     :return:
     '''
     # m = P * P
-    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, P*P,
+    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, P * P,
                                                                                   class_nr)
 
     img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, P, class_nr)
     return class_label_ground_truth, img_label_pred
 
+#todo: delete, wrong code
+# def compute_image_probability_production_old(nn_output, instance_label_ground_truth, P, class_nr):
+#     '''
+#     This method considers patches with prediction above 0.5 as active and then it computes image probability
+#     as the localization in the loss
+#     :param nn_output: output from the last layers
+#     :param instance_label_ground_truth: ground truth of each patch
+#     :param P: number of patches
+#     :return: image probability per class computed using the active patches
+#     '''
+#     m = P * P
+#     _, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m, class_nr)
+#     img_label_prob = image_prob_active_patches(nn_output, P, class_nr)
+#     return class_label_ground_truth, img_label_prob
 
-def compute_image_probability_production(nn_output,instance_label_ground_truth, P, class_nr):
+
+def compute_image_probability_production(nn_output, P, class_nr):
     '''
-    This method considers patches with prediction above 0.5 as active and then it computes image probability
-    as the localization in the loss
+    This method considers patches with prediction above Ts as active. If a patch is active, and then it belongs to the
+     localization and then ONLY EQUATION 2 of the paper is used
     :param nn_output: output from the last layers
-    :param instance_label_ground_truth: ground truth of each patch
     :param P: number of patches
     :return: image probability per class computed using the active patches
     '''
-    m = P*P
-    _, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m, class_nr)
-    img_label_prob = image_prob_active_patches(nn_output, P, class_nr)
-    return class_label_ground_truth, img_label_prob
+    image_probability = compute_image_label_in_classification_NORM(nn_output, P, class_nr)
+    return image_probability
 
 
 ##TODO: TO Remove, it should NOT be used
-def compute_image_probability_production_v2(nn_output,instance_label_ground_truth, P):
-    '''
-    Computing image probability prediction considering all patches as equally important
-    :param nn_output:
-    :param instance_label_ground_truth:
-    :param P:
-    :return:
-    '''
-    _, class_label_ground_truth, _= compute_ground_truth(instance_label_ground_truth, P*P)
-    img_label_prob = compute_image_label_in_classification_NORM(nn_output, P)
-    return class_label_ground_truth, img_label_prob
+# def compute_image_probability_production_v2(nn_output,instance_label_ground_truth, P):
+#     '''
+#     Computing image probability prediction considering all patches as equally important
+#     :param nn_output:
+#     :param instance_label_ground_truth:
+#     :param P:
+#     :return:
+#     '''
+#     _, class_label_ground_truth, _= compute_ground_truth(instance_label_ground_truth, P*P)
+#     img_label_prob = compute_image_label_in_classification_NORM(nn_output, P)
+#     return class_label_ground_truth, img_label_prob
 
 
-##TODO: to fix the range
 def compute_auc(labels_all_classes, img_predictions_all_classes):
     auc_all_classes = []
     for ind in range(0, len(FINDINGS)):
@@ -245,25 +260,37 @@ def compute_auc_1class(labels_all_classes, img_predictions_all_classes):
         auc_all_classes.append(auc_score)
     return auc_all_classes
 
+
 ###################################### HANDLING PREDICTIONS ############################################################
 
+
 def combine_predictions_each_batch(current_batch, prev_batches_arr, batch_ind):
-    if batch_ind==0:
+    if batch_ind == 0:
         return current_batch
     else:
         return np.concatenate((prev_batches_arr, current_batch))
 
+
 #####################################################################
+
 
 def keras_binary_accuracy(y_true, y_pred):
     return compute_accuracy_keras(y_pred, y_true, P=16, iou_threshold=0.1, class_nr=1)
 
 
 def accuracy_asloss(y_true, y_pred):
-    class_label_ground_truth, img_label_pred = compute_image_probability_asloss(y_pred, y_true,16, class_nr=1)
+    class_label_ground_truth, img_label_pred = compute_image_probability_asloss(y_pred, y_true, 16, class_nr=1)
     return K.metrics.binary_accuracy(class_label_ground_truth, img_label_pred)
+
+# todo: delete, wrong code
+# def accuracy_asproduction_old(y_true, y_pred):
+#     class_label_ground_truth, img_label_pred = compute_image_probability_production_old(y_pred, y_true, 16, class_nr=1)
+#     return K.metrics.binary_accuracy(class_label_ground_truth, img_label_pred)
 
 
 def accuracy_asproduction(y_true, y_pred):
-    class_label_ground_truth, img_label_pred = compute_image_probability_production(y_pred, y_true, 16, class_nr=1)
+    P = 16
+    img_label_pred = compute_image_probability_production(y_pred, P, class_nr=1)
+    m = P * P
+    _, class_label_ground_truth, has_bbox = compute_ground_truth(y_true, m, class_nr=1)
     return K.metrics.binary_accuracy(class_label_ground_truth, img_label_pred)

@@ -101,7 +101,7 @@ if train_mode:
     model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
                                             samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
     model = keras_model.compile_model_regularization(model)
-    model = keras_model.compile_model_accuracy(model)
+    # model = keras_model.compile_model_accuracy(model)
 
     total_epochs = int(500000/train_generator.__len__())
     print("Total number of iterations: "+ str(total_epochs))
@@ -132,11 +132,13 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=1,
+        epochs=100,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
-        callbacks=[checkpoint, checkpoint_on_epoch_end, early_stop, lrate]
+        callbacks=[checkpoint, checkpoint_on_epoch_end, lrate]
+    # callbacks = [checkpoint, checkpoint_on_epoch_end, early_stop, lrate]
+
     )
     print("history")
     print(history.history)
@@ -176,12 +178,12 @@ else:
 
         # ########################################### VALIDATION SET######################################################
 
-        predict_patch_and_save_results(model, 'val_setBLL', df_val, skip_processing,
+        predict_patch_and_save_results(model, 'val_set', df_val, skip_processing,
                                        BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 
 
         ########################################### TESTING SET########################################################
         test_set = pd.concat([df_bbox_test, df_class_test])
-        predict_patch_and_save_results(model, 'test_setBLL', test_set, skip_processing,
+        predict_patch_and_save_results(model, 'test_set', test_set, skip_processing,
                                        BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 

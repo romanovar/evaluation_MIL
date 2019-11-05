@@ -223,29 +223,29 @@ def process_prediction_v2(file_unique_name, res_path, img_pred_as_loss, batch_si
         print(total_bbox_all_batches)
 
 
-# def process_prediction(file_unique_name, res_path, img_pred_as_loss, batch_size):
-#
-#     predictions, image_indices, patch_labels = get_index_label_prediction(file_unique_name, res_path)
-#     # start_ind = 20000
-#     # end_ind = start_ind+10000
-#     # #CHANGE THIS
-#     # predictions = predictions[start_ind:end_ind, :, :, :]
-#     # patch_labels = patch_labels[start_ind:end_ind, :, :, :]
-#     print("sgape loaded models")
-#     print(predictions.shape)
-#     print(patch_labels.shape)
-#
-#     coll_image_labels, coll_image_predictions, coll_accurate_preds, coll_bbox = process_prediction_all_batches(
-#         predictions,
-#         patch_labels, img_pred_as_loss, batch_size,
-#         file_unique_name)
-#
-#     accurate_pred_all_batches = np.sum(coll_accurate_preds, axis=0)
-#
-#     total_bbox_all_batches = np.sum(coll_bbox, axis=0)
-#     print("accurate pred all batches")
-#     print(accurate_pred_all_batches)
-#     print(total_bbox_all_batches)
+def process_prediction(file_unique_name, res_path, img_pred_as_loss, batch_size):
+
+    predictions, image_indices, patch_labels = get_index_label_prediction(file_unique_name, res_path)
+    # start_ind = 20000
+    # end_ind = start_ind+10000
+    # #CHANGE THIS
+    # predictions = predictions[start_ind:end_ind, :, :, :]
+    # patch_labels = patch_labels[start_ind:end_ind, :, :, :]
+    print("sgape loaded models")
+    print(predictions.shape)
+    print(patch_labels.shape)
+
+    coll_image_labels, coll_image_predictions, coll_accurate_preds, coll_bbox = process_prediction_all_batches(
+        predictions,
+        patch_labels, img_pred_as_loss, batch_size,
+        file_unique_name)
+
+    accurate_pred_all_batches = np.sum(coll_accurate_preds, axis=0)
+
+    total_bbox_all_batches = np.sum(coll_bbox, axis=0)
+    print("accurate pred all batches")
+    print(accurate_pred_all_batches)
+    print(total_bbox_all_batches)
 
 
 def load_img_pred_labels(file_set, img_pred_as_loss, res_path):
