@@ -1,7 +1,7 @@
 import keras as K
 import numpy as np
 import tensorflow as tf
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve, auc
 
 from cnn.nn_architecture.custom_loss import compute_ground_truth, compute_image_label_prediction, \
     compute_image_label_in_classification_NORM
@@ -218,7 +218,7 @@ def compute_image_probability_asloss(nn_output, instance_label_ground_truth, P, 
 #     return class_label_ground_truth, img_label_prob
 
 
-def compute_image_probability_production(nn_output, P, class_nr):
+def compute_image_probability_production(nn_output,instance_label_ground_truth, P, class_nr):
     '''
     This method considers patches with prediction above Ts as active. If a patch is active, and then it belongs to the
      localization and then ONLY EQUATION 2 of the paper is used
@@ -227,7 +227,9 @@ def compute_image_probability_production(nn_output, P, class_nr):
     :return: image probability per class computed using the active patches
     '''
     image_probability = compute_image_label_in_classification_NORM(nn_output, P, class_nr)
-    return image_probability
+    _, class_label_ground_truth, _= compute_ground_truth(instance_label_ground_truth, P*P, class_nr)
+
+    return class_label_ground_truth, image_probability
 
 
 ##TODO: TO Remove, it should NOT be used
@@ -254,11 +256,17 @@ def compute_auc(labels_all_classes, img_predictions_all_classes):
 
 def compute_auc_1class(labels_all_classes, img_predictions_all_classes):
     auc_all_classes = []
-    print(labels_all_classes.shape)
+    # Compute ROC curve and ROC area for each class
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
     for ind in range(0, 1):
         auc_score = roc_auc_score(labels_all_classes[:, ind], img_predictions_all_classes[:, ind])
         auc_all_classes.append(auc_score)
-    return auc_all_classes
+        fpr[ind], tpr[ind], _ = roc_curve(labels_all_classes[:, ind], img_predictions_all_classes[:, ind])
+        roc_auc[ind] = auc(fpr[ind], tpr[ind])
+
+    return auc_all_classes, fpr, tpr, roc_auc
 
 
 ###################################### HANDLING PREDICTIONS ############################################################
@@ -290,7 +298,7 @@ def accuracy_asloss(y_true, y_pred):
 
 def accuracy_asproduction(y_true, y_pred):
     P = 16
-    img_label_pred = compute_image_probability_production(y_pred, P, class_nr=1)
-    m = P * P
-    _, class_label_ground_truth, has_bbox = compute_ground_truth(y_true, m, class_nr=1)
+    img_label_pred, class_label_ground_truth = compute_image_probability_production(y_pred, P, class_nr=1)
+    # m = P * P
+    # _, class_label_ground_truth, has_bbox = compute_ground_truth(y_true, m, class_nr=1)
     return K.metrics.binary_accuracy(class_label_ground_truth, img_label_pred)

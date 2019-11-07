@@ -47,20 +47,20 @@ def plot_train_validation(train_curve, val_curve, train_label, val_label,
     plt.clf()
 
 
-def plot_ROC_curve(nr_class, fpr, tpr, roc_auc, out_dir):
+def plot_roc_curve(fpr, tpr, roc_auc, file_name, out_dir):
     plt.figure()
     lw = 2
-    plt.plot(fpr[nr_class], tpr[nr_class], color='darkorange',
-             lw=lw, label='ROC curve (area = %0.2f)' % roc_auc[nr_class])
+    plt.plot(fpr[0], tpr[0], color='darkorange',
+             lw=lw, label='ROC curve (area = %0.2f)' % roc_auc[0])
     plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Receiver operating characteristic example')
+    plt.title('ROC Curve')
     plt.legend(loc="lower right")
-    plt.savefig(out_dir + '/roc_curve' + nr_class + '.png')
-    plt.clf()
+    plt.show()
+    plt.savefig(out_dir + 'roc_curve_' + file_name + '.jpg', bbox_inches='tight')
 
 
 def prepare_data_visualization(df, findings_list):

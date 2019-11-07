@@ -5,14 +5,14 @@ import numpy as np
 import cnn.preprocessor.load_data as ld
 import yaml
 import argparse
-import cnn.keras_utils
+# from cnn.keras_utils
 import os
 import tensorflow as tf
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, compute_image_probability_asloss, \
     combine_predictions_each_batch, compute_auc, list_localization_accuracy, compute_image_probability_production,\
     list_localization_accuracy_1cat,  compute_auc_1class
 import cnn.nn_architecture.keras_generators as gen
-from cnn.keras_utils import normalize, save_evaluation_results
+from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve
 ############################RAW PREDICTIONS###########################################
 
 
@@ -82,7 +82,6 @@ def process_prediction_per_batch(predictions, patch_labels, img_pred_as_loss, l_
     batch_pred = predictions[l_bound:r_bound, :, :, :]
     batch_patch_lab = patch_labels[l_bound:r_bound, :, :, :]
 
-    #TODO: Different ways of predicting image label
     batch_img_labels, batch_img_preds_v1 = get_label_prediction_image_level(batch_pred, batch_patch_lab,
                                                                             img_pred_as_loss)
 
@@ -396,10 +395,14 @@ def combine_npy_auc_1class(data_set_name, image_pred_method, res_path, nr_files)
         coll_image_preds = combine_predictions_each_batch(img_preds, coll_image_preds, ind)
         coll_image_labels = combine_predictions_each_batch(img_labels, coll_image_labels, ind)
 
-    auc_all_classes_v1 = compute_auc_1class(coll_image_labels, coll_image_preds)
+    auc_all_classes_v1, fpr, tpr, roc_auc = compute_auc_1class(coll_image_labels, coll_image_preds)
     save_evaluation_results([ld.FINDINGS[1]], auc_all_classes_v1, 'auc_prob_' + data_set_name + '_'
                                         + image_pred_method+ '.csv',
                                         res_path)
+    if nr_files > 1:
+        print("No ROC curve can be visualized from several files")
+    else:
+        plot_roc_curve(fpr, tpr, roc_auc, data_set_name, res_path)
 
 
 def combine_auc_accuracy_1class(data_set_name, image_pred_method, res_path):
