@@ -36,7 +36,7 @@ def step_decay(epoch, lr):
     '''
     decay = 0.1
     lrate = lr
-    if(epoch%10==0):
+    if(epoch%10==0) and (epoch > 0):
         lrate = lr * decay
     return lrate
 

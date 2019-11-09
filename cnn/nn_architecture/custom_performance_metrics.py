@@ -298,7 +298,7 @@ def accuracy_asloss(y_true, y_pred):
 
 def accuracy_asproduction(y_true, y_pred):
     P = 16
-    img_label_pred, class_label_ground_truth = compute_image_probability_production(y_pred, P, class_nr=1)
+    img_label_pred, class_label_ground_truth = compute_image_probability_production(y_pred, y_true, P, class_nr=1)
     # m = P * P
     # _, class_label_ground_truth, has_bbox = compute_ground_truth(y_true, m, class_nr=1)
     return K.metrics.binary_accuracy(class_label_ground_truth, img_label_pred)

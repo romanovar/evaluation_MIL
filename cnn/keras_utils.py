@@ -2,6 +2,8 @@ import PIL
 from pathlib import Path
 import matplotlib
 from PIL import ImageDraw
+from sqlalchemy.sql.functions import concat
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
@@ -46,6 +48,61 @@ def plot_train_validation(train_curve, val_curve, train_label, val_label,
     plt.savefig(out_dir + '/' + title + '.png')
     plt.clf()
 
+## Origin": https://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
+def plot_confusion_matrix(cm, classes, out_dir, file_name,
+                          normalize=False,
+                          title=None,
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if not title:
+        if normalize:
+            title = 'Normalized confusion matrix'
+        else:
+            title = 'Confusion matrix, without normalization'
+
+    # Compute confusion matrix
+    # cm = confusion_matrix(y_true, y_pred)
+    # Only use the labels that appear in the data
+    # classes = classes[unique_labels(y_true, y_pred)]
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    ax.figure.colorbar(im, ax=ax)
+    # We want to show all ticks...
+    ax.set(xticks=np.arange(cm.shape[1]),
+           yticks=np.arange(cm.shape[0]),
+           # ... and label them with the respective list entries
+           xticklabels=classes, yticklabels=classes,
+           title=title,
+           ylabel='True label',
+           xlabel='Predicted label')
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+             rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, format(cm[i, j], fmt),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black")
+    fig.tight_layout()
+    plt.savefig(out_dir + 'confusion_matrix_' + file_name + '.jpg', bbox_inches='tight')
+    plt.clf()
+
 
 def plot_roc_curve(fpr, tpr, roc_auc, file_name, out_dir):
     plt.figure()
@@ -61,6 +118,7 @@ def plot_roc_curve(fpr, tpr, roc_auc, file_name, out_dir):
     plt.legend(loc="lower right")
     plt.show()
     plt.savefig(out_dir + 'roc_curve_' + file_name + '.jpg', bbox_inches='tight')
+    plt.clf()
 
 
 def prepare_data_visualization(df, findings_list):

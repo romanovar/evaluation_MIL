@@ -2,6 +2,8 @@ import glob
 from pathlib import Path
 
 import numpy as np
+from sklearn.metrics import confusion_matrix
+
 import cnn.preprocessor.load_data as ld
 import yaml
 import argparse
@@ -12,7 +14,9 @@ from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, compu
     combine_predictions_each_batch, compute_auc, list_localization_accuracy, compute_image_probability_production,\
     list_localization_accuracy_1cat,  compute_auc_1class
 import cnn.nn_architecture.keras_generators as gen
-from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve
+from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, plot_confusion_matrix
+
+
 ############################RAW PREDICTIONS###########################################
 
 
@@ -403,6 +407,12 @@ def combine_npy_auc_1class(data_set_name, image_pred_method, res_path, nr_files)
         print("No ROC curve can be visualized from several files")
     else:
         plot_roc_curve(fpr, tpr, roc_auc, data_set_name, res_path)
+        # print((coll_image_labels).shape)
+        # print(np.array(coll_image_preds > 0.5, dtype=np.float32).shape)
+        conf_matrix = confusion_matrix(coll_image_labels, np.array(coll_image_preds > 0.5, dtype=np.float32))
+
+        plot_confusion_matrix(conf_matrix, [0, 1], res_path, data_set_name, normalize=False, title=None)
+        plot_confusion_matrix(conf_matrix, [0, 1], res_path, data_set_name, normalize=True, title=None)
 
 
 def combine_auc_accuracy_1class(data_set_name, image_pred_method, res_path):
