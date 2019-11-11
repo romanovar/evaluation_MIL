@@ -35,6 +35,18 @@ def compute_IoU(predictions, labels, P, class_nr):
     return intersection / union
 
 
+def compute_dice(predictions, labels, P, class_nr):
+    patches_binary_pred, labels_xy_flatten = reshape_and_convert_to_binary_predictions(predictions, labels, P,
+                                                                                       threshold_binary=0.5,
+                                                                                       class_nr=class_nr)
+    correct_predictions = tf.cast(tf.equal(patches_binary_pred, labels_xy_flatten), tf.float32)
+    intersection = tf.reduce_sum(
+        tf.where(tf.greater(labels_xy_flatten, 0), tf.reshape(correct_predictions, (-1, P * P, class_nr)),
+                 tf.zeros((tf.shape(labels_xy_flatten)))), 1)
+    union = tf.reduce_sum(patches_binary_pred, 1) + tf.reduce_sum(labels_xy_flatten, 1)
+    return (2*intersection)/union
+
+
 def compute_accuracy_image_bbox(predictions, labels, class_ground_truth, P, iou_threshold, class_nr):
     IoU = compute_IoU(predictions, labels, P, class_nr)
     image_class_pred = tf.cast(tf.greater_equal(IoU, iou_threshold), tf.float32)
