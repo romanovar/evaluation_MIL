@@ -145,6 +145,22 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         plt.close(fig)
 
 
+def bar_columns_repetitive_predictions(raw_predictions_coll, img_ind):
+    # raw_predictions_coll[4][img_ind, :, :, 0]
+    classifiers_nr = 5
+    binary_pred_coll = []
+    for classifier in range(0, classifiers_nr ):
+        binary_pred_coll.append(np.array(raw_predictions_coll[classifier][img_ind, :, :, 0] >= 0.5, dtype=np.int))
+    # sum overlap  across all 5 classifiers
+    sum_binary_pred_all_classifiers = np.sum(np.asarray(binary_pred_coll), axis=0)
+    x_labels= []
+    data = []
+    for overlap_nr in range(0, classifiers_nr+1):
+        data.append(np.sum(sum_binary_pred_all_classifiers == overlap_nr, dtype=int))
+        x_labels.append(overlap_nr)
+    return data, x_labels
+    # return sum_binary_pred_all_classifiers
+
 def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll, img_path,
                                                results_path,
                                                class_name,
@@ -247,7 +263,31 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
         fig.colorbar(img5_mask, ax=ax5, fraction=0.046)
 
         # ## SUB-GRAPH 4
-        # ax4 = plt.subplot(2, 3, 1)
+        # heatmap_sum = bar_columns_repetitive_predictions(raw_predictions_coll, ind)
+        # ax6 = plt.subplot(2, 3, 6)
+        # img6  = ax6.imshow(heatmap_sum, 'seismic', vmin=0, vmax=5)
+        # fig.colorbar(img6, ax=ax6, fraction=0.05)
+
+        data, xlabels = bar_columns_repetitive_predictions(raw_predictions_coll, ind)
+
+        ax4 = plt.subplot(2, 3, 6)
+        ax4.bar(xlabels, data, align='center', alpha=0.5)
+        # plt.yticks(y_pos, objects)
+
+        ax4.set_xlabel('Times classified as positive')
+        ax4.set_ylabel('Number of instances')
+
+        # explode = (0.05, 0.05, 0.05, 0.05,
+        # 0.05)
+        # colors = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#fffc99']
+        # ax4.pie(np.array(data)/256, colors=colors, labels=xlabels, autopct='%1.1f%%', startangle=90, pctdistance=0.85)
+        # centre_circle = plt.Circle((0, 0), 0.70, fc='white')
+        # fig = plt.gcf()
+        # fig.gca().add_artist(centre_circle)  # Equal aspect ratio ensures that pie is drawn as a circle
+        # ax4.axis('equal')
+
+
+        #
         # ax4.set_title('Predictions Classifier 2', {'fontsize': 9})
         #
         # ax4.imshow(img_bbox, 'bone')
@@ -264,7 +304,6 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
         plt.close(fig)
 
 
-
 def draw_heatmap(df, labels, ax, font_size_annotations, drop_duplicates):
     cmap = sns.cubehelix_palette(8, as_cmap=True)
     if drop_duplicates:
@@ -273,37 +312,19 @@ def draw_heatmap(df, labels, ax, font_size_annotations, drop_duplicates):
 
         htmp = sns.heatmap(df, cmap=cmap, mask=mask, square=True, annot=True,
                            annot_kws={"size": font_size_annotations}, xticklabels=labels, yticklabels=labels,
-                           linewidth=.5, cbar_kws={"shrink": .5}, ax=ax)
+                           linewidth=.5, cbar_kws={"shrink": .5}, ax=ax,  vmin=0, vmax=1)
     else:
         htmp = sns.heatmap(df, cmap=cmap, square=True, annot=True,
                            annot_kws={"size": font_size_annotations}, xticklabels=labels, yticklabels=labels,
-                           linewidth=.5, cbar_kws={"shrink": .5}, ax=ax)
+                           linewidth=.5, cbar_kws={"shrink": .5}, ax=ax,  vmin=0, vmax=1)
     return htmp
 
 
 # https://stackoverflow.com/questions/34739950/how-to-save-a-plot-in-seaborn-with-python
 def visualize_correlation_heatmap(df, res_path, img_ind, labels, dropDuplicates = True):
-    # Set background color / chart style
     sns.set_style(style='white')
-
-    # Set up  matplotlib figure
-    f, ax = plt.subplots(figsize=(11, 9))
-
-    # Add diverging colormap from red to blue
-    cmap = sns.cubehelix_palette(8, as_cmap=True)
-    # cmap = sns.diverging_palette(250, 10, as_cmap=True)
-    sns.set(font_scale=2)
-    # Draw correlation plot with or without duplicates
-    # if dropDuplicates:
-        # htmp = sns.heatmap(df, mask=mask, cmap=cmap,
-        #             square=True, annot=True, annot_kws={"size":18}, xticklabels=labels, yticklabels=labels,
-        #             linewidth=.5, cbar_kws={"shrink": .5}, ax=ax)
-    htmp = draw_heatmap(df, labels, ax, 18, dropDuplicates)
-    # else:
-        # htmp = sns.heatmap(df, cmap=cmap,
-        #             square=True, annot=True, annot_kws={"size":18}, xticklabels=labels, yticklabels=labels,
-        #             linewidth=.5, cbar_kws={"shrink": .5}, ax=ax)
-        # htmp = draw_heatmap(df, labels, ax, 18)
+    f, ax = plt.subplots(figsize=(7, 5))
+    htmp = draw_heatmap(df, labels, ax, 15, dropDuplicates)
     plt.show()
     htmp.figure.savefig(res_path + 'correlation_' + img_ind + '.jpg', bbox_inches='tight')
     plt.close()
@@ -352,7 +373,7 @@ def make_scatterplot(y_axis_collection, y_axis_title, x_axis_collection, x_axis_
 
 
 def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_collection, x_axis_title, res_path, y_errors,
-                                   error_bar = False, threshold_prefix =None):
+                                   error_bar = False, bin_threshold_prefix =None):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
     colors = cm.rainbow(np.linspace(0, 1, len(y_axis_collection)))
@@ -368,9 +389,9 @@ def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_colle
     plt.legend(loc=2)
     plt.show()
 
-    if threshold_prefix is not None:
+    if bin_threshold_prefix is not None:
         fig.savefig(
-            res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '_'+ str(threshold_prefix)+'.jpg',
+            res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '_'+ str(bin_threshold_prefix)+'.jpg',
             bbox_inches='tight')
     else:
         fig.savefig(res_path +  'scatter_' + x_axis_title + '_' + y_axis_title + '.jpg', bbox_inches='tight')
@@ -387,13 +408,10 @@ def scatterplot_AUC_stabscore(y_axis_collection1, y_axis_title1, y_axis_collecti
     concat_metrics = np.append([np.asarray(y_axis_collection1)], [np.asarray(y_axis_collection2)], axis=0)
     mean_metrics = np.mean(concat_metrics, axis=0)
     stand_dev = np.std(concat_metrics, axis=0)
-    # print("standard deviation ")
-    # print(stand_dev)
     make_scatterplot(mean_metrics, 'mean_'+y_axis_title1 + '_'+y_axis_title2, x_axis_collection, x_axis_title,
                                    res_path, threshold_prefix=threshold)
     make_scatterplot_with_errorbar(mean_metrics, 'mean_'+y_axis_title1 + '_'+y_axis_title2 + '_error', x_axis_collection, x_axis_title,
-                                   res_path, y_errors=stand_dev, error_bar=True, threshold_prefix=threshold)
-
+                                   res_path, y_errors=stand_dev, error_bar=True, bin_threshold_prefix=threshold)
 
 
 def plot_change_stability_varying_threshold_per_image(overlap_coll, jacc_coll, corr_overlap_col, corr_jaccard_coll, corr_iou_coll,
@@ -403,6 +421,20 @@ def plot_change_stability_varying_threshold_per_image(overlap_coll, jacc_coll, c
                     'Corrected Positive Jaccard distance', corr_iou_coll, "Corrected IoU",
                     corr_jaccard_pgn_coll, "Corrected Positive Jaccard using Pigeonhole",
                     threshold_coll, 'threshold', res_path, 'varying_thres_stability' + str(img_ind), "")
+
+
+def scatterplot_AUC_stabscore_v2(y_axis_collection1, y_axis_title1, y_axis_title2, x_axis_collection, x_axis_title,
+                                 res_path, threshold):
+    # make_scatterplot(y_axis_collection1, y_axis_title1, x_axis_collection, x_axis_title, res_path, threshold)
+    # make_scatterplot(y_axis_collection2, y_axis_title2, x_axis_collection, x_axis_title, res_path, threshold)
+
+    # concat_metrics = np.append([np.asarray(y_axis_collection1)], [np.asarray(y_axis_collection2)], axis=0)
+    mean_metrics = np.mean(y_axis_collection1, axis=0)
+    stand_dev = np.std(y_axis_collection1, axis=0)
+    make_scatterplot(mean_metrics, 'mean_'+y_axis_title1 + '_'+y_axis_title2, x_axis_collection, x_axis_title,
+                                   res_path, threshold_prefix=threshold)
+    make_scatterplot_with_errorbar(mean_metrics, 'mean_'+y_axis_title1 + '_'+y_axis_title2 + '_error', x_axis_collection, x_axis_title,
+                                   res_path, y_errors=stand_dev, error_bar=True, bin_threshold_prefix=threshold)
 
 
 def plot_change_stability_varying_threshold(raw_predictions1, raw_predictions2, res_path, image_indices):
@@ -497,3 +529,14 @@ def plot_line_graph(line1, label1, line2, label2, line3, label3, line4, label4, 
         bbox_inches='tight')
     plt.close(fig)
     plt.clf()
+
+
+def visualize_scatter_bag_auc_stability(all_classifiers_auc_list, stability, y_axis_el1,y_axis_el2):
+    mean_metrics = np.mean(all_classifiers_auc_list, axis=0)
+    stand_dev = np.std(all_classifiers_auc_list, axis=0)
+
+    # mean_metrics = np.mean(auc1, axis=0)
+    # stand_dev = np.std(concat_metrics, axis=0)
+    make_scatterplot_with_errorbar(mean_metrics, 'mean_' + y_axis_el1 + '_' + y_axis_el2 + '_error',
+                                   stability, "stability",
+                                   res_path, y_errors=stand_dev, error_bar=True, bin_threshold_prefix=0.5)

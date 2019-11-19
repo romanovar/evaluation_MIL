@@ -1,7 +1,8 @@
 import yaml
 import argparse
 
-from stability.stability_2classifiers.analysis_stability_2classifiers import calculate_vizualize_save_stability
+from stability.stability_2classifiers.analysis_stability_2classifiers import calculate_vizualize_save_stability, \
+    examine_correlation
 
 
 def load_config(path):
@@ -19,4 +20,7 @@ config = load_config(args.config_path)
 set_name1 = 'subset_test_set_CV0_2_0.95.npy'
 set_name2='subset_test_set_CV0_4_0.95.npy'
 
+# calculate_vizualize_save_stability(set_name1, set_name2, config)
 calculate_vizualize_save_stability(set_name1, set_name2, config)
+examine_correlation(set_name1, set_name2, config)
+

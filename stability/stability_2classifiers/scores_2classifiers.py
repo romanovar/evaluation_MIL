@@ -1,16 +1,16 @@
 import numpy as np
-from scipy.stats import rankdata, spearmanr
+from scipy.stats import rankdata, spearmanr, kendalltau
 
 
 from stability.preprocessor.preprocessing import calculate_subsets_between_two_classifiers
 
 
 def positive_Jaccard_index_batch(bin_pred1, bin_pred2, P):
-    """
-    :param bin_pred1: raw predictions of all bbox images
-    :param bin_pred2: raw predictions of another subset of all bbox images
-    :return: array with positive  jaccard index for
-    """
+    # jaccard_coll = []
+    # assert bin_pred1.shape == bin_pred2.shape, "Predictions don't have same shapes"
+    #
+    # for obs in range(0, bin_pred1.shape[0]):
+
     sum_preds = bin_pred1 + bin_pred2
     n11_mask = np.array(sum_preds > 1, dtype=int)
     n10_n01_mask = np.array(sum_preds ==1, dtype=int)
@@ -19,6 +19,17 @@ def positive_Jaccard_index_batch(bin_pred1, bin_pred2, P):
     n10_n01 = np.sum(n10_n01_mask.reshape((n10_n01_mask.shape[0], P*P)), axis=1)
     np.seterr(divide='ignore', invalid='ignore')
     pos_jaccard_dist = n11/(n11+n10_n01)
+
+    # n00, n10, n01, n11
+    d, c, b, a  = calculate_subsets_between_two_classifiers(bin_pred1, bin_pred2)
+    # N = a + d  + b + c
+    # expected_positive_overlap = (n11 + n01) * (n11 + n10) / N
+    corrected_score2 = a / (a + b + c)
+    assert ((np.ma.masked_array(pos_jaccard_dist, np.isnan(pos_jaccard_dist)) ==
+             np.ma.masked_array(corrected_score2,
+                                np.isnan(corrected_score2)))).all(), "Error in computing some of the index! "
+        # jaccard_coll.append(pos_jaccard_dist)
+
     return pos_jaccard_dist
 
 
@@ -47,6 +58,21 @@ def calculate_IoU(bin_pred1, bin_pred2):
     iou_score = (n11+n00) / (n11 + n10_n01+n00)
     return iou_score
 
+#
+# def calculate_pearson_coefficient_batch(raw_pred1, raw_pred2):
+#     correlation_coll = []
+#     assert raw_pred1.shape == raw_pred2.shape, "Predictions don't have same shapes"
+#
+#     for ind in range(0, raw_pred1.shape[0]):
+#         corr_coef = np.corrcoef(raw_pred1.reshape((raw_pred1.shape[0], 16*16*1))[ind],
+#                     raw_pred2.reshape((raw_pred2.shape[0], 16*16*1))[ind])
+#         correlation_coll.append(corr_coef[0,1])
+#         corr_coef2 = np.corrcoef(raw_pred1.reshape((raw_pred1.shape[0], 16*16*1))[ind],
+#                     raw_pred2.reshape((raw_pred2.shape[0], 16*16*1))[ind], rowvar=False)
+#         assert corr_coef[0, 1]==corr_coef2[0, 1], "think on the dimensions of the correlation computed "
+#
+#     return correlation_coll
+
 
 def calculate_pearson_coefficient_batch(raw_pred1, raw_pred2):
     correlation_coll = []
@@ -63,17 +89,17 @@ def calculate_pearson_coefficient_batch(raw_pred1, raw_pred2):
     return correlation_coll
 
 
-def calculate_pearson_coefficient_batch(raw_pred1, raw_pred2):
+def calculate_kendallstau_coefficient_batch(raw_pred1, raw_pred2):
     correlation_coll = []
     assert raw_pred1.shape == raw_pred2.shape, "Predictions don't have same shapes"
 
     for ind in range(0, raw_pred1.shape[0]):
-        corr_coef = np.corrcoef(raw_pred1.reshape((raw_pred1.shape[0], 16*16*1))[ind],
+        corr_coef  = kendalltau(raw_pred1.reshape((raw_pred1.shape[0], 16*16*1))[ind],
                     raw_pred2.reshape((raw_pred2.shape[0], 16*16*1))[ind])
-        correlation_coll.append(corr_coef[0,1])
-        corr_coef2 = np.corrcoef(raw_pred1.reshape((raw_pred1.shape[0], 16*16*1))[ind],
-                    raw_pred2.reshape((raw_pred2.shape[0], 16*16*1))[ind], rowvar=False)
-        assert corr_coef[0, 1]==corr_coef2[0, 1], "think on the dimensions of the correlation computed "
+        correlation_coll.append(corr_coef[0])
+        corr_coef2 = kendalltau(raw_pred1.reshape((raw_pred1.shape[0], 16*16*1))[ind],
+                    raw_pred2.reshape((raw_pred2.shape[0], 16*16*1))[ind])
+        assert corr_coef[0]==corr_coef2[0], "think on the dimensions of the correlation computed "
 
     return correlation_coll
 
@@ -82,16 +108,22 @@ def corrected_IOU(bin_pred1, bin_pred2):
     n00, n10, n01, n11 = calculate_subsets_between_two_classifiers(bin_pred1, bin_pred2)
 
     N = n00 + n11 + n10 + n01
-    expected_positive_overlap = (n11 + n01) * (n11 + n10) / N
-    expected_negative_overlap = (n00 + n01) * (n00 + n10) / N
+    # expected_positive_overlap = ((n11 + n01) * (n11 + n10)) / N
+    # expected_negative_overlap = ((n00 + n01) * (n00 + n10)) / N
+    expected_positive_overlap = (((n11 + n01)/N) * ((n11 + n10)/N))* N
+    expected_negative_overlap = (((n00 + n01)/N) * ((n00 + n10)/N)) * N
 
     corrected_score = ((n11 + n00 - expected_positive_overlap - expected_negative_overlap) /
                        (n10 + n11 + n01 + n00 - expected_positive_overlap - expected_negative_overlap))
     corrected_score2 = (2*n00 * n11 - 2*n10 * n01) / (2*(n00 * n11) - 2*(n01 * n10) + ((n10 + n01) * N))
-
+    simplf_div = (n11*n10 + n11*n01 + 2*n11*n00 + n10*n10 + n10*n00 + n01*n01 + n01*n00)
+    corrected_score3 = (2*n00 * n11 - 2*n10 * n01) /(simplf_div)
     assert ((np.ma.masked_array(corrected_score, np.isnan(corrected_score)) ==
              np.ma.masked_array(corrected_score2,
                                 np.isnan(corrected_score2)))).all(), "Error in computing some of the index! "
+    assert ((np.ma.masked_array(corrected_score, np.isnan(corrected_score)) ==
+             np.ma.masked_array(corrected_score3,
+                                np.isnan(corrected_score3)))).all(), "Error in computing some of the index! "
     # return np.ma.masked_array(corrected_score, np.isnan(corrected_score))
     return corrected_score
 
@@ -104,11 +136,10 @@ def corrected_positive_Jaccard(bin_pred1, bin_pred2):
 
     corrected_score = ((n11 - expected_positive_overlap)/(n10 + n11 +n01 - expected_positive_overlap))
     corrected_score2 = (n00*n11 - n10*n01)/((n00*n11) - (n01*n10) + ((n10+n01)*N))
-
     assert ((np.ma.masked_array(corrected_score, np.isnan(corrected_score)) ==
              np.ma.masked_array(corrected_score2, np.isnan(corrected_score2)))).all(), "Error in computing some of the index! "
-    # return np.ma.masked_array(corrected_score, np.isnan(corrected_score))
-    return corrected_score
+    return np.ma.masked_array(corrected_score, np.isnan(corrected_score))
+    # return corrected_score
 
 
 def corrected_Jaccard_pigeonhole(bin_pred1, bin_pred2):

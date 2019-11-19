@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import rankdata, spearmanr
+from scipy.stats import rankdata, spearmanr, kendalltau
+from scipy.stats.mstats_basic import kendalltau_seasonal
 from sklearn.metrics import roc_auc_score
 
 from stability.preprocessor.preprocessing import binarize_predictions
@@ -8,7 +9,8 @@ from stability.visualizations.visualization_utils import scatterplot_AUC_stabsco
     visualize_instAUC_vs_stability_index
 from stability.stability_2classifiers.scores_2classifiers import positive_Jaccard_index_batch, \
     corrected_Jaccard_pigeonhole, corrected_positive_Jaccard, overlap_coefficient, corrected_IOU, \
-    corrected_overlap_coefficient, calculate_spearman_rank_coefficient, calculate_pearson_coefficient_batch
+    corrected_overlap_coefficient, calculate_spearman_rank_coefficient, calculate_pearson_coefficient_batch, \
+    calculate_kendallstau_coefficient_batch
 
 
 def calculate_spearman_rank_coefficient_v2(scores):
@@ -131,7 +133,7 @@ def get_binary_scores_forthreshold_v2(thres, raw_pred_coll):
         for bin_pred2 in binary_predictions_coll:
 
             jaccard_indices = positive_Jaccard_index_batch(bin_pred, bin_pred2, 16)
-            jaccard_indices_mask = np.ma.masked_array(jaccard_indices, np.isnan(jaccard_indices))
+            # jaccard_indices_mask = np.ma.masked_array(jaccard_indices, np.isnan(jaccard_indices))
             jaccard_coll.append(jaccard_indices)
 
             corrected_jacc_pigeonhole = corrected_Jaccard_pigeonhole(bin_pred, bin_pred2)
@@ -247,6 +249,7 @@ def compute_save_correlation_scores(raw_predictions1, raw_predictions2, df_stab,
     print(auc1)
     print(high_auc_spearman)
 
+    tau_coll= calculate_kendallstau_coefficient_batch(raw_predictions1, raw_predictions2)
 
     if scatterplots==True:
         make_scatterplot(spearman_corr_col, "Spearman rank", pearson_corr_col, "Pearson", res_path)
@@ -256,12 +259,13 @@ def compute_save_correlation_scores(raw_predictions1, raw_predictions2, df_stab,
         # make_scatterplot(auc2, "AUC2", spearman_corr_col, "Spearman rank", results_path)
         scatterplot_AUC_stabscore(auc1, 'AUC1', auc2, "AUC2", pearson_corr_col, "Pearson", res_path, threshold=0)
         scatterplot_AUC_stabscore(auc1, 'AUC1', auc2, "AUC2", spearman_corr_col, "Spearman", res_path, threshold=0)
+        scatterplot_AUC_stabscore(auc1, 'AUC1', auc2, "AUC2", tau_coll, "kendalltau", res_path, threshold=0)
 
         # make_scatterplot(abs_dff_auc, "ABS_difference_AUC", pearson_corr_col, "Pearson", results_path)
         # make_scatterplot(high_auc_diff, "ABS_difference_09AUC", high_auc_spearman, "Spearman rank", results_path)
         # make_scatterplot(high_auc_diff, "ABS_difference_09AUC", high_auc_pearson, "Pearson rank", results_path)
 
-    return pearson_corr_col, spearman_corr_col
+    return pearson_corr_col, spearman_corr_col, tau_coll
 
 
 def compute_correlation_scores_v2(raw_predictions):
