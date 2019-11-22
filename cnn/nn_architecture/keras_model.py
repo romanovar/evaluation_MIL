@@ -24,7 +24,14 @@ def build_model():
     recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
 
     model = Model(base_model.input, recg_net)
-
+    # base_model.trainable=False
+    # count = 0
+    # for layer in base_model.layers:
+    #     if 'res5' in layer.name or 'res4' in layer.name:
+    #         layer.trainable = True
+    #         count +=1
+    #         print('trainable layer')
+    #         print(count)
     return model
 
 
