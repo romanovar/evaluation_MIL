@@ -1,10 +1,11 @@
 """
 inspired by https://github.com/neuralmed/learning_with_bbox
 """
+import cv2
 import numpy as np
 from keras.utils import Sequence
 from keras.preprocessing.image import load_img, img_to_array
-
+from cnn.preprocessor.load_data_mura import padding_needed, pad_image
 from cnn.keras_utils import process_loaded_labels
 
 
@@ -20,6 +21,7 @@ class BatchGenerator(Sequence):
         self.net_w = net_w
         self.box_size = box_size
         self.processed_y = processed_y
+        self.interpolation = True
 
         if shuffle: np.random.shuffle(self.instances)
 
@@ -45,9 +47,21 @@ class BatchGenerator(Sequence):
         # do the logic to fill in the inputs and the output
         for train_instance in self.instances[l_bound:r_bound]:
             image_dir = train_instance[0]
-
-            image = img_to_array(
-                load_img(image_dir, target_size=(self.net_w, self.net_h), color_mode='rgb'))
+            print(image_dir)
+            if self.interpolation:
+                #### NEAREST INTERPOLATION
+                image = img_to_array(
+                    load_img(image_dir, target_size=(self.net_w, self.net_h), color_mode='rgb'))
+            else:
+                ### PADDING
+                image = img_to_array(load_img(image_dir, target_size=None, color_mode='rgb'))
+                pad_needed = padding_needed(image)
+                # img1 = cv2.imread('opencv_logo.png')
+                # img1 = cv2.uma
+                # gray = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB) cv2.UMat(imgUMat)
+                # gray = img_to_array(image)
+                if pad_needed:
+                    image = pad_image(image, final_size_x=self.net_w, final_size_y=self.net_h)
 
             if self.norm != None:
                 x_batch[instance_count] = self.norm(image)
@@ -60,6 +74,7 @@ class BatchGenerator(Sequence):
                 for i in range(1, train_instance.shape[0]):  # (15)
                     if self.processed_y:
                         g = process_loaded_labels(train_instance[i])
+                        print(g)
                         train_instances_classes.append(g)
                     else:
                         print(train_instance[i])
