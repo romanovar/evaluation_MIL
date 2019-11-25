@@ -60,9 +60,9 @@ def load_mura(config):
         end_class = mura_train_img_path.find('MURA-v1.1')
         mura_folder_root = mura_train_img_path[0:end_class]
         print(mura_folder_root)
-        df_train_val = ldm.get_save_processed_df(mura_train_labels_path, mura_train_img_path, mura_folder_root, "train")
+        df_train_val = ldm.get_save_processed_df(mura_train_labels_path, mura_train_img_path, mura_folder_root, "train_mura")
         test_df_all_classes = ldm.get_save_processed_df(mura_test_labels_path, mura_test_img_path, mura_folder_root,
-                                                        "test")
+                                                        "test_mura")
 
     _, _, train_df_all_classes, val_df_all_classes = ldm.split_train_val_set(df_train_val)
     df_train, df_val, df_test = ldm.filter_all_set_for_class(train_df_all_classes, val_df_all_classes,
