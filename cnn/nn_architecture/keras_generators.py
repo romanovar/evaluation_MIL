@@ -11,7 +11,7 @@ from cnn.keras_utils import process_loaded_labels
 
 class BatchGenerator(Sequence):
     def __init__(self, instances, batch_size=16, shuffle=True,
-                 norm=None, net_h=512, net_w=512, box_size=16, processed_y = None):
+                 norm=None, net_h=512, net_w=512, box_size=16, processed_y = None, interpolation=True):
 
         self.instances = instances
         self.batch_size = batch_size
@@ -21,7 +21,7 @@ class BatchGenerator(Sequence):
         self.net_w = net_w
         self.box_size = box_size
         self.processed_y = processed_y
-        self.interpolation = True
+        self.interpolation = interpolation
 
         if shuffle: np.random.shuffle(self.instances)
 
@@ -74,11 +74,8 @@ class BatchGenerator(Sequence):
                 for i in range(1, train_instance.shape[0]):  # (15)
                     if self.processed_y:
                         g = process_loaded_labels(train_instance[i])
-                        print(g)
                         train_instances_classes.append(g)
                     else:
-                        print(train_instance[i])
-                        print(type(train_instance[i]))
                         # labels = np.fromstring(train_instance[i], dtype=int, sep=' ')
                         # train_instances_classes.append(train_instance[i])
                         labels = process_loaded_labels(train_instance[i])
