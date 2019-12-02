@@ -77,10 +77,10 @@ BOX_SIZE = 16
 # # new_seed, new_tr_ind = ld.create_overlapping_test_set(init_train_idx, 1, 0.95,0.85, xray_df)
 # # print(new_tr_ind)
 if use_xray_dataset:
-    df_train, df_val, df_bbox_test, df_class_test = ldd.load_xray14(config)
+    df_train, df_val, df_bbox_test, df_class_test = ldd.load_process_xray14(config)
 
 else:
-    df_train, df_val, df_test = ldd.load_mura(config)
+    df_train, df_val, df_test = ldd.load_preprocess_mura(config)
 
 if train_mode:
     train_generator = gen.BatchGenerator(
