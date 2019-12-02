@@ -128,6 +128,39 @@ def corrected_IOU(bin_pred1, bin_pred2):
     return corrected_score
 
 
+#### SOURCE: "High agreement but low kappa: II. Resolving the paradoxes" Cicchetti, Feinstein
+def compute_positive_agreement_ratio(positive_overlap, observer1_positive, observer2_positive):
+    return (2*positive_overlap)/(observer1_positive + observer2_positive)
+
+
+def compute_negative_agreement_ratio(negative_overlap, observer1_negative, observer2_negative):
+    return (2*negative_overlap)/(observer1_negative + observer2_negative)
+
+
+def compute_total_agreement_ratio(neg_overlap, pos_overlap, N):
+    return (pos_overlap+neg_overlap)/N
+
+
+def compute_f1_f2(observer1_pos, observer1_neg):
+    return observer1_pos - observer1_neg
+
+
+def compute_g1_g2(observer2_pos, observer2_neg):
+    return observer2_pos - observer2_neg
+
+
+def compute_additional_scores_kappa(bin_pred1, bin_pred2):
+    n00, n10, n01, n11 = calculate_subsets_between_two_classifiers(bin_pred1,bin_pred2)
+    observer1_positive = n11 + n10
+    observer2_positive = n11 + n01
+    p_pos = compute_positive_agreement_ratio(n11, observer1_positive, observer2_positive)
+    p_neg = compute_negative_agreement_ratio(n00, observer1_negative=n00+n01, observer2_negative=n00+n10)
+    po= compute_total_agreement_ratio(n00, n11, n11+n00+n10+n01)
+    f1_f2 = compute_f1_f2(n11+n10, n00+n01)
+    g1_g2 = compute_g1_g2(n11 + n01, n00 + n10)
+    return po, p_pos, p_neg, p_pos-p_neg, f1_f2, g1_g2
+
+
 def corrected_positive_Jaccard(bin_pred1, bin_pred2):
     n00, n10, n01, n11 = calculate_subsets_between_two_classifiers(bin_pred1,bin_pred2)
 
