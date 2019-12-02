@@ -21,7 +21,7 @@ from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, 
 
 
 def predict_patch_and_save_results(saved_model, file_unique_name, data_set, processed_y,
-                            test_batch_size, box_size, image_size, res_path):
+                            test_batch_size, box_size, image_size, res_path, mura_interpolation=True):
     print(res_path)
     test_generator = gen.BatchGenerator(
         instances=data_set.values,
@@ -31,7 +31,9 @@ def predict_patch_and_save_results(saved_model, file_unique_name, data_set, proc
         box_size=box_size,
         norm= normalize,
         processed_y=processed_y,
-        shuffle=False)
+        shuffle=False,
+        interpolation= mura_interpolation
+    )
 
     predictions = saved_model.predict_generator(test_generator, steps=test_generator.__len__(), workers=1)
     np.save(res_path + 'predictions_' + file_unique_name, predictions)
