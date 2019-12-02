@@ -135,7 +135,7 @@ def split_data_cv(df, splits_nr, current_split, number_classifiers, random_seed,
 
 
 def get_train_subset_mura(train_set, random_seed, ratio_to_keep):
-    obs_to_keep = np.ceil(ratio_to_keep * train_set)
+    obs_to_keep = np.ceil(ratio_to_keep * len(train_set))
 
     if obs_to_keep > 0:
         np.random.seed(seed=random_seed)
