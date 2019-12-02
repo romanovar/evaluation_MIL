@@ -438,7 +438,6 @@ def get_train_test_CV(Y, splits_nr, current_split, random_seed,  label_col, rati
     :return:
     '''
     classification, bbox = separate_localization_classification_labels(Y,  label_col)
-
     class_train_col, class_test_col = split_test_train_v3(classification, splits_nr=splits_nr, test_ratio=0.2,
                                                           random_state=random_seed)
     bbox_train_col, bbox_test_col = split_test_train_v3(bbox, splits_nr, test_ratio=0.2,
@@ -457,7 +456,7 @@ def get_train_test_CV(Y, splits_nr, current_split, random_seed,  label_col, rati
     return train_set, val_set, test_set, df_bbox_train, df_bbox_test, train_only_class
 
 
-def get_train_subset(orig_train_set, train_bbox_nr, random_seed, ratio_to_keep):
+def get_train_subset_xray(orig_train_set, train_bbox_nr, random_seed, ratio_to_keep):
 
     obs_to_keep = calculate_observations_to_keep(orig_train_set.shape[0], train_bbox_nr, ratio_to_keep)
 
@@ -470,3 +469,27 @@ def get_train_subset(orig_train_set, train_bbox_nr, random_seed, ratio_to_keep):
     else:
         return orig_train_set
 
+
+def load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path, localization_labels_path,
+              results_path):
+    if skip_processing:
+        xray_df = load_csv(processed_labels_path)
+        print('Cardiomegaly label division')
+        print(xray_df['Cardiomegaly'].value_counts())
+    else:
+        label_df = get_classification_labels(classication_labels_path, False)
+        processed_df = preprocess_labels(label_df, image_path)
+        xray_df = couple_location_labels(localization_labels_path, processed_df, PATCH_SIZE, results_path)
+    return xray_df
+
+
+def split_xray_cv(xray_df, cv_splits, split, class_name, results_path, number_classifiers):
+    df_train, df_val, df_test, \
+    df_bbox_train, df_bbox_test, train_only_class = get_train_test_CV(xray_df, cv_splits, split, random_seed=1,
+                                                                         label_col=class_name, ratio_to_keep=None)
+
+    print('Training set: ' + str(df_train.shape))
+    print('Validation set: ' + str(df_val.shape))
+    print('Localization testing set: ' + str(df_test.shape))
+
+    return df_train, df_val, df_test, df_bbox_train, df_bbox_test, train_only_class
