@@ -373,15 +373,65 @@ def make_scatterplot(y_axis_collection, y_axis_title, x_axis_collection, x_axis_
 
 
 def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_collection, x_axis_title, res_path, y_errors,
-                                   error_bar = False, bin_threshold_prefix =None):
+                                   error_bar = False, bin_threshold_prefix =None, x_errors=None):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
+    # cmap2 = cm.get_cmap('tab20c')  # type: # matplotlib.colors.ListedColormap
+    # colors = cmap2.colors  # type: # list
+    # ax.set_prop_cycle(color=colors)
+
     colors = cm.rainbow(np.linspace(0, 1, len(y_axis_collection)))
-    for x, y, y_error_bar, color in zip(x_axis_collection, y_axis_collection, y_errors, colors):
+    if y_errors is None:
+        y_errors = np.zeros(y_axis_collection.shape)
+    if x_errors is None:
+        x_errors = np.zeros(x_axis_collection.shape)
+    for x, y, y_error_bar, x_error_bar, color in zip(x_axis_collection, y_axis_collection, y_errors, x_errors, colors):
         # x, y = pearson_corr_col, spearman_corr_col
         ax.scatter(x, y, c=color, edgecolors='none', s=30)
         if (error_bar==True) and (y_errors is not None):
-            ax.errorbar(x, y, xerr=0, yerr=y_error_bar, ecolor=color)
+            ax.errorbar(x, y, xerr=x_error_bar, yerr=y_error_bar, ecolor=color)
+    # ax.set(xlim=(np.min(x), 1), ylim=(0, 1))
+    plt.xlabel(x_axis_title)
+    plt.ylabel(y_axis_title)
+    plt.title('Matplot scatter plot')
+    plt.legend(loc=2)
+    plt.show()
+
+    if bin_threshold_prefix is not None:
+        fig.savefig(
+            res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '_'+ str(bin_threshold_prefix)+'.jpg',
+            bbox_inches='tight')
+    else:
+        fig.savefig(res_path +  'scatter_' + x_axis_title + '_' + y_axis_title + '.jpg', bbox_inches='tight')
+
+    plt.close(fig)
+
+
+def make_scatterplot_with_errorbar_v2(y_axis_collection, y_axis_collection2,  y_axis_title, x_axis_collection,
+                                      x_axis_title, res_path, y_errors, y_errors2, error_bar = False,
+                                      bin_threshold_prefix =None, x_errors=None):
+    fig = plt.figure(figsize=( 15,10))
+    ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
+    plt.grid("True")
+    colors = cm.rainbow(np.linspace(0, 1, len(y_axis_collection)))
+    if y_errors is None:
+        y_errors = np.zeros(y_axis_collection.shape)
+    if y_errors2 is None:
+        y_errors2 = np.zeros(y_axis_collection.shape)
+
+    if x_errors is None:
+        x_errors = np.zeros(x_axis_collection.shape)
+    for x, y, y2, y_error_bar, y_error_bar2, x_error_bar, color in zip(x_axis_collection, y_axis_collection,
+                                                                       y_axis_collection2, y_errors, y_errors2,
+                                                                       x_errors, colors):
+        # x, y = pearson_corr_col, spearman_corr_col
+        ax.scatter(x, y, c=color, edgecolors='none', s=150)
+        ax.scatter(x, y2, c=color, edgecolors='none', s=150, marker=">")
+
+        if (error_bar==True) and (y_errors is not None):
+            ax.errorbar(x, y, xerr=x_error_bar, yerr=y_error_bar, ecolor=color)
+            ax.errorbar(x, y2, xerr=x_error_bar, yerr=y_error_bar2, ecolor=color)
+
     # ax.set(xlim=(np.min(x), 1), ylim=(0, 1))
     plt.xlabel(x_axis_title)
     plt.ylabel(y_axis_title)
@@ -435,6 +485,8 @@ def scatterplot_AUC_stabscore_v2(y_axis_collection1, y_axis_title1, y_axis_title
                                    res_path, threshold_prefix=threshold)
     make_scatterplot_with_errorbar(mean_metrics, 'mean_'+y_axis_title1 + '_'+y_axis_title2 + '_error', x_axis_collection, x_axis_title,
                                    res_path, y_errors=stand_dev, error_bar=True, bin_threshold_prefix=threshold)
+
+
 
 
 def plot_change_stability_varying_threshold(raw_predictions1, raw_predictions2, res_path, image_indices):
