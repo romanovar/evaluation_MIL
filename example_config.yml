@@ -1,6 +1,23 @@
 image_path: directiory folder to the images
-classication_labels_path: path to Data_Entry_2017.csv
-localization_labels_path: path to Bbox_List_2017.csv
+classication_labels_path: path to chest XRay Data_Entry_2017.csv
+localization_labels_path: path to chest XRay Bbox_List_2017.csv
 results_path: folder where results are stored
 processed_labels_path: path to preprocessed csv processed_Y.csv
 skip_processing_labels: false/true
+mura_train_img_path: path to mura train_image_paths.csv
+mura_train_labels_path: path to mura train_labeled_studies.csv
+mura_test_img_path: path to mura valid_image_paths.csv
+mura_test_labels_path: path to mura valid_labeled_studies.csv
+mura_processed_train_labels_path: path to mura processed train file - train_mura.csv
+mura_processed_test_labels_path: path to mura processed test file - test_mura.csv
+generated_images_path: path to save images
+prediction_results_path: path to save predictions
+trained_models_path: path to save rtained models
+stability_results: path to save stability results
+skip_processing_labels: true/false
+train_mode: true/false
+test_single_image: true/false
+prediction_skip_processing: false/false
+use_xray_dataset: true/false
+class_name: 'shoulder' /"Cardiomegaly"
+mura_interpolation: true/false
