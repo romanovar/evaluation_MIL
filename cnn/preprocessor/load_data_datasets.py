@@ -10,6 +10,7 @@ def load_process_xray14(config):
     localization_labels_path = config['localization_labels_path']
     generated_images_path = config['generated_images_path']
     results_path = config['results_path']
+    class_name = config['class_name']
 
     xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
                            localization_labels_path, results_path)
@@ -18,7 +19,7 @@ def load_process_xray14(config):
     init_train_idx, df_train_init, df_val, \
     df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(xray_df, random_state=1, do_stats=False,
                                                                    res_path = generated_images_path,
-                                                                   label_col = 'Cardiomegaly')
+                                                                   label_col = class_name)
     df_train=df_train_init
     print('Training set: '+ str(df_train_init.shape))
     print('Validation set: '+ str(df_val.shape))
@@ -43,7 +44,7 @@ def load_preprocess_mura(config):
 
     skip_processing = config['skip_processing_labels']
 
-    class_name = config['mura_class']
+    class_name = config['class_name']
     ldm.check_validity_class(class_name)
     df_train_val, test_df_all_classes = ldm.load_mura(skip_processing, processed_train_labels_path,
                                                       processed_test_labels_path, mura_train_img_path,
@@ -79,7 +80,6 @@ def load_data_cv(config, data_set_name):
     # print(xray_df.shape)
     # print("Splitting data ...")
 
+
 def load_data_cv_mura():
-
-
     df_train, df_val = split_data_cv(df, splits_nr, current_split, random_seed, diagnose_col, ratio_to_keep=None)
