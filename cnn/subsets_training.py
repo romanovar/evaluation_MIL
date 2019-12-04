@@ -30,7 +30,7 @@ def train_on_subsets(config):
     class_name = config['class_name']
     mura_test_img_path = config['mura_test_img_path']
     mura_train_labels_path = config['mura_train_labels_path']
-    mura_train_img_path = config['mura_train_labels_path']
+    mura_train_img_path = config['mura_train_img_path']
     mura_test_labels_path= config['mura_test_labels_path']
     mura_processed_train_labels_path = config['mura_processed_train_labels_path']
     mura_processed_test_labels_path = config['mura_processed_test_labels_path']

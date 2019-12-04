@@ -18,7 +18,7 @@ from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_row
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 10
+BATCH_SIZE = 1
 BATCH_SIZE_TEST = 1
 BOX_SIZE = 16
 
@@ -40,7 +40,7 @@ def cross_validation(config):
     class_name = config['class_name']
     mura_test_img_path = config['mura_test_img_path']
     mura_train_labels_path = config['mura_train_labels_path']
-    mura_train_img_path = config['mura_train_labels_path']
+    mura_train_img_path = config['mura_train_img_path']
     mura_test_labels_path= config['mura_test_labels_path']
     mura_processed_train_labels_path = config['mura_processed_train_labels_path']
     mura_processed_test_labels_path = config['mura_processed_test_labels_path']
@@ -112,7 +112,7 @@ def cross_validation(config):
             # filepath = trained_models_path + "CV_patient_split_"+str(split)+"_-{epoch:02d}-{val_loss:.2f}.hdf5"
             # checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
 
-            # lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
+            lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
             print("df train STEPS")
             print(len(df_train)//BATCH_SIZE)
             print(train_generator.__len__())
@@ -120,11 +120,11 @@ def cross_validation(config):
             history = model.fit_generator(
                 generator=train_generator,
                 steps_per_epoch=train_generator.__len__(),
-                epochs=40,
+                epochs=10,
                 validation_data=valid_generator,
                 validation_steps=valid_generator.__len__(),
-                verbose=1
-                # callbacks=[lrate]
+                verbose=1,
+                callbacks=[lrate]
             )
             filepath = trained_models_path + class_name +"CV_"+str(split)+"_nov.hdf5"
             model.save(filepath)
