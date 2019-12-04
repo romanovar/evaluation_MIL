@@ -9,7 +9,8 @@ from cnn.nn_architecture import keras_model
 import os
 from cnn.keras_preds import predict_patch_and_save_results
 from cnn.preprocessor.load_data import load_xray, split_xray_cv
-from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, get_train_subset_mura
+from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, get_train_subset_mura, \
+    filter_rows_and_columns
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -87,7 +88,7 @@ def train_on_subsets(config):
         else:
             df_train, df_val = split_data_cv(df_train_val, CV_SPLITS, split, random_seed=1, diagnose_col=class_name,
                                              ratio_to_keep=None)
-            df_test = filter_rows_on_class(test_df_all_classes, class_name=class_name)
+            df_test = filter_rows_and_columns(test_df_all_classes, class_name)
 
         seeds = np.random.randint(low=100, high=1000, size=number_classifiers)
         np.save(results_path + 'subsets_seed_CV' + str(split) + '_' + str(number_classifiers)+class_name, seeds)

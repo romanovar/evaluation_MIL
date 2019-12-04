@@ -13,7 +13,7 @@ import cnn.preprocessor.load_data as ld
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, keras_binary_accuracy
 from cnn.nn_architecture.custom_loss import keras_loss
 from cnn.keras_preds import predict_patch_and_save_results
-from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class
+from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, filter_rows_and_columns
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -44,6 +44,8 @@ def cross_validation(config):
     mura_test_labels_path= config['mura_test_labels_path']
     mura_processed_train_labels_path = config['mura_processed_train_labels_path']
     mura_processed_test_labels_path = config['mura_processed_test_labels_path']
+    mura_interpolation = config['mura_interpolation']
+
 
     # if skip_processing:
     #     xray_df = ld.load_csv(processed_labels_path)
@@ -79,7 +81,8 @@ def cross_validation(config):
         else:
             df_train, df_val = split_data_cv(df_train_val, CV_SPLITS, split, random_seed=1, diagnose_col=class_name,
                                              ratio_to_keep=None)
-            df_test = filter_rows_on_class(test_df_all_classes, class_name=class_name)
+            # df_test = filter_rows_on_class(test_df_all_classes, class_name=class_name)
+            df_test = filter_rows_and_columns(test_df_all_classes, class_name)
 
         if train_mode:
             ############################################ TRAIN ###########################################################
@@ -155,10 +158,11 @@ def cross_validation(config):
 
             ########################################### TESTING SET########################################################
             predict_patch_and_save_results(model, 'test_set_'+ class_name+'_CV'+str(split), df_test, skip_processing,
-                                           BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+                                           BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                           mura_interpolation)
         else:
             files_found=0
-            for file in Path(trained_models_path).glob("single_class_patient_reg-02-0.10" + "*.hdf5"):
+            for file in Path(trained_models_path).glob("shoulderCV_1_nov" + "*.hdf5"):
                 files_found += 1
 
             assert files_found == 1, "No model found/ Multiple models found, not clear which to use "
@@ -170,5 +174,5 @@ def cross_validation(config):
             model = keras_model.compile_model_accuracy(model)
 
             predict_patch_and_save_results(model, "test_set_CV"+(str(split)), df_test, skip_processing,
-                                           BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+                                           BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)
 

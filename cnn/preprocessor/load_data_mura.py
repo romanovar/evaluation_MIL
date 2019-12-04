@@ -66,8 +66,9 @@ def combine_labels_and_path(df_labels, df_img_path, file_path_root, csv_name):
     return df_img_path
 
 
-def load_mura(skip_processing, processed_train_labels_path, processed_test_labels_path, mura_train_img_path,
-              mura_train_labels_path, mura_test_labels_path, mura_test_img_path):
+def load_mura(skip_processing, processed_train_labels_path, processed_test_labels_path,
+              mura_train_img_path, mura_train_labels_path,
+              mura_test_labels_path, mura_test_img_path):
     if skip_processing:
         df_train_val = pd.read_csv(processed_train_labels_path)
         test_df_all_classes = pd.read_csv(processed_test_labels_path)
@@ -98,9 +99,9 @@ def prepare_mura_set(df_train_val, test_df_all_classes, class_name):
 
 
 def get_save_processed_df(labels_df_path, img_paths_df_path, file_path, csv_name):
-    df1 = read_csv_add_columns(img_paths_df_path, column_list_names=['Dir Path'])
-    df2 =pd.read_csv(labels_df_path, header=None)
-    return combine_labels_and_path(df2, df1, file_path, csv_name=csv_name)
+    img_paths_df = read_csv_add_columns(img_paths_df_path, column_list_names=['Dir Path'])
+    img_labels_df =pd.read_csv(labels_df_path, header=None)
+    return combine_labels_and_path(img_labels_df, img_paths_df, file_path, csv_name=csv_name)
 
 
 def split_train_val_set(df):
@@ -143,6 +144,11 @@ def get_train_subset_mura(train_set, random_seed, ratio_to_keep):
         return train_subset
     else:
         return train_set
+
+
+def filter_rows_and_columns(df, class_name):
+    df = filter_rows_on_class(df, class_name=class_name)
+    return keep_index_and_1diagnose_columns(df, 'instance labels')
 
 
 def filter_rows_on_class(df, class_name):

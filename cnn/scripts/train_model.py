@@ -78,7 +78,7 @@ BOX_SIZE = 16
 # # print(new_tr_ind)
 if use_xray_dataset:
     df_train, df_val, df_bbox_test, df_class_test = ldd.load_process_xray14(config)
-
+    test_set = pd.concat([df_bbox_test, df_class_test])
 else:
     df_train, df_val, df_test = ldd.load_preprocess_mura(config)
 
@@ -173,7 +173,7 @@ else:
     # model = keras_model.compile_model(model)
     # opt = AdamW(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0., weight_decay=0.075,
     #       batch_size=BATCH_SIZE, samples_per_epoch=8000, epochs=46)
-    model = load_model(trained_models_path + 'best_model_single_patient_reg.h5', custom_objects={
+    model = load_model(trained_models_path + 'shoulderCV_1_nov.hdf5', custom_objects={
         'keras_loss': keras_loss, 'keras_accuracy': keras_accuracy, 'keras_binary_accuracy': keras_binary_accuracy,
         'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
 
@@ -193,6 +193,5 @@ else:
                                        BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 
         ########################################### TESTING SET########################################################
-        test_set = pd.concat([df_bbox_test, df_class_test])
         predict_patch_and_save_results(model, 'test_set', test_set, skip_processing,
                                        BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
