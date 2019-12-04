@@ -83,11 +83,10 @@ def train_on_subsets(config):
         if use_xray_dataset:
             df_train, df_val, df_test, df_bbox_train, \
             df_bbox_test, train_only_class = split_xray_cv(xray_df, CV_SPLITS,
-                                                           split, class_name,
-                                                           results_path, number_classifiers)
+                                                           split, class_name)
         else:
-            df_train, df_val = split_data_cv(df_train_val, CV_SPLITS, split, number_classifiers, random_seed=1,
-                                             diagnose_col=class_name, results_path=results_path, ratio_to_keep=None)
+            df_train, df_val = split_data_cv(df_train_val, CV_SPLITS, split, random_seed=1, diagnose_col=class_name,
+                                             ratio_to_keep=None)
             df_test = filter_rows_on_class(test_df_all_classes, class_name=class_name)
 
         seeds = np.random.randint(low=100, high=1000, size=number_classifiers)

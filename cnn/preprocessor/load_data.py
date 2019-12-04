@@ -483,7 +483,7 @@ def load_xray(skip_processing, processed_labels_path, classication_labels_path, 
     return xray_df
 
 
-def split_xray_cv(xray_df, cv_splits, split, class_name, results_path, number_classifiers):
+def split_xray_cv(xray_df, cv_splits, split, class_name):
     df_train, df_val, df_test, \
     df_bbox_train, df_bbox_test, train_only_class = get_train_test_CV(xray_df, cv_splits, split, random_seed=1,
                                                                          label_col=class_name, ratio_to_keep=None)

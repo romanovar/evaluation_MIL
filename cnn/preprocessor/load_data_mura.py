@@ -123,8 +123,7 @@ def split_test_train_cv(df, splits_nr, test_ratio=0.2, random_state=None):
     return train_ind_col, test_ind_col
 
 
-def split_data_cv(df, splits_nr, current_split, number_classifiers, random_seed,  diagnose_col, results_path,
-                  ratio_to_keep=None):
+def split_data_cv(df, splits_nr, current_split, random_seed,  diagnose_col, ratio_to_keep=None):
     df_train_val = filter_rows_on_class(df, class_name=diagnose_col)
     train_inds_coll, val_inds_coll = split_test_train_cv(df_train_val, splits_nr, test_ratio=0.2, random_state=random_seed)
     df_train = df.iloc[train_inds_coll[current_split]]
