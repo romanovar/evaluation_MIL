@@ -35,7 +35,7 @@ def train_on_subsets(config):
     mura_test_labels_path= config['mura_test_labels_path']
     mura_processed_train_labels_path = config['mura_processed_train_labels_path']
     mura_processed_test_labels_path = config['mura_processed_test_labels_path']
-
+    mura_interpolation = config['mura_interpolation']
 
     IMAGE_SIZE = 512
     BATCH_SIZE = 1
@@ -119,7 +119,8 @@ def train_on_subsets(config):
                     net_w=IMAGE_SIZE,
                     norm=keras_utils.normalize,
                     box_size=BOX_SIZE,
-                    processed_y=skip_processing)
+                    processed_y=skip_processing,
+                    interpolation=mura_interpolation)
 
                 valid_generator = gen.BatchGenerator(
                     instances=df_val.values,
@@ -128,7 +129,8 @@ def train_on_subsets(config):
                     net_w=IMAGE_SIZE,
                     box_size=BOX_SIZE,
                     norm=keras_utils.normalize,
-                    processed_y=skip_processing)
+                    processed_y=skip_processing,
+                    interpolation=mura_interpolation)
 
                 model = keras_model.build_model()
                 model = keras_model.compile_model_accuracy(model)

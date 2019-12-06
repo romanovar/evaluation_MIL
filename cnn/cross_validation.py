@@ -93,7 +93,8 @@ def cross_validation(config):
                 net_w=IMAGE_SIZE,
                 norm=keras_utils.normalize,
                 box_size=BOX_SIZE,
-                processed_y=skip_processing)
+                processed_y=skip_processing,
+                interpolation=mura_interpolation)
 
             valid_generator = gen.BatchGenerator(
                 instances=df_val.values,
@@ -102,7 +103,8 @@ def cross_validation(config):
                 net_w=IMAGE_SIZE,
                 box_size=BOX_SIZE,
                 norm=keras_utils.normalize,
-                processed_y=skip_processing)
+                processed_y=skip_processing,
+                interpolation=mura_interpolation)
 
             model = keras_model.build_model()
 
@@ -123,7 +125,7 @@ def cross_validation(config):
             history = model.fit_generator(
                 generator=train_generator,
                 steps_per_epoch=train_generator.__len__(),
-                epochs=10,
+                epochs=2,
                 validation_data=valid_generator,
                 validation_steps=valid_generator.__len__(),
                 verbose=1,
@@ -162,7 +164,7 @@ def cross_validation(config):
                                            mura_interpolation)
         else:
             files_found=0
-            for file in Path(trained_models_path).glob("shoulderCV_1_nov" + "*.hdf5"):
+            for file in Path(trained_models_path).glob("shoulderCV_0_nov" + "*.hdf5"):
                 files_found += 1
 
             assert files_found == 1, "No model found/ Multiple models found, not clear which to use "
