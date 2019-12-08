@@ -3,7 +3,6 @@ from cnn.preprocessor import load_data as ld
 import pandas as pd
 from keras.callbacks import LearningRateScheduler
 from cnn.nn_architecture import keras_generators as gen
-
 from cnn import keras_utils
 from cnn.nn_architecture import keras_model
 import os
@@ -55,7 +54,7 @@ def train_on_subsets(config):
     # print("Splitting data ...")
     if use_xray_dataset:
         xray_df = load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
-                            localization_labels_path, results_path)
+                            localization_labels_path, results_path, class_name)
     else:
         df_train_val, test_df_all_classes = load_mura(skip_processing, mura_processed_train_labels_path,
                                                       mura_processed_test_labels_path, mura_train_img_path,
@@ -183,8 +182,8 @@ def train_on_subsets(config):
                 #                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 
                 ########################################### TESTING SET########################################################
-                predict_patch_and_save_results(model,
-                                               'subset_test_set_CV' + str(split) + '_' + str(curr_classifier) +
+                predict_patch_and_save_results(model, class_name+
+                                               '_test_set_CV' + str(split) + '_' + str(curr_classifier) +
                                                str(class_name)+'_' +
                                                str(overlap_ratio), df_test,
                                                skip_processing, BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE,

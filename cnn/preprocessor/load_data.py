@@ -491,7 +491,7 @@ def get_train_subset_xray(orig_train_set, train_bbox_nr, random_seed, ratio_to_k
 
 
 def load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path, localization_labels_path,
-              results_path):
+              results_path, class_name):
     if skip_processing:
         xray_df = load_csv(processed_labels_path)
         print('Cardiomegaly label division')
@@ -500,7 +500,9 @@ def load_xray(skip_processing, processed_labels_path, classication_labels_path, 
         label_df = get_classification_labels(classication_labels_path, False)
         processed_df = preprocess_labels(label_df, image_path)
         xray_df = couple_location_labels(localization_labels_path, processed_df, PATCH_SIZE, results_path)
-    return xray_df
+        filtered_patients_df = keep_observations_of_positive_patients(xray_df, results_path, class_name)
+
+    return filtered_patients_df
 
 
 def split_xray_cv(xray_df, cv_splits, split, class_name):

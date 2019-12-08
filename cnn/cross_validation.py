@@ -59,7 +59,7 @@ def cross_validation(config):
     # print("Splitting data ...")
     if use_xray_dataset:
         xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
-                               localization_labels_path, results_path)
+                               localization_labels_path, results_path, class_name)
     else:
         df_train_val, test_df_all_classes = load_mura(skip_processing, mura_processed_train_labels_path,
                                                       mura_processed_test_labels_path, mura_train_img_path,
