@@ -58,7 +58,7 @@ def compile_model_adamw(model, weight_dec, batch_size, samples_epoch, epochs):
 
 
 def compile_model(model):
-    optimizer = Adam(lr=0.01)
+    optimizer = Adam(lr=0.001)
     model.compile(optimizer=optimizer,
                   loss=keras_loss,
                   metrics=[keras_accuracy])
@@ -66,7 +66,7 @@ def compile_model(model):
 
 
 def compile_model_accuracy(model):
-    optimizer = Adam(lr=0.01)
+    optimizer = Adam(lr=0.001)
     model.compile(optimizer=optimizer,
                   loss=keras_loss,
                   metrics=[keras_accuracy, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction])
