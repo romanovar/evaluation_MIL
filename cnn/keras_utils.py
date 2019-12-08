@@ -389,7 +389,6 @@ def visualize_single_image_1class(img_ind_coll, raw_predictions_coll, labels_col
         fig.savefig(results_path + get_image_index_from_pathstring(img_ind) + '_' + class_name + image_title_suffix + '.jpg',
                     bbox_inches='tight')
         plt.close(fig)
-        # ind += 1
 
 
 def save_evaluation_results(col_names, col_values,  file_name, out_dir,add_col=None, add_value=None):

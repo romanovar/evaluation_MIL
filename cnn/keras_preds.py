@@ -1,6 +1,6 @@
 import glob
 from pathlib import Path
-
+import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix
 
@@ -11,8 +11,8 @@ import argparse
 import os
 import tensorflow as tf
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, compute_image_probability_asloss, \
-    combine_predictions_each_batch, compute_auc, list_localization_accuracy, compute_image_probability_production,\
-    list_localization_accuracy_1cat,  compute_auc_1class
+    combine_predictions_each_batch, compute_auc, list_localization_accuracy, compute_image_probability_production, \
+    list_localization_accuracy_1cat, compute_auc_1class, compute_auc_roc_curve
 import cnn.nn_architecture.keras_generators as gen
 from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, plot_confusion_matrix
 
@@ -392,7 +392,7 @@ def combine_npy_auc(data_set_name, image_pred_method, res_path):
                                         res_path)
 
 
-def combine_npy_auc_1class(data_set_name, image_pred_method, res_path, nr_files):
+def combine_npy_auc_1class(data_set_name, image_pred_method, res_path, nr_files, class_name):
     coll_image_labels = 0
     coll_image_preds = 0
     for ind in range(0, nr_files):
@@ -402,7 +402,7 @@ def combine_npy_auc_1class(data_set_name, image_pred_method, res_path, nr_files)
         coll_image_labels = combine_predictions_each_batch(img_labels, coll_image_labels, ind)
 
     auc_all_classes_v1, fpr, tpr, roc_auc = compute_auc_1class(coll_image_labels, coll_image_preds)
-    save_evaluation_results([ld.FINDINGS[1]], auc_all_classes_v1, 'auc_prob_' + data_set_name + '_'
+    save_evaluation_results([class_name], auc_all_classes_v1, 'auc_prob_' + data_set_name + '_'
                                         + image_pred_method+ '.csv',
                                         res_path)
     if nr_files > 1:
@@ -414,16 +414,30 @@ def combine_npy_auc_1class(data_set_name, image_pred_method, res_path, nr_files)
         conf_matrix = confusion_matrix(coll_image_labels, np.array(coll_image_preds > 0.5, dtype=np.float32))
 
         plot_confusion_matrix(conf_matrix, [0, 1], res_path, data_set_name, normalize=False, title=None)
-        plot_confusion_matrix(conf_matrix, [0, 1], res_path, data_set_name, normalize=True, title=None)
+        plot_confusion_matrix(conf_matrix, [0, 1], res_path, data_set_name+'norm', normalize=True, title=None)
 
 
-def combine_auc_accuracy_1class(data_set_name, image_pred_method, res_path):
+def compute_auc_aggregation_mura(labels, predictions, data_set_name, res_path):
+    auc_score, fpr1, tpr1, roc_auc1 = compute_auc_roc_curve(labels, predictions)
+    save_evaluation_results(['shoulder'], [auc_score], 'auc_prob_' + data_set_name + '_'
+                            + 'mura-aggr' + '.csv',
+                            res_path)
+
+
+    plot_roc_curve([fpr1], [tpr1], [roc_auc1], data_set_name, res_path)
+    conf_matrix = confusion_matrix(labels, np.array(predictions > 0.5, dtype=np.float32))
+
+    plot_confusion_matrix(conf_matrix, [0, 1], res_path, data_set_name+'aggregation', normalize=False, title=None)
+    plot_confusion_matrix(conf_matrix, [0, 1], res_path, data_set_name+'aggregation_norm', normalize=True, title=None)
+
+
+def combine_auc_accuracy_1class(data_set_name, image_pred_method, res_path, class_name):
     file_count = 0
     for file in Path(res_path).glob("image_predictions_" + data_set_name + "_" + image_pred_method+"*.npy"):
         file_count += 1
     print("Combining "+ str(file_count) + " .npy files ...")
     combine_npy_accuracy_1class(data_set_name, res_path, file_count)
-    combine_npy_auc_1class(data_set_name, image_pred_method, res_path, file_count)
+    combine_npy_auc_1class(data_set_name, image_pred_method, res_path, file_count, class_name)
 
 ###################################################################################33
 
@@ -502,3 +516,82 @@ def process_prediction_v2_image_level(file_unique_name, res_path, img_pred_as_lo
             patch_labels_slice, img_pred_as_loss, batch_size,
             file_unique_name, str(total_full_slices), res_path)
 
+
+def process_predictions_bag_level_mura(file_unique_name, res_path, img_pred_as_loss, batch_size):
+    predictions, image_indices, patch_labels = get_index_label_prediction(file_unique_name, res_path)
+    slice_size = 5000
+    total_full_slices = predictions.shape[0]//slice_size
+
+    for k in range(0, total_full_slices):
+        start_ind = k*slice_size
+        end_ind = start_ind+slice_size
+        predictions_slice = predictions[start_ind:end_ind, :, :, :]
+        patch_labels_slice = patch_labels[start_ind:end_ind, :, :, :]
+
+        coll_image_labels, coll_image_predictions = process_prediction_all_batches_image_level(
+            predictions_slice,
+            patch_labels_slice, img_pred_as_loss, batch_size,
+            file_unique_name, str(str(k)), res_path)
+
+
+    if predictions.shape[0] % slice_size != 0:
+        start_ind = total_full_slices * slice_size
+
+        predictions_slice = predictions[start_ind:predictions.shape[0], :, :, :]
+        patch_labels_slice = patch_labels[start_ind:patch_labels.shape[0], :, :, :]
+
+        coll_image_labels, coll_image_predictions = process_prediction_all_batches_image_level(
+            predictions_slice,
+            patch_labels_slice, img_pred_as_loss, batch_size,
+            file_unique_name, str(total_full_slices), res_path)
+
+
+def combine_auc_mura(data_set_name, image_pred_method, res_path, class_name):
+    file_count = 0
+    for file in Path(res_path).glob("image_predictions_" + data_set_name + "_" + image_pred_method+"*.npy"):
+        file_count += 1
+    print("Combining "+ str(file_count) + " .npy files ...")
+
+    save_bag_prob_csv(data_set_name, image_pred_method, res_path, file_count)
+    combine_npy_auc_1class(data_set_name, image_pred_method, res_path, file_count, class_name)
+    df = open_csv(res_path, data_set_name)
+    compute_auc_aggregation_mura(np.array(df['labels']), np.array(df['aggregated_prob']), data_set_name, res_path)
+
+
+def save_bag_prob_csv(data_set_name, image_pred_method, res_path, nr_files):
+    coll_image_preds = []
+    coll_image_labels = []
+    for ind in range(0, nr_files):
+        img_labels, img_preds = load_img_pred_labels_v2(data_set_name, image_pred_method, str(ind), res_path)
+        img_ind_file = 'image_indices_' + data_set_name + '.npy'
+        img_indices = load_npy(img_ind_file, res_path)
+
+        coll_image_preds = combine_predictions_each_batch(img_preds, coll_image_preds, ind)
+        coll_image_labels = combine_predictions_each_batch(img_labels, coll_image_labels, ind)
+
+    auc_all_classes_v1, fpr, tpr, roc_auc = compute_auc_1class(coll_image_labels, coll_image_preds)
+    df = pd.DataFrame()
+    df['image_indix'] = img_indices
+    df['labels'] = img_labels
+    df['prediction'] = img_preds
+    df.to_csv(res_path+'ind_label_prediction'+data_set_name+'.csv')
+
+
+def get_patient_substring(x):
+    return (x.loc['image_indix']).partition('study')[0]
+
+
+def open_csv(res_path, data_set_name):
+    df = pd.read_csv(res_path+'ind_label_prediction'+data_set_name+'.csv')
+    df['aggregated_prob'] = -1
+    df['patient_id'] = 0
+
+    df['patient_id'] = df.apply(lambda x: get_patient_substring(x), axis=1)
+    res = df.groupby(['patient_id'])
+    for name, group in res:
+        mean_prob = np.mean(np.asarray(group['prediction']))
+        df.loc[df['patient_id'] == name,'aggregated_prob'] =mean_prob
+
+    x = df.sort_values(['patient_id']).drop_duplicates('patient_id')
+    x.to_csv(res_path+ data_set_name+"aggregated_prob_mura.csv")
+    return x

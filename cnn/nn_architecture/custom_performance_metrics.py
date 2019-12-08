@@ -266,6 +266,13 @@ def compute_auc(labels_all_classes, img_predictions_all_classes):
     return auc_all_classes
 
 
+def compute_auc_roc_curve(labels, predictions):
+    auc_score = roc_auc_score(labels, predictions)
+    fpr, tpr, _ = roc_curve(labels, predictions)
+    roc_auc = auc(fpr, tpr)
+    return auc_score, fpr, tpr, roc_auc
+
+
 def compute_auc_1class(labels_all_classes, img_predictions_all_classes):
     auc_all_classes = []
     # Compute ROC curve and ROC area for each class
@@ -273,10 +280,14 @@ def compute_auc_1class(labels_all_classes, img_predictions_all_classes):
     tpr = dict()
     roc_auc = dict()
     for ind in range(0, 1):
-        auc_score = roc_auc_score(labels_all_classes[:, ind], img_predictions_all_classes[:, ind])
+        # auc_score = roc_auc_score(labels_all_classes[:, ind], img_predictions_all_classes[:, ind])
+        # auc_all_classes.append(auc_score)
+        # fpr[ind], tpr[ind], _ = roc_curve(labels_all_classes[:, ind], img_predictions_all_classes[:, ind])
+        # roc_auc[ind] = auc(fpr[ind], tpr[ind])
+        auc_score, fpr1, tpr1, roc_auc1 = compute_auc_roc_curve(labels_all_classes[:, ind],  img_predictions_all_classes[:, ind])
         auc_all_classes.append(auc_score)
-        fpr[ind], tpr[ind], _ = roc_curve(labels_all_classes[:, ind], img_predictions_all_classes[:, ind])
-        roc_auc[ind] = auc(fpr[ind], tpr[ind])
+        fpr[ind], tpr[ind] = fpr1, tpr1
+        roc_auc[ind] = roc_auc1
 
     return auc_all_classes, fpr, tpr, roc_auc
 
