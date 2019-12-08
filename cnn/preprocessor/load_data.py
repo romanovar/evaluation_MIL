@@ -280,7 +280,11 @@ def separate_localization_classification_labels(Y, single_class=None):
     if single_class is None:
         return Y.loc[Y['Bbox']==0], Y.loc[Y['Bbox']==1]
     else:
-        return Y.loc[Y[single_class+'_bbox']==0], Y.loc[Y[single_class+'_bbox']==1]
+        class_ind = Y[single_class + '_loc'].isin(
+            [str(np.zeros((16, 16))).replace('\n', ''), str(np.ones((16, 16))).replace('\n', '')])
+
+        return Y.loc[class_ind], Y.loc[class_ind==False]
+        # return Y.loc[Y[single_class+'_loc']==0], Y.loc[Y[single_class+'_loc']==1]
 
 # THIS METHOD IS USED FOR KERAS TESTING
 def keep_index_and_diagnose_columns(Y):
@@ -289,8 +293,24 @@ def keep_index_and_diagnose_columns(Y):
         'Nodule_loc', 'Pleural_Thickening_loc', 'Pneumonia_loc', 'Pneumothorax_loc']]
 
 
+def check_bounding_box_present(Y, class_name):
+    Y[class_name + '_loc'] == str(np.zeros((16, 16))).replace('\n', '')
+
 def keep_index_and_1diagnose_columns(Y, y_column_name):
     return Y[['Dir Path', y_column_name]]
+
+
+def keep_observations_of_positive_patients(Y, res_path, class_name):
+        Y['keep_patient'] = -1
+        # keep_patient_flag = df.apply(lambda x: get_patient_substring(x), axis=1)
+        res = Y.groupby(['Patient ID'])
+        for name, group in res:
+            keep_patient_flag = np.max(np.asarray(group[class_name]))
+            Y.loc[Y['Patient ID'] == name, 'keep_patient'] = keep_patient_flag
+
+        Y2 = Y.loc[(Y['keep_patient'])==1]
+        Y2.to_csv(res_path + "processed_"+ class_name + ".csv")
+        return Y2
 
 
 def get_rows_from_indices(df, train_inds, test_inds):

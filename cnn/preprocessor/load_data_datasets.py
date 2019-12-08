@@ -16,8 +16,10 @@ def load_process_xray14(config):
                            localization_labels_path, results_path)
     print(xray_df.shape)
     print("Splitting data ...")
+    filtered_patients_df = ld.keep_observations_of_positive_patients(xray_df, results_path, class_name)
+
     init_train_idx, df_train_init, df_val, \
-    df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(xray_df, random_state=1, do_stats=False,
+    df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(filtered_patients_df, random_state=1, do_stats=False,
                                                                    res_path = generated_images_path,
                                                                    label_col = class_name)
     df_train=df_train_init
