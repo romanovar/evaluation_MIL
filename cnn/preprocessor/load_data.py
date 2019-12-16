@@ -493,9 +493,9 @@ def get_train_subset_xray(orig_train_set, train_bbox_nr, random_seed, ratio_to_k
 def load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path, localization_labels_path,
               results_path, class_name):
     if skip_processing:
-        xray_df = load_csv(processed_labels_path)
+        filtered_patients_df = load_csv(processed_labels_path)
         print('Cardiomegaly label division')
-        print(xray_df['Cardiomegaly'].value_counts())
+        print(filtered_patients_df['Cardiomegaly'].value_counts())
     else:
         label_df = get_classification_labels(classication_labels_path, False)
         processed_df = preprocess_labels(label_df, image_path)
