@@ -191,7 +191,7 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
                                                                                              classifiers,
                                                                                              only_segmentation_images,
                                                                                              only_positive_images)
-
+    print(len(bag_labels_collection))
     jacc_coll, corr_jacc_coll, _, _, _, corr_iou = get_binary_scores_forthreshold_v2(0.5, raw_predictions_collection)
 
     pearson_corr_collection, spearman_rank_corr_collection = compute_correlation_scores_v2(raw_predictions_collection)
@@ -238,6 +238,7 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     print(ma_corr_jaccard_images)
     ma_jaccard_images = np.ma.masked_array(reshaped_jacc_coll, np.isnan(reshaped_jacc_coll))
     ma_corr_iou = np.ma.masked_array(reshaped_corr_iou, np.isnan(reshaped_corr_iou))
+    ma_spearman = np.ma.masked_array(reshaped_spearman_coll, np.isnan(reshaped_spearman_coll))
 
     # visualize_correlation_heatmap(average_corr_jaccard_images, stability_res_path,
     #                               '_avg_jaccard_' + identifier,
@@ -256,6 +257,15 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     nan_matrix_jacc = get_matrix_total_nans_stability_score(jacc_coll, image_index_collection, normalize=False)
     visualize_correlation_heatmap(nan_matrix_jacc, stability_res_path, '_jacc_nan' + identifier, xyaxis,
                                   dropDuplicates=True)
+    nan_matrix_spearman = get_matrix_total_nans_stability_score(spearman_rank_corr_collection,
+                                                                image_index_collection, normalize=False)
+    visualize_correlation_heatmap(nan_matrix_spearman, stability_res_path, '_spearman_nan' + identifier, xyaxis,
+                                  dropDuplicates=True)
+    nan_matrix_spearman_norm = get_matrix_total_nans_stability_score(spearman_rank_corr_collection,
+                                                                image_index_collection, normalize=True)
+    visualize_correlation_heatmap(nan_matrix_spearman_norm, stability_res_path, '_spearman_nan_norm' + identifier, xyaxis,
+                                  dropDuplicates=True)
+
     ##### AVERAGE INSTANCE AUC VS STABILITY ##############
     average_corr_jacc_index_inst = np.average(ma_corr_jaccard_images, axis=-1)
     visualize_correlation_heatmap(average_corr_jacc_index_inst, stability_res_path,
@@ -275,13 +285,13 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
                                               reshaped_corr_jacc_coll, stability_res_path)
     # compute_and_visualize_average_instance_stability(ma_corr_jaccard_images, stability_res_path, "corr_jaccard",
     #                                                  identifier, xyaxis)
-    avg_abs_sprearman = np.average(abs(reshaped_spearman_coll), axis=-1)
+    avg_abs_sprearman = np.average(abs(ma_spearman), axis=-1)
     # compute_and_visualize_average_instance_stability(abs(reshaped_spearman_coll), stability_res_path, "spearman",
     #                                                  identifier, xyaxis)
     visualize_correlation_heatmap(avg_abs_sprearman, stability_res_path,
                                   '_avg_inst_' + str("abs_spearman") + '_' + identifier,
                                   xyaxis, dropDuplicates=True)
-    avg_spearman = np.average(reshaped_spearman_coll, axis=-1)
+    avg_spearman = np.average(ma_spearman, axis=-1)
     visualize_correlation_heatmap(avg_spearman, stability_res_path,
                                   '_avg_inst_' + str("spearman") + '_' + identifier,
                                   xyaxis, dropDuplicates=True)
