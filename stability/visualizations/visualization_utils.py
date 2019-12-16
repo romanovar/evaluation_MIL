@@ -317,11 +317,10 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
 
         # instance_label_gt = labels_coll[0][ind, :, :, 0]
         img_path = img_ind_coll[0][ind]
-        raw_prediction = raw_predictions_coll[0][ind, :, :, 0]
-        raw_prediction2 = raw_predictions_coll[1][ind, :, :, 0]
+        predictions_to_image_scale = 512/16
 
         img_ind = get_image_index(False, img_ind_coll[0], ind)
-        img_path = 'C:/Users/s161590/Documents/Project_li/MURA-v1.1/valid/XR_SHOULDER/patient11186/study1_positive/image1.png'
+
         img = plt.imread(img_path)
         if padding_needed(img):
             padded_image = pad_image(img)
@@ -334,7 +333,8 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
 
         ax1.imshow(padded_image)
 
-        pred_resized = np.kron(raw_predictions_coll[0][ind, :, :, 0], np.ones((32, 32), dtype=float))
+        pred_resized = np.kron(raw_predictions_coll[0][ind, :, :, 0],
+                               np.ones((predictions_to_image_scale, predictions_to_image_scale), dtype=float))
         pred_resized[pred_resized < threshold_transparency] = np.nan
         img1_mask = ax1.imshow(pred_resized, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
         # ax1.set_xlabel("AUC instance score: "+ ("{0:.3f}".format(auc)))
@@ -344,12 +344,59 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
                  '\n Only patches with prediction score above ' + str(threshold_transparency) + " are shown! ",
                  horizontalalignment='center',
                  verticalalignment='center', fontsize=9)
+        ## SUB-GRAPH 2
+        ax2 = plt.subplot(2, 3, 2)
+        ax2.set_title('Predictions Classifier 2', {'fontsize': 9})
 
-    plt.tight_layout()
-    fig.savefig(results_path + get_image_index_from_pathstring(
-        img_ind) + '_' + class_name + image_title_suffix + '.jpg',
-                bbox_inches='tight')
-    plt.close(fig)
+        ax2.imshow(padded_image, 'bone')
+        pred_resized2 = np.kron(raw_predictions_coll[1][ind, :, :, 0],
+                                np.ones((predictions_to_image_scale, predictions_to_image_scale), dtype=float))
+        pred_resized2[pred_resized2 < threshold_transparency] = np.nan
+        img2_mask = ax2.imshow(pred_resized2, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
+        # ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
+        fig.colorbar(img2_mask, ax=ax2, fraction=0.046)
+
+        ## SUB-GRAPH 3
+        ax3 = plt.subplot(2, 3, 3)
+        ax3.set_title('Predictions Classifier 3', {'fontsize': 9})
+
+        ax3.imshow(padded_image, 'bone')
+        pred_resized3 = np.kron(raw_predictions_coll[2][ind, :, :, 0],
+                                np.ones((predictions_to_image_scale, predictions_to_image_scale), dtype=float))
+        pred_resized3[pred_resized3 < threshold_transparency] = np.nan
+        img3_mask = ax3.imshow(pred_resized3, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
+        # ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
+        fig.colorbar(img3_mask, ax=ax3, fraction=0.046)
+        #
+        ## SUB-GRAPH 4
+        ax4 = plt.subplot(2, 3, 4)
+        ax4.set_title('Predictions Classifier 4', {'fontsize': 9})
+
+        ax4.imshow(padded_image, 'bone')
+        pred_resized4 = np.kron(raw_predictions_coll[3][ind, :, :, 0],
+                                np.ones((predictions_to_image_scale, predictions_to_image_scale), dtype=float))
+        pred_resized4[pred_resized4 < threshold_transparency] = np.nan
+        img4_mask = ax4.imshow(pred_resized4, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
+        # ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
+        fig.colorbar(img4_mask, ax=ax4, fraction=0.046)
+
+        ## SUB-GRAPH 5
+        ax5 = plt.subplot(2, 3, 5)
+        ax5.set_title('Predictions Classifier 5', {'fontsize': 9})
+
+        ax5.imshow(padded_image, 'bone')
+        pred_resized5 = np.kron(raw_predictions_coll[4][ind, :, :, 0],
+                                np.ones((predictions_to_image_scale, predictions_to_image_scale), dtype=float))
+        pred_resized5[pred_resized5 < threshold_transparency] = np.nan
+        img5_mask = ax5.imshow(pred_resized5, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
+        # ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
+        fig.colorbar(img5_mask, ax=ax5, fraction=0.046)
+
+        plt.tight_layout()
+        fig.savefig(results_path + get_image_index_from_pathstring(
+            img_ind) + '_' + class_name + image_title_suffix + '.jpg',
+                    bbox_inches='tight')
+        plt.close(fig)
 
 
 def visualize_5_classifiers(xray_dataset, img_ind_coll, labels_coll, raw_predictions_coll, img_path, results_path,
