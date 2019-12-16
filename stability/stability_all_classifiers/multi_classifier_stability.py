@@ -5,9 +5,11 @@ from stability.preprocessor.preprocessing import load_predictions_v2, indices_se
     filter_predictions_files_on_indeces, indices_positive_images
 from stability.stability_2classifiers.stability_2classifiers import get_binary_scores_forthreshold_v2, \
     compute_correlation_scores_v2, save_additional_kappa_scores_forthreshold
+from stability.utils import get_image_index
 from stability.visualizations.visualization_utils import visualize_single_image_1class_5classifiers, \
     visualize_correlation_heatmap, combine_correlation_heatmaps_next_to_each_other, visualize_scatter_bag_auc_stability, \
-    make_scatterplot_with_errorbar, scatterplot_AUC_stabscore_v2, make_scatterplot_with_errorbar_v2
+    make_scatterplot_with_errorbar, scatterplot_AUC_stabscore_v2, make_scatterplot_with_errorbar_v2, \
+    visualize_5_classifiers_mura, visualize_5_classifiers
 
 
 def stability_all_classifiers_bag_level(config, classifiers, only_segmentation_images, only_positive_images):
@@ -183,9 +185,10 @@ def get_instance_auc_stability_score_all_classifiers(inst_labels, inst_pred, sta
 def stability_all_classifiers(config, classifiers, only_segmentation_images,
                               only_positive_images, visualize_per_image):
     image_path = config['image_path']
-    image_path = 'C:/Users/s161590/Documents/Project_li/bbox_images/'
+    # image_path = 'C:/Users/s161590/Documents/Project_li/bbox_images/'
     stability_res_path = config['stability_results']
-
+    xray_dataset = config['use_xray_dataset']
+    class_name = config['class_name']
     image_labels_collection, image_index_collection, raw_predictions_collection, \
     bag_labels_collection, bag_predictions_collection, identifier = get_analysis_data_subset(config,
                                                                                              classifiers,
@@ -209,7 +212,7 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     xyaxis_short = ['Cl.1', 'Cl. 2', 'Cl. 3', 'Cl. 4', 'Cl. 5']
     if visualize_per_image:
         for idx in range(0, len(image_index_collection[0])):
-            img_ind = image_index_collection[0][idx][-16:-4]
+            img_ind = get_image_index(xray_dataset, image_index_collection[0], idx)
 
             print("index " + str(idx))
             print(img_ind)
@@ -228,10 +231,8 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
             visualize_correlation_heatmap(reshaped_spearman_coll[:, :, idx], stability_res_path,
                                           '_classifiers_spearman_' + str(img_ind),
                                           xyaxis, dropDuplicates=True)
-
-        visualize_single_image_1class_5classifiers(image_index_collection, image_labels_collection,
-                                                   raw_predictions_collection,
-                                                   image_path, stability_res_path, 'Cardiomegaly', "_test_5clas")
+        visualize_5_classifiers(xray_dataset, image_index_collection, image_labels_collection,
+                                raw_predictions_collection, image_path, stability_res_path, class_name, '_test_5_class')
     ## ADD inst AUC vs score
 
     ma_corr_jaccard_images = np.ma.masked_array(reshaped_corr_jacc_coll, np.isnan(reshaped_corr_jacc_coll))

@@ -2,7 +2,11 @@ import PIL
 from pathlib import Path
 import matplotlib
 from PIL import ImageDraw
-# matplotlib.use('Agg')
+
+from cnn.preprocessor.load_data_mura import padding_needed, pad_image
+from stability.utils import get_image_index
+
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
@@ -161,6 +165,7 @@ def bar_columns_repetitive_predictions(raw_predictions_coll, img_ind):
     return data, x_labels
     # return sum_binary_pred_all_classifiers
 
+
 def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll, img_path,
                                                results_path,
                                                class_name,
@@ -178,7 +183,8 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
         raw_prediction2 = raw_predictions_coll[1][ind, :, :, 0]
         # auc2 = auc_score2[ind]
 
-        img_dir = Path(img_path + get_image_index_from_pathstring(img_ind) + '.png').__str__()
+        # img_dir = Path(img_path + get_image_index_from_pathstring(img_ind) + '.png').__str__()
+        img_dir = img_ind
         img = plt.imread(img_dir)
 
         scale_width = int(img.shape[1] / 16)
@@ -302,6 +308,60 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
             img_ind) + '_' + class_name + image_title_suffix + '.jpg',
                     bbox_inches='tight')
         plt.close(fig)
+
+
+def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,  class_name,image_title_suffix):
+    for ind in range(0, img_ind_coll[0].shape[0]):
+        print(ind)
+        threshold_transparency = 0.01
+
+        # instance_label_gt = labels_coll[0][ind, :, :, 0]
+        img_path = img_ind_coll[0][ind]
+        raw_prediction = raw_predictions_coll[0][ind, :, :, 0]
+        raw_prediction2 = raw_predictions_coll[1][ind, :, :, 0]
+
+        img_ind = get_image_index(False, img_ind_coll[0], ind)
+        img_path = 'C:/Users/s161590/Documents/Project_li/MURA-v1.1/valid/XR_SHOULDER/patient11186/study1_positive/image1.png'
+        img = plt.imread(img_path)
+        if padding_needed(img):
+            padded_image = pad_image(img)
+
+        fig, axs = plt.subplots(2, 3, figsize=(20, 10))
+
+        ## SUB-GRAPH 1
+        ax1 = plt.subplot(2, 3, 1)
+        ax1.set_title('Predictions Classifier 1', {'fontsize': 9})
+
+        ax1.imshow(padded_image)
+
+        pred_resized = np.kron(raw_predictions_coll[0][ind, :, :, 0], np.ones((32, 32), dtype=float))
+        pred_resized[pred_resized < threshold_transparency] = np.nan
+        img1_mask = ax1.imshow(pred_resized, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
+        # ax1.set_xlabel("AUC instance score: "+ ("{0:.3f}".format(auc)))
+        fig.colorbar(img1_mask, ax=ax1, fraction=0.046)
+
+        fig.text(-0.2, 0.5,
+                 '\n Only patches with prediction score above ' + str(threshold_transparency) + " are shown! ",
+                 horizontalalignment='center',
+                 verticalalignment='center', fontsize=9)
+
+    plt.tight_layout()
+    fig.savefig(results_path + get_image_index_from_pathstring(
+        img_ind) + '_' + class_name + image_title_suffix + '.jpg',
+                bbox_inches='tight')
+    plt.close(fig)
+
+
+def visualize_5_classifiers(xray_dataset, img_ind_coll, labels_coll, raw_predictions_coll, img_path, results_path,
+                            class_name, image_title_suffix):
+    if xray_dataset:
+        visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll, img_path,
+                                                   results_path,
+                                                   class_name,
+                                                   image_title_suffix)
+    else:
+        visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,
+                                     class_name, image_title_suffix)
 
 
 def draw_heatmap(df, labels, ax, font_size_annotations, drop_duplicates):
