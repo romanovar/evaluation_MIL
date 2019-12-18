@@ -7,7 +7,7 @@ from stability.stability_2classifiers.stability_2classifiers import get_binary_s
     compute_correlation_scores_v2, save_additional_kappa_scores_forthreshold
 from stability.utils import get_image_index
 from stability.visualizations.visualization_utils import visualize_single_image_1class_5classifiers, \
-    visualize_correlation_heatmap, combine_correlation_heatmaps_next_to_each_other, visualize_scatter_bag_auc_stability, \
+    visualize_correlation_heatmap, combine_correlation_heatmaps_next_to_each_other, \
     make_scatterplot_with_errorbar, scatterplot_AUC_stabscore_v2, make_scatterplot_with_errorbar_v2, \
     visualize_5_classifiers_mura, visualize_5_classifiers
 
@@ -62,24 +62,24 @@ def stability_all_classifiers_bag_level(config, classifiers, only_segmentation_i
     xyaxis = ['classifier1', 'classifier2', 'classifier3', 'classifier4', 'classifier5']
     xyaxis_short = ['Cl.1', 'Cl. 2', 'Cl. 3', 'Cl. 4', 'Cl. 5']
 
-    # ma_corr_jaccard_images = np.ma.masked_array(reshaped_corr_jacc_coll)
-    # print(ma_corr_jaccard_images)
+    ma_corr_jaccard_images = np.ma.masked_array(reshaped_corr_jacc_coll)
+    print(ma_corr_jaccard_images)
 
     ############ visualizing NANs of corrected jaccard ###################
-    # nan_matrix_norm = get_matrix_total_nans_stability_score(corr_jacc_coll, image_index_collection, normalize=True)
-    # visualize_correlation_heatmap(nan_matrix_norm, stability_res_path, '_jacc_nan_norm', xyaxis, dropDuplicates=True)
-    # nan_matrix = get_matrix_total_nans_stability_score(corr_jacc_coll, image_index_collection, normalize=False)
-    # visualize_correlation_heatmap(nan_matrix, stability_res_path, '_jacc_nan', xyaxis, dropDuplicates=True)
+    nan_matrix_norm = get_matrix_total_nans_stability_score(corr_jacc_coll, image_index_collection, normalize=True)
+    visualize_correlation_heatmap(nan_matrix_norm, stability_res_path, '_jacc_nan_norm', xyaxis, dropDuplicates=True)
+    nan_matrix = get_matrix_total_nans_stability_score(corr_jacc_coll, image_index_collection, normalize=False)
+    visualize_correlation_heatmap(nan_matrix, stability_res_path, '_jacc_nan', xyaxis, dropDuplicates=True)
 
-    # average_jacc_index_inst = np.average(ma_corr_jaccard_images, axis=-1)
-    # avg_abs_sprearman = np.average(abs(reshaped_spearman_coll), axis=-1)
-    #
+    average_jacc_index_inst = np.average(ma_corr_jaccard_images, axis=-1)
+    avg_abs_sprearman = np.average(abs(reshaped_spearman_coll), axis=-1)
+
     # ###################### BAG AUC vs STABILITY ###################################
-    #
-    # visualize_bag_vs_stability(bag_auc_all_cl, average_jacc_index_inst, 'bag_AUC', '',
-    #                            'corr_jaccard' + identifier, stability_res_path)
-    # visualize_bag_vs_stability(bag_auc_all_cl, avg_abs_sprearman, 'bag_AUC', '',
-    #                            'spearman' + identifier, stability_res_path)
+
+    visualize_bag_vs_stability(bag_auc_all_cl, average_jacc_index_inst, 'bag_AUC', '',
+                               'corr_jaccard' + identifier, stability_res_path)
+    visualize_bag_vs_stability(bag_auc_all_cl, avg_abs_sprearman, 'bag_AUC', '',
+                               'spearman' + identifier, stability_res_path)
 
 
 def get_matrix_total_nans_stability_score(stab_index_collection, total_images_collection, normalize):
@@ -211,7 +211,7 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     xyaxis = ['classifier1', 'classifier2', 'classifier3', 'classifier4', 'classifier5']
     xyaxis_short = ['Cl.1', 'Cl. 2', 'Cl. 3', 'Cl. 4', 'Cl. 5']
     if visualize_per_image:
-        for idx in range(0, len(image_index_collection[0])):
+        for idx in range(0, 2): # len(image_index_collection[0])):
             img_ind = get_image_index(xray_dataset, image_index_collection[0], idx)
 
             print("index " + str(idx))
@@ -359,7 +359,6 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
 
     pearson_corr_collection, spearman_rank_corr_collection = compute_correlation_scores_v2(raw_predictions_collection)
 
-    print(np.asarray(corr_jacc_coll)[:, 0])
     reshaped_jacc_coll = np.asarray(jacc_coll).reshape(5, 5, len(image_index_collection[0]))
     reshaped_corr_jacc_coll = np.asarray(corr_jacc_coll).reshape(5, 5, len(image_index_collection[0]))
     reshaped_spearman_coll = np.asarray(spearman_rank_corr_collection).reshape(5, 5, len(image_index_collection[0]))
@@ -373,18 +372,11 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
 
     avg_auc =  np.mean(auc_res, axis=1)
     stand_dev_auc = np.std(auc_res, axis=1)
-    print("!!!!******!!!!")
-    print(avg_auc)
-    print("******")
-    print(stand_dev_auc)
+
 
     avg_stability_jacc = np.mean(np.ma.masked_array(stability_res_corr_jacc, np.isnan(stability_res_corr_jacc)), axis=1)
     stand_dev_stability_jacc = np.std(np.ma.masked_array(stability_res_corr_jacc, np.isnan(stability_res_corr_jacc)), axis=1)
-    print("******")
-    print(avg_stability_jacc)
-    print("******")
-    print(stand_dev_stability_jacc)
-    # for classifier_nr in range(0, 4):
+
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_jacc, 'mean adjusted Positive0 Jaccard',
                                    stability_res_path, y_errors=stand_dev_auc, x_errors=stand_dev_stability_jacc,
                                    error_bar=True, bin_threshold_prefix=0)
@@ -401,10 +393,7 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
 
     avg_stability_spear = np.mean(stability_res_spear, axis=1)
     stand_dev_stability_spear = np.std(stability_res_spear, axis=1)
-    print("******")
-    print(avg_stability_spear)
-    print(stand_dev_stability_spear)
-    # for classifier_nr in range(0, 4):
+
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_spear, 'mean Spearman0 correlation',
                                    stability_res_path, y_errors=stand_dev_auc, x_errors=stand_dev_stability_spear,
                                    error_bar=True, bin_threshold_prefix=0)

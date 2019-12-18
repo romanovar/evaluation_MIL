@@ -166,10 +166,21 @@ def bar_columns_repetitive_predictions(raw_predictions_coll, img_ind):
     # return sum_binary_pred_all_classifiers
 
 
-def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll, img_path,
+def overlay_predictions(raw_predictions_coll, img_ind):
+    # raw_predictions_coll[4][img_ind, :, :, 0]
+    classifiers_nr = 5
+    binary_pred_coll = []
+    for classifier in range(0, classifiers_nr ):
+        binary_pred_coll.append(np.array(raw_predictions_coll[classifier][img_ind, :, :, 0] >= 0.5, dtype=np.int))
+    # sum overlap  across all 5 classifiers
+    sum_binary_pred_all_classifiers = np.sum(np.asarray(binary_pred_coll), axis=0)
+    return sum_binary_pred_all_classifiers
+
+
+def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll,
                                                results_path,
                                                class_name,
-                                               image_title_suffix):
+                                               image_title_suffix, other_img_path=None):
 
     for ind in range(0, img_ind_coll[0].shape[0]):
         print(ind)
@@ -183,8 +194,11 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
         raw_prediction2 = raw_predictions_coll[1][ind, :, :, 0]
         # auc2 = auc_score2[ind]
 
-        # img_dir = Path(img_path + get_image_index_from_pathstring(img_ind) + '.png').__str__()
-        img_dir = img_ind
+        if other_img_path is None:
+            img_dir = img_ind
+        else:
+            img_dir = Path(other_img_path + get_image_index_from_pathstring(img_ind) + '.png').__str__()
+
         img = plt.imread(img_dir)
 
         scale_width = int(img.shape[1] / 16)
@@ -317,7 +331,8 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
 
         # instance_label_gt = labels_coll[0][ind, :, :, 0]
         img_path = img_ind_coll[0][ind]
-        predictions_to_image_scale = 512/16
+        predictions_to_image_scale = int(512/16)
+
 
         img_ind = get_image_index(False, img_ind_coll[0], ind)
 
@@ -331,7 +346,7 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
         ax1 = plt.subplot(2, 3, 1)
         ax1.set_title('Predictions Classifier 1', {'fontsize': 9})
 
-        ax1.imshow(padded_image)
+        ax1.imshow(padded_image, 'bone')
 
         pred_resized = np.kron(raw_predictions_coll[0][ind, :, :, 0],
                                np.ones((predictions_to_image_scale, predictions_to_image_scale), dtype=float))
@@ -391,6 +406,13 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
         img5_mask = ax5.imshow(pred_resized5, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
         # ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
         fig.colorbar(img5_mask, ax=ax5, fraction=0.046)
+
+        ## SUB-GRAPH 6
+        # xdata, labels= bar_columns_repetitive_predictions(raw_predictions_coll, ind)
+        heatmap_sum = overlay_predictions(raw_predictions_coll, ind)
+        ax6 = plt.subplot(2, 3, 6)
+        img6  = ax6.imshow(heatmap_sum, 'seismic', vmin=0, vmax=5)
+        fig.colorbar(img6, ax=ax6, fraction=0.05)
 
         plt.tight_layout()
         fig.savefig(results_path + get_image_index_from_pathstring(
@@ -690,12 +712,12 @@ def plot_line_graph(line1, label1, line2, label2, line3, label3, line4, label4, 
     plt.clf()
 
 
-def visualize_scatter_bag_auc_stability(all_classifiers_auc_list, stability, y_axis_el1,y_axis_el2):
-    mean_metrics = np.mean(all_classifiers_auc_list, axis=0)
-    stand_dev = np.std(all_classifiers_auc_list, axis=0)
-
-    # mean_metrics = np.mean(auc1, axis=0)
-    # stand_dev = np.std(concat_metrics, axis=0)
-    make_scatterplot_with_errorbar(mean_metrics, 'mean_' + y_axis_el1 + '_' + y_axis_el2 + '_error',
-                                   stability, "stability",
-                                   res_path, y_errors=stand_dev, error_bar=True, bin_threshold_prefix=0.5)
+# def visualize_scatter_bag_auc_stability(all_classifiers_auc_list, stability, y_axis_el1,y_axis_el2):
+#     mean_metrics = np.mean(all_classifiers_auc_list, axis=0)
+#     stand_dev = np.std(all_classifiers_auc_list, axis=0)
+#
+#     # mean_metrics = np.mean(auc1, axis=0)
+#     # stand_dev = np.std(concat_metrics, axis=0)
+#     make_scatterplot_with_errorbar(mean_metrics, 'mean_' + y_axis_el1 + '_' + y_axis_el2 + '_error',
+#                                    stability, "stability",
+#                                    res_path, y_errors=stand_dev, error_bar=True, bin_threshold_prefix=0.5)
