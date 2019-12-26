@@ -41,7 +41,6 @@ results_path = config['results_path']
 # processed_labels_path = config['processed_labels_path']
 prediction_results_path = config['prediction_results_path']
 train_mode = config['train_mode']
-test_single_image = config['test_single_image']
 trained_models_path = config['trained_models_path']
 use_xray_dataset = config['use_xray_dataset']
 mura_interpolation = config['mura_interpolation']
@@ -173,25 +172,25 @@ else:
     # model = keras_model.compile_model(model)
     # opt = AdamW(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0., weight_decay=0.075,
     #       batch_size=BATCH_SIZE, samples_per_epoch=8000, epochs=46)
+    # model = keras_model.compile_model_adamw(model, 0.075, 8000, 46)
     model = load_model(trained_models_path + 'shoulderCV_1_nov.hdf5', custom_objects={
         'keras_loss': keras_loss, 'keras_accuracy': keras_accuracy, 'keras_binary_accuracy': keras_binary_accuracy,
         'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
 
-    # model = keras_model.compile_model_adamw(model, 0.075, 8000, 46)
 
-    if not test_single_image:
-        ########################################### TRAINING SET########################################################
-        file_unique_name = 'train_set'
-        test_set = df_train
 
-        predict_patch_and_save_results(model, file_unique_name, df_train, skip_processing,
-                                       BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+    ########################################### TRAINING SET########################################################
+    file_unique_name = 'train_set'
+    test_set = df_train
 
-        # ########################################### VALIDATION SET######################################################
+    predict_patch_and_save_results(model, file_unique_name, df_train, skip_processing,
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
 
-        predict_patch_and_save_results(model, 'val_set', df_val, skip_processing,
-                                       BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+    # ########################################### VALIDATION SET######################################################
 
-        ########################################### TESTING SET########################################################
-        predict_patch_and_save_results(model, 'test_set', test_set, skip_processing,
-                                       BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+    predict_patch_and_save_results(model, 'val_set', df_val, skip_processing,
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+
+    ########################################### TESTING SET########################################################
+    predict_patch_and_save_results(model, 'test_set', test_set, skip_processing,
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
