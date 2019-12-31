@@ -149,14 +149,25 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         plt.close(fig)
 
 
-def bar_columns_repetitive_predictions(raw_predictions_coll, img_ind):
-    # raw_predictions_coll[4][img_ind, :, :, 0]
-    classifiers_nr = 5
+def overlap_predictions_heatmap(raw_predictions_coll, img_ind, classifiers_nr=5):
     binary_pred_coll = []
-    for classifier in range(0, classifiers_nr ):
+    for classifier in range(0, classifiers_nr):
         binary_pred_coll.append(np.array(raw_predictions_coll[classifier][img_ind, :, :, 0] >= 0.5, dtype=np.int))
     # sum overlap  across all 5 classifiers
     sum_binary_pred_all_classifiers = np.sum(np.asarray(binary_pred_coll), axis=0)
+    return sum_binary_pred_all_classifiers
+
+
+def bar_columns_repetitive_predictions(raw_predictions_coll, img_ind, classifiers_nr=5):
+    # # raw_predictions_coll[4][img_ind, :, :, 0]
+    # classifiers_nr = 5
+    # binary_pred_coll = []
+    # for classifier in range(0, classifiers_nr ):
+    #     binary_pred_coll.append(np.array(raw_predictions_coll[classifier][img_ind, :, :, 0] >= 0.5, dtype=np.int))
+    # # sum overlap  across all 5 classifiers
+    # sum_binary_pred_all_classifiers = np.sum(np.asarray(binary_pred_coll), axis=0)
+
+    sum_binary_pred_all_classifiers = overlap_predictions_heatmap(raw_predictions_coll, img_ind)
     x_labels= []
     data = []
     for overlap_nr in range(0, classifiers_nr+1):
@@ -180,11 +191,15 @@ def overlay_predictions(raw_predictions_coll, img_ind):
 def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll,
                                                results_path,
                                                class_name,
-                                               image_title_suffix, other_img_path=None):
-
+                                               image_title_suffix, other_img_path=None, histogram = True,
+                                               threshold_transparency=0.01):
+    if threshold_transparency >= 0.5:
+        image_title_suffix += '_jacc'
+    elif threshold_transparency == 0:
+        image_title_suffix += 'spearman'
     for ind in range(0, img_ind_coll[0].shape[0]):
         print(ind)
-        threshold_transparency = 0.01
+        # threshold_transparency = 0.01
 
         instance_label_gt = labels_coll[0][ind, :, :, 0]
         img_ind = img_ind_coll[0][ind]
@@ -193,7 +208,7 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
 
         raw_prediction2 = raw_predictions_coll[1][ind, :, :, 0]
         # auc2 = auc_score2[ind]
-
+        print(other_img_path)
         if other_img_path is None:
             img_dir = img_ind
         else:
@@ -287,15 +302,21 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
         # ax6 = plt.subplot(2, 3, 6)
         # img6  = ax6.imshow(heatmap_sum, 'seismic', vmin=0, vmax=5)
         # fig.colorbar(img6, ax=ax6, fraction=0.05)
+        if histogram:
+            data, xlabels = bar_columns_repetitive_predictions(raw_predictions_coll, ind)
+            ax4 = plt.subplot(2, 3, 6)
+            ax4.bar(xlabels, data, align='center', alpha=0.5)
+            # plt.yticks(y_pos, objects)
 
-        data, xlabels = bar_columns_repetitive_predictions(raw_predictions_coll, ind)
+            ax4.set_xlabel('Times classified as positive')
+            ax4.set_ylabel('Number of instances')
+        else:
+            heatmap_overlap = overlap_predictions_heatmap(raw_predictions_coll, ind)
+            ax6 = plt.subplot(2, 3, 6)
+            img6  = ax6.imshow(heatmap_overlap, 'seismic', vmin=0, vmax=5)
+            fig.colorbar(img6, ax=ax6, fraction=0.05)
 
-        ax4 = plt.subplot(2, 3, 6)
-        ax4.bar(xlabels, data, align='center', alpha=0.5)
         # plt.yticks(y_pos, objects)
-
-        ax4.set_xlabel('Times classified as positive')
-        ax4.set_ylabel('Number of instances')
 
         # explode = (0.05, 0.05, 0.05, 0.05,
         # 0.05)
@@ -424,10 +445,11 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
 def visualize_5_classifiers(xray_dataset, img_ind_coll, labels_coll, raw_predictions_coll, img_path, results_path,
                             class_name, image_title_suffix):
     if xray_dataset:
-        visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll, img_path,
+        visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll,
                                                    results_path,
                                                    class_name,
-                                                   image_title_suffix)
+                                                   image_title_suffix, other_img_path = img_path, histogram=False,
+                                                   threshold_transparency=0.5)
     else:
         visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,
                                      class_name, image_title_suffix)

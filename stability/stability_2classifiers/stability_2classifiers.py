@@ -10,7 +10,41 @@ from stability.visualizations.visualization_utils import scatterplot_AUC_stabsco
 from stability.stability_2classifiers.scores_2classifiers import positive_Jaccard_index_batch, \
     corrected_Jaccard_pigeonhole, corrected_positive_Jaccard, overlap_coefficient, corrected_IOU, \
     corrected_overlap_coefficient, calculate_spearman_rank_coefficient, calculate_pearson_coefficient_batch, \
-    calculate_kendallstau_coefficient_batch, compute_additional_scores_kappa
+    calculate_kendallstau_coefficient_batch
+
+
+def get_binary_scores_forthreshold_v2(thres, raw_pred_coll):
+    binary_predictions_coll = []
+    jaccard_coll, corr_jacc_coll, corr_jacc_pigeonhole_coll, overlap_coll, \
+    corr_overlap_coll, corr_iou_coll =[], [], [], [], [], []
+
+    for raw_pred in raw_pred_coll:
+        binary_predictions = binarize_predictions(raw_pred, threshold=thres)
+        binary_predictions_coll.append(binary_predictions)
+
+    for bin_pred in binary_predictions_coll:
+        for bin_pred2 in binary_predictions_coll:
+
+            jaccard_indices = positive_Jaccard_index_batch(bin_pred, bin_pred2, 16)
+            # jaccard_indices_mask = np.ma.masked_array(jaccard_indices, np.isnan(jaccard_indices))
+            jaccard_coll.append(jaccard_indices)
+
+
+            corrected_jacc_pigeonhole = corrected_Jaccard_pigeonhole(bin_pred, bin_pred2)
+            corr_jacc_pigeonhole_coll.append(corrected_jacc_pigeonhole)
+
+            corrected_pos_jacc = corrected_positive_Jaccard(bin_pred, bin_pred2)
+            corr_jacc_coll.append(corrected_pos_jacc)
+
+            overlap_coeff = overlap_coefficient(bin_pred, bin_pred2, 16)
+            overlap_coll.append(overlap_coeff)
+
+            corrected_overlap = corrected_overlap_coefficient(bin_pred, bin_pred2)
+            corr_overlap_coll.append(corrected_overlap)
+
+            corrected_iou = corrected_IOU(bin_pred, bin_pred2)
+            corr_iou_coll.append(corrected_iou)
+    return jaccard_coll, corr_jacc_coll, corr_jacc_pigeonhole_coll, overlap_coll, corr_overlap_coll, corr_iou_coll
 
 
 def calculate_spearman_rank_coefficient_v2(scores):
@@ -31,7 +65,6 @@ def calculate_spearman_rank_coefficient_v2(scores):
     rho, pval =spearmanr(ranks, axis=1)
 
     return rho
-
 
 # def calculate_pearson_coefficient_batch(raw_pred1, raw_pred2):
 #     correlation_coll = []
@@ -55,7 +88,6 @@ def calculate_AUC_batch(pred, labels):
         auc_single_image = roc_auc_score(labels[ind, :, :, :].reshape(16*16*1), pred[ind, :, :, :].reshape(16*16*1))
         auc_coll.append(auc_single_image)
     return auc_coll
-
 
 
 def append_row_dataframe(results_to_append, threshold_binary_label, coeff_name, df ):
@@ -120,84 +152,6 @@ def get_binary_scores_forthreshold(thres, raw_pred1, raw_pred2):
     return jaccard_indices, corrected_pos_jacc, corrected_jacc_pigeonhole, overlap_coeff, corrected_overlap, corrected_iou
 
 
-def init_csv():
-    df = pd.DataFrame()
-    df['Image_ind'] = 0
-    df['po'] = -100
-    df['K'] = -100
-    df['pos_K'] = -100
-    df['p_pos'] = -100
-    df['p_neg'] = -100
-    df['pos-neg'] = -100
-    df['f1-f2'] = -100
-    return df
-
-
-def save_kappa_scores_csv(img_ind, po, aiou, apj,  p_pos, p_neg, diff_p_pos_p_neg, diff_f1_f2, diff_g1_g2,
-                          unique_file_identifier, res_path):
-    df = init_csv()
-    df['Image_ind'] = img_ind
-    df['po'] = po
-    df['K'] = aiou
-    df['pos_K'] = apj
-    df['p_pos'] = p_pos
-    df['p_neg'] = p_neg
-    df['pos-neg'] = diff_p_pos_p_neg
-    df['f1-f2'] = diff_f1_f2
-    df['g1-g2'] = diff_g1_g2
-    df.to_csv(res_path+'additional_scores_kappa'+unique_file_identifier+'.csv')
-
-
-def get_binary_scores_forthreshold_v2(thres, raw_pred_coll):
-    binary_predictions_coll = []
-    jaccard_coll, corr_jacc_coll, corr_jacc_pigeonhole_coll, overlap_coll, \
-    corr_overlap_coll, corr_iou_coll =[], [], [], [], [], []
-
-    for raw_pred in raw_pred_coll:
-        binary_predictions = binarize_predictions(raw_pred, threshold=thres)
-        binary_predictions_coll.append(binary_predictions)
-
-    for bin_pred in binary_predictions_coll:
-        for bin_pred2 in binary_predictions_coll:
-
-            jaccard_indices = positive_Jaccard_index_batch(bin_pred, bin_pred2, 16)
-            # jaccard_indices_mask = np.ma.masked_array(jaccard_indices, np.isnan(jaccard_indices))
-            jaccard_coll.append(jaccard_indices)
-
-
-            corrected_jacc_pigeonhole = corrected_Jaccard_pigeonhole(bin_pred, bin_pred2)
-            corr_jacc_pigeonhole_coll.append(corrected_jacc_pigeonhole)
-
-            corrected_pos_jacc = corrected_positive_Jaccard(bin_pred, bin_pred2)
-            corr_jacc_coll.append(corrected_pos_jacc)
-
-            overlap_coeff = overlap_coefficient(bin_pred, bin_pred2, 16)
-            overlap_coll.append(overlap_coeff)
-
-            corrected_overlap = corrected_overlap_coefficient(bin_pred, bin_pred2)
-            corr_overlap_coll.append(corrected_overlap)
-
-            corrected_iou = corrected_IOU(bin_pred, bin_pred2)
-            corr_iou_coll.append(corrected_iou)
-    return jaccard_coll, corr_jacc_coll, corr_jacc_pigeonhole_coll, overlap_coll, corr_overlap_coll, corr_iou_coll
-
-
-def save_additional_kappa_scores_forthreshold(thres, raw_pred_coll, img_ind, corr_iou_coll,
-                                              corr_pos_jacc_coll, res_path):
-    binary_predictions_coll = []
-    for raw_pred in raw_pred_coll:
-        binary_predictions = binarize_predictions(raw_pred, threshold=thres)
-        binary_predictions_coll.append(binary_predictions)
-
-    for bin_pred_ind in range(0, len(binary_predictions_coll)):
-        for bin_pred_ind2 in range(0, len(binary_predictions_coll)):
-            corr_iou = corr_iou_coll[bin_pred_ind, bin_pred_ind2, :]
-            corr_pos_jacc = corr_pos_jacc_coll[bin_pred_ind, bin_pred_ind2, :]
-            po, p_pos, p_neg, diff_p_pos_p_neg, diff_f1_f2,  diff_g1_g2 =\
-                compute_additional_scores_kappa(binary_predictions_coll[bin_pred_ind],
-                                                binary_predictions_coll[bin_pred_ind2])
-            save_kappa_scores_csv(img_ind[0], po, corr_iou, corr_pos_jacc, p_pos, p_neg, diff_p_pos_p_neg,
-                                  diff_f1_f2, diff_g1_g2, str(bin_pred_ind) + '_'+str(bin_pred_ind2), res_path)
 
 
 def compute_binary_scores_with_allthresholds(raw_predictions1, raw_predictions2, df_stab, auc_1, auc_2, scatterplots,

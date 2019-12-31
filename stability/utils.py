@@ -1,4 +1,10 @@
+import pandas as pd
 from sklearn.metrics import roc_auc_score
+
+from stability.preprocessor.preprocessing import binarize_predictions
+from stability.stability_2classifiers.scores_2classifiers import compute_additional_scores_kappa, corrected_IOU, \
+    corrected_overlap_coefficient, corrected_positive_Jaccard, positive_Jaccard_index_batch, \
+    corrected_Jaccard_pigeonhole, overlap_coefficient
 
 
 def compute_auc_1class(labels_all_classes, img_predictions_all_classes):
@@ -23,3 +29,66 @@ def get_image_index(xray, image_link_collection, image_index):
         return get_image_index_xray(image_link_collection, image_index)
     else:
         return get_image_index_mura(image_link_collection, image_index)
+
+
+def init_csv():
+    df = pd.DataFrame()
+    df['Image_ind'] = 0
+    df['po'] = -100
+    df['K'] = -100
+    df['pos_K'] = -100
+    df['p_pos'] = -100
+    df['p_neg'] = -100
+    df['pos-neg'] = -100
+    df['f1-f2'] = -100
+    return df
+
+
+def save_kappa_scores_csv(img_ind, po, aiou, apj,  p_pos, p_neg, diff_p_pos_p_neg, diff_f1_f2, diff_g1_g2,
+                          unique_file_identifier, res_path):
+    df = init_csv()
+    df['Image_ind'] = img_ind
+    df['po'] = po
+    df['K'] = aiou
+    df['pos_K'] = apj
+    df['p_pos'] = p_pos
+    df['p_neg'] = p_neg
+    df['pos-neg'] = diff_p_pos_p_neg
+    df['f1-f2'] = diff_f1_f2
+    df['g1-g2'] = diff_g1_g2
+    df.to_csv(res_path+'additional_scores_kappa'+unique_file_identifier+'.csv')
+
+
+def save_additional_kappa_scores_forthreshold(thres, raw_pred_coll, img_ind, corr_iou_coll,
+                                              corr_pos_jacc_coll, res_path):
+    binary_predictions_coll = []
+    for raw_pred in raw_pred_coll:
+        binary_predictions = binarize_predictions(raw_pred, threshold=thres)
+        binary_predictions_coll.append(binary_predictions)
+
+    for bin_pred_ind in range(0, len(binary_predictions_coll)):
+        for bin_pred_ind2 in range(0, len(binary_predictions_coll)):
+            corr_iou = corr_iou_coll[bin_pred_ind, bin_pred_ind2, :]
+            corr_pos_jacc = corr_pos_jacc_coll[bin_pred_ind, bin_pred_ind2, :]
+            po, p_pos, p_neg, diff_p_pos_p_neg, diff_f1_f2,  diff_g1_g2 =\
+                compute_additional_scores_kappa(binary_predictions_coll[bin_pred_ind],
+                                                binary_predictions_coll[bin_pred_ind2])
+            save_kappa_scores_csv(img_ind[0], po, corr_iou, corr_pos_jacc, p_pos, p_neg, diff_p_pos_p_neg,
+                                  diff_f1_f2, diff_g1_g2, str(bin_pred_ind) + '_'+str(bin_pred_ind2), res_path)
+
+
+def save_mean_stability(img_ind, jacc, corr_jacc, iou, spearman, res_path, file_identifier):
+    df = pd.DataFrame()
+    df['Image_ind'] = 0
+    df['Mean Jaccard'] = -100
+    df['Mean corrected jaccard'] = -100
+    df['mean IoU'] = -100
+    df['Mean Spearman'] = -100
+
+    df['Image_ind'] = img_ind
+    df['Mean Jaccard'] = jacc
+    df['Mean corrected jaccard'] = corr_jacc
+    df['mean IoU'] = iou
+    df['Mean Spearman'] = spearman
+
+    df.to_csv(res_path+'mean_stability_'+file_identifier+'.csv')

@@ -1,4 +1,4 @@
-image_path: directiory folder to the images
+image_path: directory folder to xray images
 classication_labels_path: path to chest XRay Data_Entry_2017.csv
 localization_labels_path: path to chest XRay Bbox_List_2017.csv
 results_path: folder where results are stored
