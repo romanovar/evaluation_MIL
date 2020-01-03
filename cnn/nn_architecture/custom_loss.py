@@ -118,18 +118,18 @@ def test_compute_ground_truth_per_class_numpy(instance_labels_gt, m):
 
     return sum_active_patches, class_label_ground_truth, has_bbox
 
-
-def compute_loss(nn_output, instance_label_ground_truth, P):
-    m = P * P
-    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m)
-
-    img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, P)
-
-    loss_classification = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
-    loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
-
-    return loss_classification, loss_classification_keras, img_label_pred, class_label_ground_truth
-
+#todo: delete if not used
+# def compute_loss(nn_output, instance_label_ground_truth, P):
+    # m = P * P
+    # sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m)
+    #
+    # img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, P)
+    #
+    # loss_classification = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    # loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    #
+    # return loss_classification, loss_classification_keras, img_label_pred, class_label_ground_truth
+    #
 
 #todo: delete - not currently used
 # def loss_L2(Y_hat, Y, P, L2_rate=0.01):
@@ -167,16 +167,57 @@ def keras_loss_reg(y_true, y_pred):
 
 
 ##########################################################
+#todo: delete if not used
+# def binary_CE_loss_v2(is_loc, labels, probs):
+#     factor_loc = tf.constant(5, dtype=tf.float32)
+#
+#     _epsilon = tf.convert_to_tensor(K.backend.epsilon(), probs.dtype.base_dtype)
+#
+#     probs = tf.clip_by_value(probs, _epsilon, 1 - _epsilon)
+#
+#     loss_common = -(labels*tf.log(probs))-((1-labels)*tf.log(1-probs))
+#
+#     loss_class_keras = tf.where(is_loc, factor_loc*loss_common, loss_common)
+#     return loss_class_keras
+#
 
-def binary_CE_loss_v2(is_loc, labels, probs):
-    factor_loc = tf.constant(5, dtype=tf.float32)
 
-    _epsilon = tf.convert_to_tensor(K.backend.epsilon(), probs.dtype.base_dtype)
+def mean_pooling_segmentation_images(nn_output, y_true, P, clas_nr):
+    #
+    # epsilon = tf.pow(tf.cast(10, tf.float32), -15)
 
-    probs = tf.clip_by_value(probs, _epsilon, 1 - _epsilon)
+    pos_patches_mask = tf.reshape((nn_output * y_true), (-1, P * P, clas_nr))
+    neg_patches_mask = tf.reshape((1 - nn_output) * (1 - y_true), (-1, P * P, clas_nr))
 
-    loss_common = -(labels*tf.log(probs))-((1-labels)*tf.log(1-probs))
+    # element wise multiplication is used as a boolean mask to separate active from inactive patches
+    pos_patches = pos_patches_mask * tf.reshape(y_true, (-1, P * P, clas_nr))
+    neg_patches = neg_patches_mask * tf.reshape((1 - y_true), (-1, P * P, clas_nr))
 
-    loss_class_keras = tf.where(is_loc, factor_loc*loss_common, loss_common)
-    return loss_class_keras
+    sum_pos_patches = tf.reduce_sum(tf.where(pos_patches>0.0, pos_patches, tf.fill(tf.shape(pos_patches),0)), axis=1)
+    sum_neg_patches = tf.reduce_sum(tf.where(neg_patches > 0.0, neg_patches, tf.fill(tf.shape(neg_patches), 0)), axis=1)
+    sum_total = tf.add(sum_neg_patches, sum_pos_patches)
+    return tf.multiply((1/(P*P)), sum_total)
+
+
+def mean_pooling_bag_level(nn_output, P, clas_nr):
+    # reshaped_nn =
+    sum_patches = tf.reduce_sum(tf.reshape(nn_output, (-1, P * P, clas_nr)), axis=1)
+    return tf.multiply((1 / (P * P)), sum_patches)
+
+
+def compute_image_label_prediction(has_bbox, nn_output_class, y_true_class, P, class_nr, pooling_operator):
+    if pooling_operator.lower()=='nor':
+        prob = tf.where(has_bbox, compute_image_label_from_localization_NORM(nn_output_class, y_true_class, P, class_nr),
+                        compute_image_label_in_classification_NORM(nn_output_class, P, class_nr))
+    elif pooling_operator.lower()=='mean':
+        prob = tf.where(has_bbox,
+                        mean_pooling_segmentation_images(nn_output_class, y_true_class, P, class_nr),
+                        mean_pooling_bag_level(nn_output_class, P, class_nr))
+    elif pooling_operator.lower()=='lse':
+        # prob = tf.where(has_bbox,
+        #                 compute_image_label_from_localization_NORM(nn_output_class, y_true_class, P, class_nr),
+                        # compute_image_label_in_classification_NORM(nn_output_class, P, class_nr))
+        None
+    return prob
+
 

@@ -2,6 +2,7 @@ import PIL
 from pathlib import Path
 import matplotlib
 from PIL import ImageDraw
+from scipy.optimize import curve_fit
 
 from cnn.preprocessor.load_data_mura import padding_needed, pad_image
 from stability.utils import get_image_index
@@ -77,7 +78,10 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
 
 
         # OPENCV
-        img_bbox = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        if len(img.shape) > 2:
+            img_bbox = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        else:
+            img_bbox = img
         cv2.rectangle(img_bbox, (upper_left_x * scale_width, upper_left_y * scale_height),
                                  ((np.amax(x) + 1) * scale_width, (np.amax(y) + 1) * scale_height), (125, 0, 0), 5)
 
@@ -193,6 +197,25 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
                                                class_name,
                                                image_title_suffix, other_img_path=None, histogram = True,
                                                threshold_transparency=0.01):
+    '''
+    This functions visualizes the prediction of different classifiers only for xray dataset
+
+    :param img_ind_coll: collection of image paths to visualize
+    :param labels_coll: collection of segmentation collection
+    :param raw_predictions_coll: collection of raw predictions for each image and each classifier
+    :param results_path:path to save new iamges
+    :param class_name:
+    :param image_title_suffix:
+    :param other_img_path: if not None, the image index is taken
+    :param histogram: 6th quadrant shows either:
+         TRUE: a histogram with times each instance is predicted positive, or
+         FALSE: a heatmap with overlapping predictions
+    :param threshold_transparency: only instance predictions above the threshold are visualized,
+      threshold = 0 shows how it looks for Spearman rank,
+      threshold = 0.5 shows how it looks for corrected Jaccard
+
+    :return: return graph per image with a heatmap for each classifier prediction and histogram/heatmap for overlapping
+    '''
     if threshold_transparency >= 0.5:
         image_title_suffix += '_jacc'
     elif threshold_transparency == 0:
@@ -208,7 +231,6 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
 
         raw_prediction2 = raw_predictions_coll[1][ind, :, :, 0]
         # auc2 = auc_score2[ind]
-        print(other_img_path)
         if other_img_path is None:
             img_dir = img_ind
         else:
@@ -345,19 +367,28 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
         plt.close(fig)
 
 
-def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,  class_name,image_title_suffix):
+def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,  class_name,image_title_suffix,
+                                 other_img_path = None, histogram=False, threshold_transparency=0.01):
+    if threshold_transparency >= 0.5:
+        image_title_suffix += '_jacc'
+    elif threshold_transparency == 0:
+        image_title_suffix += 'spearman'
     for ind in range(0, img_ind_coll[0].shape[0]):
         print(ind)
-        threshold_transparency = 0.01
+        # threshold_transparency = 0.01
 
         # instance_label_gt = labels_coll[0][ind, :, :, 0]
         img_path = img_ind_coll[0][ind]
         predictions_to_image_scale = int(512/16)
 
-
         img_ind = get_image_index(False, img_ind_coll[0], ind)
 
         img = plt.imread(img_path)
+        if other_img_path is None:
+            img_dir = img_ind
+        else:
+            img_dir = Path(other_img_path + get_image_index_from_pathstring(img_ind) + '.png').__str__()
+
         if padding_needed(img):
             padded_image = pad_image(img)
 
@@ -373,7 +404,6 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
                                np.ones((predictions_to_image_scale, predictions_to_image_scale), dtype=float))
         pred_resized[pred_resized < threshold_transparency] = np.nan
         img1_mask = ax1.imshow(pred_resized, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
-        # ax1.set_xlabel("AUC instance score: "+ ("{0:.3f}".format(auc)))
         fig.colorbar(img1_mask, ax=ax1, fraction=0.046)
 
         fig.text(-0.2, 0.5,
@@ -389,7 +419,6 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
                                 np.ones((predictions_to_image_scale, predictions_to_image_scale), dtype=float))
         pred_resized2[pred_resized2 < threshold_transparency] = np.nan
         img2_mask = ax2.imshow(pred_resized2, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
-        # ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
         fig.colorbar(img2_mask, ax=ax2, fraction=0.046)
 
         ## SUB-GRAPH 3
@@ -401,7 +430,6 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
                                 np.ones((predictions_to_image_scale, predictions_to_image_scale), dtype=float))
         pred_resized3[pred_resized3 < threshold_transparency] = np.nan
         img3_mask = ax3.imshow(pred_resized3, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
-        # ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
         fig.colorbar(img3_mask, ax=ax3, fraction=0.046)
         #
         ## SUB-GRAPH 4
@@ -413,7 +441,6 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
                                 np.ones((predictions_to_image_scale, predictions_to_image_scale), dtype=float))
         pred_resized4[pred_resized4 < threshold_transparency] = np.nan
         img4_mask = ax4.imshow(pred_resized4, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
-        # ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
         fig.colorbar(img4_mask, ax=ax4, fraction=0.046)
 
         ## SUB-GRAPH 5
@@ -425,15 +452,22 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
                                 np.ones((predictions_to_image_scale, predictions_to_image_scale), dtype=float))
         pred_resized5[pred_resized5 < threshold_transparency] = np.nan
         img5_mask = ax5.imshow(pred_resized5, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
-        # ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
         fig.colorbar(img5_mask, ax=ax5, fraction=0.046)
 
         ## SUB-GRAPH 6
-        # xdata, labels= bar_columns_repetitive_predictions(raw_predictions_coll, ind)
-        heatmap_sum = overlay_predictions(raw_predictions_coll, ind)
-        ax6 = plt.subplot(2, 3, 6)
-        img6  = ax6.imshow(heatmap_sum, 'seismic', vmin=0, vmax=5)
-        fig.colorbar(img6, ax=ax6, fraction=0.05)
+        if histogram:
+            data, xlabels = bar_columns_repetitive_predictions(raw_predictions_coll, ind)
+            ax4 = plt.subplot(2, 3, 6)
+            ax4.bar(xlabels, data, align='center', alpha=0.5)
+            # plt.yticks(y_pos, objects)
+
+            ax4.set_xlabel('Times classified as positive')
+            ax4.set_ylabel('Number of instances')
+        else:
+            heatmap_overlap = overlap_predictions_heatmap(raw_predictions_coll, ind)
+            ax6 = plt.subplot(2, 3, 6)
+            img6 = ax6.imshow(heatmap_overlap, 'seismic', vmin=0, vmax=5)
+            fig.colorbar(img6, ax=ax6, fraction=0.05)
 
         plt.tight_layout()
         fig.savefig(results_path + get_image_index_from_pathstring(
@@ -444,6 +478,18 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
 
 def visualize_5_classifiers(xray_dataset, img_ind_coll, labels_coll, raw_predictions_coll, img_path, results_path,
                             class_name, image_title_suffix):
+    '''
+    Visualizes instance predictions from several classifers on a list of images
+    :param xray_dataset: dataset used
+    :param img_ind_coll:
+    :param labels_coll:
+    :param raw_predictions_coll:
+    :param img_path:
+    :param results_path:
+    :param class_name:
+    :param image_title_suffix:
+    :return:
+    '''
     if xray_dataset:
         visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll,
                                                    results_path,
@@ -452,7 +498,8 @@ def visualize_5_classifiers(xray_dataset, img_ind_coll, labels_coll, raw_predict
                                                    threshold_transparency=0.5)
     else:
         visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,
-                                     class_name, image_title_suffix)
+                                     class_name, image_title_suffix, other_img_path = img_path, histogram=True,
+                                     threshold_transparency=0.5)
 
 
 def draw_heatmap(df, labels, ax, font_size_annotations, drop_duplicates):
@@ -523,8 +570,12 @@ def make_scatterplot(y_axis_collection, y_axis_title, x_axis_collection, x_axis_
     plt.close(fig)
 
 
+def exp_fit_func(x, a, b, c):
+    return a * np.exp(-b * x) + c
+
+
 def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_collection, x_axis_title, res_path, y_errors,
-                                   error_bar = False, bin_threshold_prefix =None, x_errors=None):
+                                   fitting_curve = False, error_bar = False, bin_threshold_prefix =None, x_errors=None):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
     # cmap2 = cm.get_cmap('tab20c')  # type: # matplotlib.colors.ListedColormap
@@ -542,6 +593,21 @@ def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_colle
         if (error_bar==True) and (y_errors is not None):
             ax.errorbar(x, y, xerr=x_error_bar, yerr=y_error_bar, ecolor=color)
     # ax.set(xlim=(np.min(x), 1), ylim=(0, 1))
+    if fitting_curve:
+        popt, pcov = curve_fit(exp_fit_func, x_axis_collection, y_axis_collection, maxfev=1000)
+        z = np.polyfit(x_axis_collection, y_axis_collection, 1)
+        f = np.poly1d(z)
+
+        z2 = np.polyfit(x_axis_collection, y_axis_collection, 2)
+        f2 = np.poly1d(z2)
+        # plt.plot(x_axis_collection, f(x), 'g-.', label="linear fit")
+        # plt.plot(x_axis_collection, f2(x), 'b.', label="quadratic fit")
+        print("I am the fitting curve: ")
+        print(popt)
+        plt.plot(np.sort(x_axis_collection), exp_fit_func(np.sort(x_axis_collection), *popt), 'r--',
+                 label = 'fit: a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt))
+
+
     plt.xlabel(x_axis_title)
     plt.ylabel(y_axis_title)
     plt.title('Matplot scatter plot')
@@ -612,7 +678,8 @@ def scatterplot_AUC_stabscore(y_axis_collection1, y_axis_title1, y_axis_collecti
     make_scatterplot(mean_metrics, 'mean_'+y_axis_title1 + '_'+y_axis_title2, x_axis_collection, x_axis_title,
                                    res_path, threshold_prefix=threshold)
     make_scatterplot_with_errorbar(mean_metrics, 'mean_'+y_axis_title1 + '_'+y_axis_title2 + '_error', x_axis_collection, x_axis_title,
-                                   res_path, y_errors=stand_dev, error_bar=True, bin_threshold_prefix=threshold)
+                                   res_path,fitting_curve=False, y_errors=stand_dev, error_bar=True,
+                                   bin_threshold_prefix=threshold)
 
 
 def plot_change_stability_varying_threshold_per_image(overlap_coll, jacc_coll, corr_overlap_col, corr_jaccard_coll, corr_iou_coll,
@@ -635,7 +702,8 @@ def scatterplot_AUC_stabscore_v2(y_axis_collection1, y_axis_title1, y_axis_title
     make_scatterplot(mean_metrics, 'mean_'+y_axis_title1 + '_'+y_axis_title2, x_axis_collection, x_axis_title,
                                    res_path, threshold_prefix=threshold)
     make_scatterplot_with_errorbar(mean_metrics, 'mean_'+y_axis_title1 + '_'+y_axis_title2 + '_error', x_axis_collection, x_axis_title,
-                                   res_path, y_errors=stand_dev, error_bar=True, bin_threshold_prefix=threshold)
+                                   res_path, fitting_curve=False, y_errors=stand_dev, error_bar=True,
+                                   bin_threshold_prefix=threshold)
 
 
 

@@ -190,7 +190,7 @@ def filter_predictions_files_on_indeces(all_labels_coll, all_image_ind_coll, all
         print("""""""""""""""""""")
         print(el_ind)
         print(image_ind)
-        assert bbox_img_ind_coll[0].all() == image_ind.all(), "bbox image index are different or in different order"
+        assert (bbox_img_ind_coll[0] == image_ind).all(), "bbox image index are different or in different order"
     return bbox_img_labels_coll, bbox_img_ind_coll, bbox_img_raw_predictions,\
            bbox_img_bag_labels, bbox_img_bag_predictions
 
