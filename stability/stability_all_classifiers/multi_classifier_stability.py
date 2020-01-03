@@ -117,7 +117,8 @@ def visualize_bag_vs_stability(bag_auc_list, stability, y_axis_el1, y_axis_el2, 
     # visualize_scatter_bag_auc_stability(bag_auc_list, stability, y_axis_el1, y_axis_el2)
     make_scatterplot_with_errorbar(means, 'mean_' + y_axis_el1 + '_' + y_axis_el2 + '_error',
                                    stabilities, x_axis_title,
-                                   res_path, y_errors=stdevs, error_bar=True, bin_threshold_prefix=None)
+                                   res_path, fitting_curve=False, y_errors=stdevs, error_bar=True,
+                                   bin_threshold_prefix=None)
 
 
 def compute_and_visualize_average_instance_stability(reshaped_stability, res_path, identifier, index_name,
@@ -184,6 +185,15 @@ def get_instance_auc_stability_score_all_classifiers(inst_labels, inst_pred, sta
 
 def stability_all_classifiers(config, classifiers, only_segmentation_images,
                               only_positive_images, visualize_per_image):
+    '''
+
+    :param config:
+    :param classifiers:
+    :param only_segmentation_images:
+    :param only_positive_images:
+    :param visualize_per_image: do we wat
+    :return:
+    '''
     image_path = config['image_path']
     stability_res_path = config['stability_results']
     xray_dataset = config['use_xray_dataset']
@@ -198,7 +208,7 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
                                                                                              classifiers,
                                                                                              only_segmentation_images,
                                                                                              only_positive_images)
-
+    print(image_labels_collection[0])
     dataset_identifier += identifier
     jacc_coll, corr_jacc_coll, _, _, _, corr_iou = get_binary_scores_forthreshold_v2(0.5, raw_predictions_collection)
 
@@ -235,7 +245,6 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
         visualize_5_classifiers(xray_dataset, image_index_collection, image_labels_collection,
                                 raw_predictions_collection, image_path, stability_res_path, class_name, '_test_5_class')
     ## ADD inst AUC vs score
-
     ma_corr_jaccard_images = np.ma.masked_array(reshaped_corr_jacc_coll, np.isnan(reshaped_corr_jacc_coll))
     print(ma_corr_jaccard_images)
     ma_jaccard_images = np.ma.masked_array(reshaped_jacc_coll, np.isnan(reshaped_jacc_coll))
@@ -313,6 +322,7 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
 
     save_mean_stability(image_index_collection[0], mean_all_classifiers_jacc, mean_all_classifiers_corr_jacc,
                         mean_all_classifiers_iou,mean_all_classifiers_spearman, stability_res_path, dataset_identifier)
+
 
 def get_analysis_data_subset(config, classifiers, only_segmentation_images, only_positive_images):
     '''
@@ -394,13 +404,14 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
                                       axis=1)
 
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_jacc, 'mean adjusted Positive0 Jaccard',
-                                   stability_res_path, y_errors=stand_dev_auc, x_errors=stand_dev_stability_jacc,
+                                   stability_res_path, fitting_curve=False, y_errors=stand_dev_auc,
+                                   x_errors=stand_dev_stability_jacc,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_jacc, 'mean adjusted positive Jaccard',
-                                   stability_res_path, y_errors=stand_dev_auc, x_errors=None,
+                                   stability_res_path, fitting_curve=True, y_errors=stand_dev_auc, x_errors=None,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_jacc, 'mean Aajusted Positive1 Jaccard',
-                                   stability_res_path, y_errors=None, x_errors=stand_dev_stability_jacc,
+                                   stability_res_path, fitting_curve=False, y_errors=None, x_errors=stand_dev_stability_jacc,
                                    error_bar=True, bin_threshold_prefix=0)
 
     _, stability_res_spear = get_instance_auc_stability_score_all_classifiers(image_labels_collection,
@@ -411,13 +422,14 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
     stand_dev_stability_spear = np.std(stability_res_spear, axis=1)
 
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_spear, 'mean Spearman0 correlation',
-                                   stability_res_path, y_errors=stand_dev_auc, x_errors=stand_dev_stability_spear,
+                                   stability_res_path, fitting_curve=False,
+                                   y_errors=stand_dev_auc, x_errors=stand_dev_stability_spear,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_spear, 'mean Spearman correlation',
-                                   stability_res_path, y_errors=stand_dev_auc, x_errors=None,
+                                   stability_res_path, fitting_curve=True, y_errors=stand_dev_auc, x_errors=None,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_spear, 'mean Spearman1 correlation',
-                                   stability_res_path, y_errors=None, x_errors=stand_dev_stability_spear,
+                                   stability_res_path, fitting_curve=False, y_errors=None, x_errors=stand_dev_stability_spear,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar_v2(avg_stability_jacc, avg_stability_spear, 'stability_score', avg_auc,
                                       "auc", stability_res_path, y_errors=stand_dev_stability_jacc,
