@@ -1,6 +1,6 @@
 sqlalchemy==1.2.1
 imagesize==0.7.1
-Pillow==5.0.0
+Pillow==6.2.0
 seaborn==0.8.1
 matplotlib==2.1.0
 scipy==1.0.0b1
