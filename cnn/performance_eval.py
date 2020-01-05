@@ -21,3 +21,6 @@ def performance_evaluation(config, dataset_name, th_binarization=0.5, th_iou=0.1
         keras_preds.compute_save_dice_results(dataset_name, predict_res_path, has_bbox, dice_scores)
         keras_preds.compute_save_auc(dataset_name, 'as_production', predict_res_path,
                                      image_labels, image_predictions, class_name)
+    else:
+        keras_preds.compute_save_auc(dataset_name, 'as_production', predict_res_path,
+                                     image_labels, image_predictions, class_name)

@@ -50,6 +50,7 @@ def get_index_label_prediction(file_set_name, res_path):
     return preds, img_indices, patch_labs
 
 
+##todo: remove if not used
 def compute_bag_probability_asloss(nn_output, instance_label_ground_truth, P, has_bbox, class_nr, pooling_operator):
     '''
     Computes image probability the same way it is computed in the loss
@@ -64,14 +65,6 @@ def compute_bag_probability_asloss(nn_output, instance_label_ground_truth, P, ha
         np.where(has_bbox, 2, -1)
     return None
 
-
-# def compute_bag_prediction(raw_predictions, patch_labs, img_pred_as_loss):
-#     if img_pred_as_loss == 'as_loss':
-#         img_labels, img_prob_preds_v1 = compute_image_probability_asloss(raw_predictions, patch_labs, P=16, class_nr=1)
-#     elif img_pred_as_loss == 'as_production':
-#         img_labels, img_prob_preds_v1 = compute_image_probability_production(raw_predictions, patch_labs, P=16,
-#                                                                              class_nr=1)
-#     return img_labels, img_prob_preds_v1
 
 def compute_intersection_union_patches(predictions, patch_labels, threshold_binarization):
     binary_patch_predictions = np.greater_equal(predictions, threshold_binarization, dtype=float)
