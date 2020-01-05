@@ -126,3 +126,4 @@ dmypy.json
 
 # Private yaml config
 *.private.yml
+/.idea
