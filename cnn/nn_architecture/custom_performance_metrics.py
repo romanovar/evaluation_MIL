@@ -201,7 +201,7 @@ def image_prob_active_patches(nn_output, P, class_nr):
 
 def compute_image_probability_asloss(nn_output, instance_label_ground_truth, P, class_nr):
     '''
-    Computes image probability the same way it is computed in the loss, this function has testing purposes only
+    Computes image probability the same way it is computed in the loss
     :param nn_output:
     :param instance_label_ground_truth:
     :param P:
