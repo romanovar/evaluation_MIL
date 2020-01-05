@@ -1,5 +1,13 @@
 import cnn.preprocessor.load_data as ld
 import cnn.preprocessor.load_data_mura as ldm
+from cnn.keras_utils import  process_loaded_labels
+import numpy as np
+
+
+def test_size_bbox(bbox_label):
+    array_numb = process_loaded_labels(bbox_label)
+    sum_active_patches = np.sum(np.asarray(array_numb))
+    return sum_active_patches
 
 
 def load_process_xray14(config):
@@ -8,7 +16,6 @@ def load_process_xray14(config):
     processed_labels_path = config['processed_labels_path']
     classication_labels_path = config['classication_labels_path']
     localization_labels_path = config['localization_labels_path']
-    generated_images_path = config['generated_images_path']
     results_path = config['results_path']
     class_name = config['class_name']
 
@@ -19,8 +26,11 @@ def load_process_xray14(config):
 
     init_train_idx, df_train_init, df_val, \
     df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(xray_df, random_state=1, do_stats=False,
-                                                                   res_path = generated_images_path,
+                                                                   res_path = results_path,
                                                                    label_col = class_name)
+
+    array_bbox_sizes = df_bbox_train.iloc[:, 1].apply(lambda x: test_size_bbox(x))
+
     df_train=df_train_init
     print('Training set: '+ str(df_train_init.shape))
     print('Validation set: '+ str(df_val.shape))
@@ -80,7 +90,7 @@ def load_data_cv(config, data_set_name):
             xray_df = ld.couple_location_labels(localization_labels_path, processed_df, ld.PATCH_SIZE, results_path)
     # print(xray_df.shape)
     # print("Splitting data ...")
-
-
-def load_data_cv_mura():
-    df_train, df_val = split_data_cv(df, splits_nr, current_split, random_seed, diagnose_col, ratio_to_keep=None)
+#
+# #
+# def load_data_cv_mura():
+#     df_train, df_val = split_data_cv(df, splits_nr, current_split, random_seed, diagnose_col, ratio_to_keep=None)
