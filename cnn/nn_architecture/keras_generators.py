@@ -1,32 +1,18 @@
+"""
+inspired by https://github.com/neuralmed/learning_with_bbox
+"""
+import cv2
 import numpy as np
 from keras.utils import Sequence
 from keras.preprocessing.image import load_img, img_to_array
-
-from keras_utils import process_loaded_labels
+from cnn.preprocessor.load_data_mura import padding_needed, pad_image
+from cnn.keras_utils import process_loaded_labels
 
 
 class BatchGenerator(Sequence):
-    def __init__(self,
-                 instances,
-                 batch_size=16,
-                 shuffle=True,
-                 norm=None,
-                 net_h=512,
-                 net_w=512,
-                 box_size=16,
-                 processed_y = None
-                 ):
-        '''
+    def __init__(self, instances, batch_size=16, shuffle=True,
+                 norm=None, net_h=512, net_w=512, box_size=16, processed_y = None, interpolation=True):
 
-        :param instances: Lista em que a primeira posicao sao as imagens e a segunda sao os labels
-        :param downsample:
-        :param batch_size:
-        :param min_net_size:
-        :param max_net_size:
-        :param shuffle:
-        :param jitter:
-        :param norm:
-        '''
         self.instances = instances
         self.batch_size = batch_size
         self.shuffle = shuffle
@@ -35,6 +21,7 @@ class BatchGenerator(Sequence):
         self.net_w = net_w
         self.box_size = box_size
         self.processed_y = processed_y
+        self.interpolation = interpolation
 
         if shuffle: np.random.shuffle(self.instances)
 
@@ -54,14 +41,27 @@ class BatchGenerator(Sequence):
 
         x_batch = np.zeros((r_bound - l_bound, self.net_w, self.net_h, 3))  # input images
         y_batch = np.zeros((r_bound - l_bound, self.box_size, self.box_size, 14))
+        y_batch = np.zeros((r_bound - l_bound, self.box_size, self.box_size, 1))
 
         instance_count = 0
         # do the logic to fill in the inputs and the output
         for train_instance in self.instances[l_bound:r_bound]:
             image_dir = train_instance[0]
-
-            image = img_to_array(
-                load_img(image_dir, target_size=(self.net_w, self.net_h), color_mode='rgb'))
+            print(image_dir)
+            if self.interpolation:
+                #### NEAREST INTERPOLATION
+                image = img_to_array(
+                    load_img(image_dir, target_size=(self.net_w, self.net_h), color_mode='rgb'))
+            else:
+                ### PADDING
+                image = img_to_array(load_img(image_dir, target_size=None, color_mode='rgb'))
+                pad_needed = padding_needed(image)
+                # img1 = cv2.imread('opencv_logo.png')
+                # img1 = cv2.uma
+                # gray = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB) cv2.UMat(imgUMat)
+                # gray = img_to_array(image)
+                if pad_needed:
+                    image = pad_image(image, final_size_x=self.net_w, final_size_y=self.net_h)
 
             if self.norm != None:
                 x_batch[instance_count] = self.norm(image)
@@ -74,16 +74,18 @@ class BatchGenerator(Sequence):
                 for i in range(1, train_instance.shape[0]):  # (15)
                     if self.processed_y:
                         g = process_loaded_labels(train_instance[i])
-
                         train_instances_classes.append(g)
                     else:
-                        train_instances_classes.append(train_instance[i])
+                        # labels = np.fromstring(train_instance[i], dtype=int, sep=' ')
+                        # train_instances_classes.append(train_instance[i])
+                        labels = process_loaded_labels(train_instance[i])
+
+                        train_instances_classes.append(labels)
                 y_batch[instance_count] = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
             else:
                 y_batch[instance_count]= None
-            
-            instance_count += 1
 
+            instance_count += 1
         return x_batch, y_batch
 
     def on_epoch_end(self):
