@@ -8,9 +8,9 @@ def load_prediction_files(inst_lab_prefix, ind_prefix, inst_pred_prefix, bag_lab
     image_indices = np.load(predictions_path+ind_prefix+dataset_name, allow_pickle=True)
     predictions = np.load(predictions_path+inst_pred_prefix+dataset_name, allow_pickle=True)
 
-    bag_labels = np.load(predictions_path+bag_lab_prefix+(dataset_name[:-4])+'_as_production0'+ '.npy' ,
+    bag_labels = np.load(predictions_path+bag_lab_prefix+(dataset_name[:-4])+ '.npy' ,
                          allow_pickle=True)
-    bag_predictions = np.load(predictions_path+bag_pred_prefix+dataset_name[:-4]+'_as_production0'+ '.npy' ,
+    bag_predictions = np.load(predictions_path+bag_pred_prefix+dataset_name[:-4]+ '.npy' ,
                               allow_pickle=True)
 
     return labels, image_indices, predictions, bag_labels, bag_predictions
