@@ -73,15 +73,24 @@ def compute_bag_probability_asloss(nn_output, instance_label_ground_truth, P, ha
 #                                                                              class_nr=1)
 #     return img_labels, img_prob_preds_v1
 
-
-def compute_iou(predictions, patch_labels, threshold_binarization):
+def compute_intersection_union_patches(predictions, patch_labels, threshold_binarization):
     binary_patch_predictions = np.greater_equal(predictions, threshold_binarization, dtype=float)
     correct_prediction = np.equal(binary_patch_predictions, patch_labels, dtype=float)
     # check only active patches from the labels and see if the prediction there agrees with the labels
     intersection = np.where(np.greater(patch_labels, 0), correct_prediction, 0)
-    total_patch_intersection = np.sum(intersection, axis=(1,2))
-    union = np.sum(binary_patch_predictions, axis=(1,2)) + np.sum(patch_labels, axis=(1,2)) - total_patch_intersection
-    return total_patch_intersection / union
+    total_patch_intersection = np.sum(intersection, axis=(1, 2))
+    union = np.sum(binary_patch_predictions, axis=(1, 2)) + np.sum(patch_labels, axis=(1, 2)) - total_patch_intersection
+    return total_patch_intersection, union
+
+
+def compute_iou(predictions, patch_labels, threshold_binarization):
+    intersection, union = compute_intersection_union_patches(predictions, patch_labels, threshold_binarization)
+    return intersection / union
+
+
+def compute_dice(predictions, patch_labels, th_binarization):
+    intersection, union = compute_intersection_union_patches(predictions, patch_labels, th_binarization)
+    return (2*intersection) / (union+intersection)
 
 
 def compute_accuracy_on_segmentation(predictions, patch_labels, th_binarization, th_iou):
@@ -121,11 +130,13 @@ def compute_bag_prediction_nor(patch_pred):
     return (1.0 - element_product)
 
 
-def save_generated_files(res_path, file_unique_name, image_labels, image_predictions, has_bbox, accurate_localizations):
+def save_generated_files(res_path, file_unique_name, image_labels, image_predictions, has_bbox,
+                         accurate_localizations, dice):
     np.save(res_path + '/image_labels_' + file_unique_name, image_labels)
     np.save(res_path + '/image_predictions_' + file_unique_name, image_predictions)
     np.save(res_path + '/bbox_present_' + file_unique_name, has_bbox)
     np.save(res_path + '/accurate_localization_' + file_unique_name, accurate_localizations)
+    np.save(res_path + '/dice_'+ file_unique_name, dice)
 
 
 def process_prediction(file_unique_name, res_path, img_pred_as_loss, threshold_binarization=0.5, iou_threshold=0.1):
@@ -145,7 +156,9 @@ def process_prediction(file_unique_name, res_path, img_pred_as_loss, threshold_b
     accurate_localization = np.where(has_bbox, compute_accuracy_on_segmentation(predictions, patch_labels,
                                                                                 th_binarization=threshold_binarization,
                                                                                 th_iou=iou_threshold), 0)
-    return image_labels, image_predictions, has_bbox, accurate_localization
+    dice_scores = np.where(has_bbox, compute_dice(predictions, patch_labels, th_binarization=threshold_binarization), -1)
+
+    return image_labels, image_predictions, has_bbox, accurate_localization, dice_scores
 
 
 def compute_save_accuracy_results(data_set_name, res_path, has_bbox, acc_localization):
@@ -159,6 +172,15 @@ def compute_save_accuracy_results(data_set_name, res_path, has_bbox, acc_localiz
     print(acc_class)
     save_evaluation_results(["accuracy"], acc_class, "accuracy_" + data_set_name + '.csv', res_path,
                                         add_col=None, add_value=None)
+
+
+def compute_save_dice_results(data_set_name, res_path, has_bbox, dice_scores):
+    dice_score_ma = np.ma.masked_array(dice_scores, mask=np.equal(dice_scores, -1))
+    mean_dice = np.mean(dice_score_ma, axis=0)
+    print("DICE")
+    print(mean_dice)
+    save_evaluation_results(["dice"], mean_dice, "dice_" + data_set_name + '.csv', res_path,
+                            add_col=None, add_value=None)
 
 
 def compute_save_auc(data_set_name, image_pred_method, res_path, image_labels, image_predictions, class_name):
