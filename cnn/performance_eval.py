@@ -1,7 +1,7 @@
 from cnn import keras_preds
 
 
-def performance_evaluation(config, dataset_name, th_binarization=0.5, th_iou=0.1):
+def performance_evaluation(config, dataset_name, pool_method, image_prediction_method, th_binarization=0.5, th_iou=0.1):
     predict_res_path = config['prediction_results_path']
     use_xray = config['use_xray_dataset']
     class_name = config['class_name']
@@ -9,7 +9,8 @@ def performance_evaluation(config, dataset_name, th_binarization=0.5, th_iou=0.1
     image_labels, image_predictions, has_bbox, \
     accurate_localizations, dice_scores = keras_preds.process_prediction(dataset_name,
                                                                          predict_res_path,
-                                                                         img_pred_as_loss='as_production',
+                                                                         pool_method=pool_method,
+                                                                         img_pred_method=image_prediction_method,
                                                                          threshold_binarization=th_binarization,
                                                                          iou_threshold=th_iou)
 

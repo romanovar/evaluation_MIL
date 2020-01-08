@@ -24,5 +24,6 @@ parser.add_argument('-c', '--config_path', type=str,
 args = parser.parse_args()
 config = load_config(args.config_path)
 
-dataset_name = 'test_set_shoulder_10-6CV_0'
-performance_evaluation(config, dataset_name, th_binarization=0.5, th_iou=0.1)
+dataset_name = 'test_set_Cardiomegaly_CV0'
+performance_evaluation(config, dataset_name, pool_method='mean', image_prediction_method='as_production',
+                       th_binarization=0.5, th_iou=0.1)

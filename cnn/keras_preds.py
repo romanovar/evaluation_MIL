@@ -83,7 +83,7 @@ def compute_iou(predictions, patch_labels, threshold_binarization):
 
 def compute_dice(predictions, patch_labels, th_binarization):
     intersection, union = compute_intersection_union_patches(predictions, patch_labels, th_binarization)
-    return (2*intersection) / (union+intersection)
+    return (2 * intersection) / (union + intersection)
 
 
 def compute_accuracy_on_segmentation(predictions, patch_labels, th_binarization, th_iou):
@@ -103,23 +103,23 @@ def compute_bag_prediction_nor_on_segmentation(patch_pred, patch_labels):
     neg_patch_labels_mask = np.equal(patch_labels, 1.0)
 
     normalized_pos_patches = ((1 - 0.98) * patch_pred) + 0.98
-    normalized_neg_patches = ((1 - 0.98) * (1-patch_pred)) + 0.98
+    normalized_neg_patches = ((1 - 0.98) * (1 - patch_pred)) + 0.98
 
     # element wise multiplication is used as a boolean mask to separate active from inactive patches
     norm_pos_patches = np.ma.masked_array(normalized_pos_patches, mask=pos_patch_labels_mask)
     norm_neg_patches = np.ma.masked_array(normalized_neg_patches, mask=neg_patch_labels_mask)
 
-    product_positive_patches = np.prod(norm_pos_patches, axis=(1,2))
-    product_negative_patches = np.prod(norm_neg_patches, axis=(1,2))
+    product_positive_patches = np.prod(norm_pos_patches, axis=(1, 2))
+    product_negative_patches = np.prod(norm_neg_patches, axis=(1, 2))
 
-    return product_positive_patches*product_negative_patches
+    return product_positive_patches * product_negative_patches
 
 
 def compute_bag_prediction_nor(patch_pred):
     subtracted_prob = 1 - patch_pred
 
     normalized_mat = ((1 - 0.98) * subtracted_prob) + 0.98
-    element_product = np.prod(normalized_mat, axis=(1,2))
+    element_product = np.prod(normalized_mat, axis=(1, 2))
     return (1.0 - element_product)
 
 
@@ -129,28 +129,36 @@ def save_generated_files(res_path, file_unique_name, image_labels, image_predict
     np.save(res_path + '/image_predictions_' + file_unique_name, image_predictions)
     np.save(res_path + '/bbox_present_' + file_unique_name, has_bbox)
     np.save(res_path + '/accurate_localization_' + file_unique_name, accurate_localizations)
-    np.save(res_path + '/dice_'+ file_unique_name, dice)
+    np.save(res_path + '/dice_' + file_unique_name, dice)
 
 
-def process_prediction(file_unique_name, res_path, img_pred_as_loss, threshold_binarization=0.5, iou_threshold=0.1):
+def process_prediction(file_unique_name, res_path, pool_method, img_pred_method,
+                       threshold_binarization=0.5, iou_threshold=0.1):
     '''
-    Processes prediction on bag and instance level. For bag level - bag prediction is computed, for instance level:
+       Processes prediction on bag and instance level. For bag level - bag prediction is computed, for instance level:
     iou and accuracy from iou
-    :param file_unique_name:
-    :param res_path:
-    :param img_pred_as_loss: 'as_production'
+    :param file_unique_name: common string of image_indices_.../patch_labels_.../predictions_... .npy files
+    :param res_path: path to .npy files
+    :param pool_method: mean/ nor / lse
+    :param img_pred_method: as_production: is the official prediction method. as_training: is the prediction method
+    used during training. It has only supportive function, it is meant to give more insight.
+    :param threshold_binarization: binarization threshold of the predictions for iou
+    :param iou_threshold: iou threshold for accurate predictions on image level
     :return:
     '''
     predictions, image_indices, patch_labels = get_index_label_prediction(file_unique_name, res_path)
     patch_labels_sum = patch_labels.sum(axis=(1, 2))
-    image_labels = np.greater(patch_labels_sum, 0).astype(float)
-    image_predictions=compute_bag_prediction_nor(predictions)
     has_bbox = np.greater(patch_labels_sum, 0) & np.less(patch_labels_sum, 256)
+    image_labels = np.greater(patch_labels_sum, 0).astype(float)
+
+    image_predictions = compute_bag_prediction(predictions, has_bbox, patch_labels, pool_method=pool_method,
+                                               image_prediction_method=img_pred_method)
+
     accurate_localization = np.where(has_bbox, compute_accuracy_on_segmentation(predictions, patch_labels,
                                                                                 th_binarization=threshold_binarization,
                                                                                 th_iou=iou_threshold), 0)
-    dice_scores = np.where(has_bbox, compute_dice(predictions, patch_labels, th_binarization=threshold_binarization), -1)
-
+    dice_scores = np.where(has_bbox, compute_dice(predictions, patch_labels, th_binarization=threshold_binarization),
+                           -1)
     return image_labels, image_predictions, has_bbox, accurate_localization, dice_scores
 
 
@@ -164,7 +172,7 @@ def compute_save_accuracy_results(data_set_name, res_path, has_bbox, acc_localiz
     print("ACCURACY RESULTS FROM BBOX")
     print(acc_class)
     save_evaluation_results(["accuracy"], acc_class, "accuracy_" + data_set_name + '.csv', res_path,
-                                        add_col=None, add_value=None)
+                            add_col=None, add_value=None)
 
 
 def compute_save_dice_results(data_set_name, res_path, has_bbox, dice_scores):
@@ -189,11 +197,124 @@ def compute_save_auc(data_set_name, image_pred_method, res_path, image_labels, i
     '''
     auc_all_classes_v1, fpr, tpr, roc_auc = compute_auc_1class(image_labels, image_predictions)
     save_evaluation_results([class_name], auc_all_classes_v1, 'auc_prob_' + data_set_name + '_'
-                                        + image_pred_method+ '.csv',
-                                        res_path)
+                            + image_pred_method + '.csv',
+                            res_path)
 
     plot_roc_curve(fpr, tpr, roc_auc, data_set_name, res_path)
     conf_matrix = confusion_matrix(image_labels, np.array(image_predictions > 0.5, dtype=np.float32))
 
     plot_confusion_matrix(conf_matrix, [0, 1], res_path, data_set_name, normalize=False, title=None)
-    plot_confusion_matrix(conf_matrix, [0, 1], res_path, data_set_name+'norm', normalize=True, title=None)
+    plot_confusion_matrix(conf_matrix, [0, 1], res_path, data_set_name + 'norm', normalize=True, title=None)
+
+
+def compute_bag_prediction_mean_on_segmentation(nn_output, patch_labels):
+    '''
+    this function shows the pooling mechanism for annotated images ONLY during TRAINING
+    It is implemented for extra insight, but not used to evaluate performance of the algorithm
+    It is numpy equivalent of the tensorflow function used during training
+    :param nn_output:
+    :param patch_labels:
+    :return:
+    '''
+    pos_patch_labels_mask = np.equal(patch_labels, 0.0)
+    neg_patch_labels_mask = np.equal(patch_labels, 1.0)
+
+    pos_patches_masked = np.ma.masked_array(nn_output, mask=pos_patch_labels_mask, fill_value=0)
+    neg_patches_masked = np.ma.masked_array(1 - nn_output, mask=neg_patch_labels_mask, fill_value=0)
+
+    mean = np.mean(pos_patches_masked.filled() + neg_patches_masked.filled(), axis=(1, 2))
+    return mean
+
+
+def compute_bag_prediction_mean(patch_pred):
+    sum_patches = np.sum(patch_pred, axis=(1, 2))
+    assert np.mean(patch_pred, axis=(1, 2)).all() == np.sum((1 / 256) * sum_patches, axis=1).all(), "asserion bag error"
+    return np.mean(patch_pred, axis=(1, 2))
+
+
+def compute_bag_prediction_lse(patch_pred, r=1):
+    mean_exp_patches = np.mean(np.exp(r * patch_pred), axis=(1, 2))
+    assert ((1 / r) * (np.log(mean_exp_patches))).all() == np.sum((1 / 256) * np.exp(r * patch_pred), axis=1).all(), \
+        "asserion bag error"
+    return (1 / r) * (np.log(mean_exp_patches))
+
+
+def compute_bag_prediction_lse_on_segmentation(nn_output, patch_labels, r=1):
+    pos_patch_labels_mask = np.equal(patch_labels, 0.0)
+    neg_patch_labels_mask = np.equal(patch_labels, 1.0)
+    pos_patches_masked = np.ma.masked_array(nn_output, mask=pos_patch_labels_mask, fill_value=0)
+    neg_patches_masked = np.ma.masked_array(1 - nn_output, mask=neg_patch_labels_mask, fill_value=0)
+
+    pos_patches = r * pos_patches_masked
+    neg_patches = r * neg_patches_masked
+
+    mean = np.mean((np.exp(pos_patches)).filled() + (np.exp(neg_patches)).filled(), axis=(1, 2))
+    result = (1 / r) * np.log(mean)
+
+    sum_pos_patches = np.sum(np.exp(pos_patches).filled(), axis=(1, 2), keepdims=True)
+    sum_neg_patches = np.sum(np.exp(neg_patches).filled(), axis=(1, 2), keepdims=True)
+    sum_total = sum_neg_patches + sum_pos_patches
+    mean2 = np.sum((1 / (256)) * sum_total, axis=(1, 2))
+    result2 = (1 / r) * np.log(mean2)
+    assert (result == result2).all(), "error in lse computation"
+
+    return result
+
+
+def compute_bag_prediction_as_production(patch_pred, pool_method):
+    '''
+    Calculates image prediction
+    :param patch_pred:
+    :param pool_method:
+    :return:
+    '''
+    assert pool_method in ['mean', 'nor', 'lse'], "ensure you have the right pooling method "
+    if pool_method.lower() == 'nor':
+        return compute_bag_prediction_nor(patch_pred)
+    elif pool_method.lower() == 'mean':
+        return compute_bag_prediction_mean(patch_pred)
+    elif pool_method.lower() == 'lse':
+        return compute_bag_prediction_lse(patch_pred)
+
+
+def compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool_method):
+    '''
+    Calculates the image prediction the way it is computed during training.
+    That means that predictions on images with annotations are computed with supervised pooling method
+    :param has_bbox: image has annotation
+    :param predictions: raws predictions on the image
+    :param patch_labels: patch annotation
+    :param pool_method: pooling method
+    :return:
+    '''
+    if pool_method.lower() == 'nor':
+        return np.where(has_bbox,
+                        compute_bag_prediction_nor_on_segmentation(nn_output=predictions, patch_labels=patch_labels),
+                        compute_bag_prediction_nor(predictions))
+    elif pool_method.lower() == 'mean':
+        return np.where(has_bbox,
+                        compute_bag_prediction_mean_on_segmentation(nn_output=predictions, patch_labels=patch_labels),
+                        compute_bag_prediction_mean(predictions))
+    elif pool_method.lower() == 'lse':
+        return np.where(has_bbox,
+                        compute_bag_prediction_lse_on_segmentation(nn_output=predictions, patch_labels=patch_labels),
+                        compute_bag_prediction_lse(predictions))
+
+
+def compute_bag_prediction(predictions, has_bbox, patch_labels, pool_method, image_prediction_method='as_production'):
+    '''
+    Calculates the bag prediction according to the specified pool method and image prediction method.
+    :param predictions:
+    :param has_bbox:
+    :param patch_labels:
+    :param pool_method:
+    :param image_prediction_method:
+    :return:
+    '''
+    assert image_prediction_method.lower() in ['as_production', 'as_training'], "Invalid image prediction method"
+    assert pool_method in ['mean', 'nor', 'lse'], "ensure you have the right pooling method "
+
+    if image_prediction_method.lower() == 'as_production':
+        return compute_bag_prediction_as_production(predictions, pool_method)
+    elif image_prediction_method.lower() == 'as_training':
+        return compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool_method)
