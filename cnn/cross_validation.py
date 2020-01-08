@@ -45,16 +45,6 @@ def cross_validation(config):
     mura_interpolation = config['mura_interpolation']
 
 
-    # if skip_processing:
-    #     xray_df = ld.load_csv(processed_labels_path)
-    #     print('Cardiomegaly label division')
-    #     print(xray_df['Cardiomegaly'].value_counts())
-    # else:
-    #     label_df = ld.get_classification_labels(classication_labels_path, False)
-    #     processed_df = ld.preprocess_labels(label_df, image_path)
-    #     xray_df = ld.couple_location_labels(localization_labels_path, processed_df, ld.PATCH_SIZE, results_path)
-    # print(xray_df.shape)
-    # print("Splitting data ...")
     if use_xray_dataset:
         xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
                                localization_labels_path, results_path, class_name)
@@ -63,16 +53,10 @@ def cross_validation(config):
                                                       mura_processed_test_labels_path, mura_train_img_path,
                                                       mura_train_labels_path, mura_test_labels_path, mura_test_img_path)
 
-
-    # class_name = 'Cardiomegaly'
     CV_SPLITS = 5
     for split in range(0, CV_SPLITS):
 
-        # df_train, df_val, df_test, _,_, _ = ld.get_train_test_CV(xray_df, CV_SPLITS, split, random_seed=1,  label_col=class_name)
-        #
-        # print('Training set: ' + str(df_train.shape))
-        # print('Validation set: ' + str(df_val.shape))
-        # print('Localization testing set: ' + str(df_test.shape))
+
         if use_xray_dataset:
             df_train, df_val, df_test, _, _,_ = ld.split_xray_cv(xray_df, CV_SPLITS,
                                                                  split, class_name)
