@@ -248,7 +248,6 @@ def compute_loss_keras_v2(nn_output, instance_label_ground_truth, P, class_nr, p
     m = P * P
     sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m,
                                                                                   class_nr)
-
     img_label_pred = compute_image_label_prediction_v2(has_bbox, nn_output, instance_label_ground_truth, P, class_nr,
                                                        pool_method)
 
@@ -260,4 +259,4 @@ def compute_loss_keras_v2(nn_output, instance_label_ground_truth, P, class_nr, p
 
 
 def keras_loss_v2(y_true, y_pred):
-    return compute_loss_keras_v2(y_pred, y_true, P=16, class_nr=1, pool_method='mean')
+    return compute_loss_keras_v2(y_pred, y_true, P=16, class_nr=1, pool_method='nor')

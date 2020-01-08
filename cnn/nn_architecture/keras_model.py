@@ -5,7 +5,7 @@ from keras.optimizers import Adam
 
 from cnn.nn_architecture.AdamW import AdamW
 # from keras.optimizers_v2 import Adam
-from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_reg
+from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_reg, keras_loss_v2
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, keras_binary_accuracy, accuracy_asloss, \
     accuracy_asproduction
 
@@ -68,7 +68,7 @@ def compile_model(model):
 def compile_model_accuracy(model):
     optimizer = Adam(lr=0.001)
     model.compile(optimizer=optimizer,
-                  loss=keras_loss,
+                  loss=keras_loss_v2,
                   metrics=[keras_accuracy, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction])
     return model
 

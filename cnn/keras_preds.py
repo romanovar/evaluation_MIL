@@ -50,22 +50,6 @@ def get_index_label_prediction(file_set_name, res_path):
     return preds, img_indices, patch_labs
 
 
-##todo: remove if not used
-def compute_bag_probability_asloss(nn_output, instance_label_ground_truth, P, has_bbox, class_nr, pooling_operator):
-    '''
-    Computes image probability the same way it is computed in the loss
-    So if there are annotated segmentation, the patch labels are taken into account and
-    the bag prediction is computed differently
-    :param nn_output:
-    :param instance_label_ground_truth:
-    :param P:
-    :return:
-    '''
-    if pooling_operator.lower() == 'nor':
-        np.where(has_bbox, 2, -1)
-    return None
-
-
 def compute_intersection_union_patches(predictions, patch_labels, threshold_binarization):
     binary_patch_predictions = np.greater_equal(predictions, threshold_binarization, dtype=float)
     correct_prediction = np.equal(binary_patch_predictions, patch_labels, dtype=float)

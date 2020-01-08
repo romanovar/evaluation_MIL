@@ -95,7 +95,9 @@ When doing predictions on a set, we always save the results in 3 .npy files -  `
 
 * `evaluate_performance.py` - the script works in 2 steps.
 
-  The first part of the script compares the predictions to the labels, on bag and instance label, using the previously generated `patch_labels.npy` and `predictions.npy`.
+ **Generating supportive files**
+
+  The first part of the script compares the predictions to the labels, on bag and instance label, using the previously generated `patch_labels.npy` and `predictions.npy`, and generates more files used for performance evaluation.
 
   Firstly, the instance predictions of each bag are binarized, using a threshold of 0.5, such that active patches have a label '1', and inactive of '0'. The active patches of each bag are compared to the instance labels when available. If the intersection over union (IoU) between the two is greater than 0.1, the instance localization is considered as accurate. This information is saved in `accurate_localization.npy`. We also compute the dice score for every annotated image and the result per image is saved in `dice.npy`.
 
@@ -105,9 +107,11 @@ When doing predictions on a set, we always save the results in 3 .npy files -  `
 
   `evaluate_performance.npy` computes the prediction for each image on bag level and saves it in `image_predictions.npy`. The matrix has a shape of **(Total instances, 1)**.
 
-  What is more, the implementation allows  bag level predictions
+  What is more, the implementation allows supportive bag level predictions using the pooling
 
-  After generating all the aforementioned file, the script compares the predictions to the ground-truth labels on instance and bag level. On instance level, the accuracy from IoU and dice score is computed, and on bag level the AUC are computed and saved in .csv files. Additionally, confusion matrix and roc curve visualization are generated and saved.
+  **Evaluating performance**
+
+  After generating all the aforementioned file, the script compares the predictions to the ground-truth labels on instance and bag level. On instance level, the accuracy from IoU and DICE score is computed, and on bag level the AUC are computed and saved in .csv files. Additionally, confusion matrix and roc curve visualization are generated and saved.
   Finally, the script is developed for a single class prediction, and evaluation of multi-classes should be taken with care.  
 
 #### Stability
