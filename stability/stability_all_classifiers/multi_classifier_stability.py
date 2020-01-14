@@ -5,7 +5,8 @@ from stability.preprocessor.preprocessing import load_predictions_v2, indices_se
     filter_predictions_files_on_indeces, indices_positive_images
 from stability.stability_2classifiers.stability_2classifiers import compute_correlation_scores_v2, \
     get_binary_scores_forthreshold_v2
-from stability.utils import get_image_index, save_additional_kappa_scores_forthreshold, save_mean_stability
+from stability.utils import get_image_index, save_additional_kappa_scores_forthreshold, save_mean_stability, \
+    save_mean_stability_auc
 from stability.visualizations.visualization_utils import visualize_single_image_1class_5classifiers, \
     visualize_correlation_heatmap, combine_correlation_heatmaps_next_to_each_other, \
     make_scatterplot_with_errorbar, scatterplot_AUC_stabscore_v2, make_scatterplot_with_errorbar_v2, \
@@ -315,10 +316,16 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
 
 
     #### AVERAGE ACROSS ALL CLASSIFIERS - PER IMAGE #######
-    mean_all_classifiers_corr_jacc = np.average(np.reshape(ma_corr_jaccard_images, (5*5, -1)), axis=0)
-    mean_all_classifiers_jacc = np.average(np.reshape(ma_jaccard_images, (5*5, -1)), axis=0)
-    mean_all_classifiers_iou = np.average(np.reshape(ma_corr_iou, (5*5, -1)), axis=0)
-    mean_all_classifiers_spearman = np.average(np.reshape(ma_spearman, (5*5, -1)), axis=0)
+    mask_repetition = np.ones((ma_corr_jaccard_images.shape), dtype=bool)
+    for i in range(0, 4):
+        for j in range(i+1, 5):
+            mask_repetition[i, j, :] = False
+    mean_all_classifiers_corr_jacc = np.mean(np.ma.masked_array(ma_corr_jaccard_images,
+                                                                mask=mask_repetition), axis=(0, 1))
+    mean_all_classifiers_jacc = np.mean(np.ma.masked_array(ma_jaccard_images, mask=mask_repetition), axis=(0, 1))
+
+    mean_all_classifiers_iou = np.mean(np.ma.masked_array(ma_corr_iou, mask=mask_repetition), axis=(0, 1))
+    mean_all_classifiers_spearman = np.mean(np.ma.masked_array(ma_spearman, mask=mask_repetition), axis=(0, 1))
 
     save_mean_stability(image_index_collection[0], mean_all_classifiers_jacc, mean_all_classifiers_corr_jacc,
                         mean_all_classifiers_iou,mean_all_classifiers_spearman, stability_res_path, dataset_identifier)
@@ -435,3 +442,19 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
                                       "auc", stability_res_path, y_errors=stand_dev_stability_jacc,
                                       y_errors2=stand_dev_stability_spear, error_bar=False,
                                       bin_threshold_prefix=None, x_errors=None)
+
+    mask_repetition = np.ones((reshaped_corr_jacc_coll.shape), dtype=bool)
+    for i in range(0, 4):
+        for j in range(i+1, 5):
+            mask_repetition[i, j, :] = False
+    diag_classifiers_corr_jacc = np.ma.masked_array(reshaped_corr_jacc_coll, mask=mask_repetition)
+    diag_masked_corr_jacc = np.ma.masked_array(diag_classifiers_corr_jacc, mask=np.isnan(diag_classifiers_corr_jacc))
+    mean_corr_jacc = np.mean(diag_masked_corr_jacc, axis=(0,1))
+
+    diag_classifiers_spearman = np.ma.masked_array(reshaped_spearman_coll, mask=mask_repetition)
+    diag_masked_spearman = np.ma.masked_array(diag_classifiers_spearman, mask=np.isnan(diag_classifiers_spearman))
+    mean_spearman = np.mean(diag_masked_spearman, axis=(0,1))
+    assert mean_corr_jacc.all()==avg_stability_jacc.all(), "error"
+    assert mean_spearman.all() ==avg_stability_spear.all(), "error"
+    save_mean_stability_auc(image_index_collection[0], auc_res, avg_stability_jacc,
+                            avg_stability_spear, stability_res_path, 'bbox')

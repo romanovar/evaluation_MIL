@@ -5,6 +5,7 @@ from stability.preprocessor.preprocessing import binarize_predictions
 from stability.stability_2classifiers.scores_2classifiers import compute_additional_scores_kappa, corrected_IOU, \
     corrected_overlap_coefficient, corrected_positive_Jaccard, positive_Jaccard_index_batch, \
     corrected_Jaccard_pigeonhole, overlap_coefficient
+import numpy as np
 
 
 def compute_auc_1class(labels_all_classes, img_predictions_all_classes):
@@ -92,3 +93,23 @@ def save_mean_stability(img_ind, jacc, corr_jacc, iou, spearman, res_path, file_
     df['Mean Spearman'] = spearman
 
     df.to_csv(res_path+'mean_stability_'+file_identifier+'.csv')
+
+
+def save_mean_stability_auc(img_ind, auc, corr_jacc, spearman, res_path, file_identifier):
+    df = pd.DataFrame()
+    df['Image_ind'] = 0
+    df['Mean Instance AUC'] = -100
+    df['Standard deviation AUC'] = -100
+
+    # df['Mean Jaccard'] = -100
+    df['Mean corrected jaccard'] = -100
+    # df['mean IoU'] = -100
+    df['Mean Spearman'] = -100
+
+    df['Image_ind'] = img_ind
+    df['Mean Instance AUC'] = np.mean(auc, axis=1)
+    df['Standard deviation AUC'] = np.std(auc, axis=1)
+    df['Mean corrected jaccard'] = corr_jacc
+    df['Mean Spearman'] = spearman
+
+    df.to_csv(res_path + 'mean_stability_inst_auc_' + file_identifier + '.csv')

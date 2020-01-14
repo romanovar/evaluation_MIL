@@ -116,7 +116,7 @@ def save_generated_files(res_path, file_unique_name, image_labels, image_predict
     np.save(res_path + '/dice_' + file_unique_name, dice)
 
 
-def process_prediction(file_unique_name, res_path, pool_method, img_pred_method,
+def process_prediction(file_unique_name, res_path, pool_method, img_pred_method, r,
                        threshold_binarization=0.5, iou_threshold=0.1):
     '''
        Processes prediction on bag and instance level. For bag level - bag prediction is computed, for instance level:
@@ -126,6 +126,7 @@ def process_prediction(file_unique_name, res_path, pool_method, img_pred_method,
     :param pool_method: mean/ nor / lse
     :param img_pred_method: as_production: is the official prediction method. as_training: is the prediction method
     used during training. It has only supportive function, it is meant to give more insight.
+    :param r: R hyperparameter for LSE pooling method
     :param threshold_binarization: binarization threshold of the predictions for iou
     :param iou_threshold: iou threshold for accurate predictions on image level
     :return:
@@ -135,7 +136,7 @@ def process_prediction(file_unique_name, res_path, pool_method, img_pred_method,
     has_bbox = np.greater(patch_labels_sum, 0) & np.less(patch_labels_sum, 256)
     image_labels = np.greater(patch_labels_sum, 0).astype(float)
 
-    image_predictions = compute_bag_prediction(predictions, has_bbox, patch_labels, pool_method=pool_method,
+    image_predictions = compute_bag_prediction(predictions, has_bbox, patch_labels, pool_method=pool_method, r=r,
                                                image_prediction_method=img_pred_method)
 
     accurate_localization = np.where(has_bbox, compute_accuracy_on_segmentation(predictions, patch_labels,
@@ -216,14 +217,14 @@ def compute_bag_prediction_mean(patch_pred):
     return np.mean(patch_pred, axis=(1, 2))
 
 
-def compute_bag_prediction_lse(patch_pred, r=1):
+def compute_bag_prediction_lse(patch_pred, r):
     mean_exp_patches = np.mean(np.exp(r * patch_pred), axis=(1, 2))
     assert ((1 / r) * (np.log(mean_exp_patches))).all() == np.sum((1 / 256) * np.exp(r * patch_pred), axis=1).all(), \
         "asserion bag error"
     return (1 / r) * (np.log(mean_exp_patches))
 
 
-def compute_bag_prediction_lse_on_segmentation(nn_output, patch_labels, r=1):
+def compute_bag_prediction_lse_on_segmentation(nn_output, patch_labels, r):
     pos_patch_labels_mask = np.equal(patch_labels, 0.0)
     neg_patch_labels_mask = np.equal(patch_labels, 1.0)
     pos_patches_masked = np.ma.masked_array(nn_output, mask=pos_patch_labels_mask, fill_value=0)
@@ -245,11 +246,12 @@ def compute_bag_prediction_lse_on_segmentation(nn_output, patch_labels, r=1):
     return result
 
 
-def compute_bag_prediction_as_production(patch_pred, pool_method):
+def compute_bag_prediction_as_production(patch_pred, pool_method, lse_r):
     '''
-    Calculates image prediction
+
     :param patch_pred:
     :param pool_method:
+    :param lse_r: R hyperparameter - only applicable if the pooling method is 'LSE'
     :return:
     '''
     assert pool_method in ['mean', 'nor', 'lse'], "ensure you have the right pooling method "
@@ -258,10 +260,10 @@ def compute_bag_prediction_as_production(patch_pred, pool_method):
     elif pool_method.lower() == 'mean':
         return compute_bag_prediction_mean(patch_pred)
     elif pool_method.lower() == 'lse':
-        return compute_bag_prediction_lse(patch_pred)
+        return compute_bag_prediction_lse(patch_pred, r=lse_r)
 
 
-def compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool_method):
+def compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool_method,r):
     '''
     Calculates the image prediction the way it is computed during training.
     That means that predictions on images with annotations are computed with supervised pooling method
@@ -281,11 +283,11 @@ def compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool
                         compute_bag_prediction_mean(predictions))
     elif pool_method.lower() == 'lse':
         return np.where(has_bbox,
-                        compute_bag_prediction_lse_on_segmentation(nn_output=predictions, patch_labels=patch_labels),
-                        compute_bag_prediction_lse(predictions))
+                        compute_bag_prediction_lse_on_segmentation(nn_output=predictions, patch_labels=patch_labels, r=r),
+                        compute_bag_prediction_lse(predictions, r))
 
 
-def compute_bag_prediction(predictions, has_bbox, patch_labels, pool_method, image_prediction_method='as_production'):
+def compute_bag_prediction(predictions, has_bbox, patch_labels, pool_method, r, image_prediction_method='as_production'):
     '''
     Calculates the bag prediction according to the specified pool method and image prediction method.
     :param predictions:
@@ -293,12 +295,13 @@ def compute_bag_prediction(predictions, has_bbox, patch_labels, pool_method, ima
     :param patch_labels:
     :param pool_method:
     :param image_prediction_method:
+    :param r: R hyperparameter only applicable is pooling method is 'LSE'
     :return:
     '''
     assert image_prediction_method.lower() in ['as_production', 'as_training'], "Invalid image prediction method"
     assert pool_method in ['mean', 'nor', 'lse'], "ensure you have the right pooling method "
 
     if image_prediction_method.lower() == 'as_production':
-        return compute_bag_prediction_as_production(predictions, pool_method)
+        return compute_bag_prediction_as_production(predictions, pool_method, r)
     elif image_prediction_method.lower() == 'as_training':
-        return compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool_method)
+        return compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool_method, r)

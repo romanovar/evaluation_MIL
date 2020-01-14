@@ -28,13 +28,14 @@ predict_res_path = config['prediction_results_path']
 use_xray = config['use_xray_dataset']
 class_name = config['class_name']
 
-pool_method = 'mean'
 image_prediction_method = 'as_production'
-dataset_name = 'test_set_Cardiomegaly_CV0'
-
+dataset_name = 'subset_test_set_CV0_4_0.95'
+pool_method = 'nor'
+r=1
 image_labels, image_predictions, \
 has_bbox, accurate_localizations, dice_scores = keras_preds.process_prediction(dataset_name,
                                                                                predict_res_path,
+                                                                               r=r,
                                                                                pool_method=pool_method,
                                                                                img_pred_method=image_prediction_method,
                                                                                threshold_binarization=0.5,
