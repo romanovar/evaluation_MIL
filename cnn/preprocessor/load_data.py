@@ -1,11 +1,9 @@
 import pandas as pd
 import numpy as np
-from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 from keras.preprocessing import image
 import os
 from pathlib import Path
 from keras.applications.resnet50 import preprocess_input
-import cv2
 from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.model_selection import GroupShuffleSplit
 import imagesize
@@ -295,6 +293,7 @@ def keep_index_and_diagnose_columns(Y):
 
 def check_bounding_box_present(Y, class_name):
     Y[class_name + '_loc'] == str(np.zeros((16, 16))).replace('\n', '')
+
 
 def keep_index_and_1diagnose_columns(Y, y_column_name):
     return Y[['Dir Path', y_column_name]]

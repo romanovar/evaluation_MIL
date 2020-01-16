@@ -171,7 +171,7 @@ def padding_needed(img):
         return True
 
 
-def pad_image(img, final_size_x=512, final_size_y=512):
+def pad_image(img, final_size_x, final_size_y):
     bgr_color_padding = [0, 0, 0]
     pad_left_right = (final_size_x - img.shape[1])/2
     pad_bottom_top = (final_size_y - img.shape[0])/2
@@ -179,5 +179,5 @@ def pad_image(img, final_size_x=512, final_size_y=512):
                                   bottom=math.floor(pad_bottom_top),
                                   left=math.ceil(pad_left_right), right=math.floor(pad_left_right),
                                   value=bgr_color_padding)
-    assert constant.shape[0] == 512 and constant.shape[1]==512, "error during padding an image"
+    assert constant.shape[0] == final_size_x and constant.shape[1]==final_size_y, "error during padding an image"
     return constant

@@ -1,20 +1,28 @@
-import PIL
 from pathlib import Path
-import matplotlib
-from PIL import ImageDraw
-from sqlalchemy.sql.functions import concat
-
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+from keras_preprocessing.image import load_img
 from sklearn.utils import resample
 import tensorflow as tf
-#normalize between [-1, 1]
 import pandas as pd
-import matplotlib.cm as cm
-from cnn.nn_architecture.custom_loss import test_compute_ground_truth_per_class_numpy, compute_ground_truth
 import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from cnn.nn_architecture.custom_loss import compute_ground_truth
+
+
+def image_larger_input(img_width, img_height, input_width, input_height):
+    if img_width > input_width or img_height > input_height:
+        return True
+    return False
+
+
+def calculate_scale_ratio(image_width, image_height, input_width, input_height):
+    if image_width >= image_height:
+        return image_width/input_width
+    else:
+        return image_height/input_height
+
 
 def normalize(im):
     return 2*(im/255) -1

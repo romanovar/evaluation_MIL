@@ -6,7 +6,7 @@ import numpy as np
 from keras.utils import Sequence
 from keras.preprocessing.image import load_img, img_to_array
 from cnn.preprocessor.load_data_mura import padding_needed, pad_image
-from cnn.keras_utils import process_loaded_labels
+from cnn.keras_utils import process_loaded_labels, image_larger_input, calculate_scale_ratio
 
 
 class BatchGenerator(Sequence):
@@ -47,19 +47,27 @@ class BatchGenerator(Sequence):
         # do the logic to fill in the inputs and the output
         for train_instance in self.instances[l_bound:r_bound]:
             image_dir = train_instance[0]
-            print(image_dir)
+            img_width, img_height = load_img(image_dir, target_size=None, color_mode='rgb').size
+            decrease_needed = image_larger_input(img_width, img_height, self.net_w, self.net_h)
+
+
             if self.interpolation:
                 #### NEAREST INTERPOLATION
                 image = img_to_array(
-                    load_img(image_dir, target_size=(self.net_w, self.net_h), color_mode='rgb'))
+                    load_img(image_dir, target_size=(self.net_h, self.net_w), color_mode='rgb'))
             else:
+                if decrease_needed:
+                    ratio = calculate_scale_ratio(img_width, img_height, self.net_w, self.net_h)
+                    assert ratio >= 1.00, "wrong ratio - it will increase image size"
+                    assert int(img_height/ratio) == self.net_h or int(img_width/ratio) == self.net_w, \
+                        "error in computation"
+                    image = img_to_array(load_img(image_dir, target_size=(int(img_height/ratio), int(img_width/ratio)),
+                                                  color_mode='rgb'))
+                else:
+                    image = img_to_array(load_img(image_dir, target_size=None, color_mode='rgb'))
                 ### PADDING
-                image = img_to_array(load_img(image_dir, target_size=None, color_mode='rgb'))
                 pad_needed = padding_needed(image)
-                # img1 = cv2.imread('opencv_logo.png')
-                # img1 = cv2.uma
-                # gray = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB) cv2.UMat(imgUMat)
-                # gray = img_to_array(image)
+
                 if pad_needed:
                     image = pad_image(image, final_size_x=self.net_w, final_size_y=self.net_h)
 
@@ -113,4 +121,3 @@ class BatchGenerator(Sequence):
             l_bound = r_bound - self.batch_size
 
         return self.instances[l_bound:r_bound][:, 0]
-
