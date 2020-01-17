@@ -14,6 +14,17 @@ def build_model():
     #base_model = ResNet50V2(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
 
     base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
+    # base_model.trainable = False
+    for layer in base_model.layers:
+        layer.trainable = False
+    count = 0
+    # for layer in base_model.layers:
+    #     if 'res5' in layer.name: # or 'res4' in layer.name:
+    #         layer.trainable = True
+    #         count +=1
+    #         print('trainable layer')
+    #         print(count)
+    #         print(layer.name)
     last = base_model.output
 
     downsamp = MaxPooling2D(pool_size=1, strides=1, padding='Valid')(last)
@@ -22,16 +33,9 @@ def build_model():
     recg_net = BatchNormalization()(recg_net)
     recg_net = ReLU()(recg_net)
     recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
-
     model = Model(base_model.input, recg_net)
-    # base_model.trainable=False
-    # count = 0
-    # for layer in base_model.layers:
-    #     if 'res5' in layer.name or 'res4' in layer.name:
-    #         layer.trainable = True
-    #         count +=1
-    #         print('trainable layer')
-    #         print(count)
+
+
     return model
 
 

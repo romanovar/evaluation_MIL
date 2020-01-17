@@ -17,7 +17,9 @@ stability_results: path to save stability results
 skip_processing_labels: true/false
 train_mode: true/false
 test_single_image: true/false
-prediction_skip_processing: false/false
+prediction_skip_processing: true/false
 use_xray_dataset: true/false
 class_name: 'shoulder' /"Cardiomegaly"
 mura_interpolation: true/false
+pascal_image_path: path to images
+use_pascal_dataset: true/false

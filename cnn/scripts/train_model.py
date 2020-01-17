@@ -6,7 +6,7 @@ from cnn.nn_architecture import keras_model
 import numpy as np
 import pandas as pd
 import yaml
-from cnn.nn_architecture.custom_loss import keras_loss
+from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_v2
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, \
     keras_binary_accuracy
 from keras.callbacks import EarlyStopping, ModelCheckpoint
@@ -33,28 +33,29 @@ args = parser.parse_args()
 config = load_config(args.config_path)
 
 skip_processing = config['skip_processing_labels']
-# image_path = config['image_path']
-# classication_labels_path = config['classication_labels_path']
-# localization_labels_path = config['localization_labels_path']
 results_path = config['results_path']
-# generated_images_path = config['generated_images_path']
-# processed_labels_path = config['processed_labels_path']
 prediction_results_path = config['prediction_results_path']
 train_mode = config['train_mode']
 trained_models_path = config['trained_models_path']
 use_xray_dataset = config['use_xray_dataset']
 mura_interpolation = config['mura_interpolation']
+use_pascal_dataset = config['use_pascal_dataset']
+
+
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 2
+BATCH_SIZE = 10
 BATCH_SIZE_TEST = 1
 BOX_SIZE = 16
 
 if use_xray_dataset:
     df_train, df_val, df_bbox_test, df_class_test = ldd.load_process_xray14(config)
     test_set = pd.concat([df_bbox_test, df_class_test])
+elif use_pascal_dataset:
+    df_train, df_val, df_test = ldd.load_preprocess_pascal(config)
 else:
     df_train, df_val, df_test = ldd.load_preprocess_mura(config)
+
 
 if train_mode:
     train_generator = gen.BatchGenerator(
@@ -80,6 +81,7 @@ if train_mode:
     model = keras_model.build_model()
     model.summary()
 
+    print(model.get_weights()[2])
     # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
     #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
     #model = keras_model.compile_model_regularization(model)
@@ -114,7 +116,7 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=1,
+        epochs=20,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
@@ -122,6 +124,7 @@ if train_mode:
         # callbacks = [checkpoint, checkpoint_on_epoch_end, early_stop, lrate]
 
     )
+    print(model.get_weights()[2])
     print("history")
     print(history.history)
     print(history.history['keras_accuracy'])
@@ -148,8 +151,8 @@ else:
     # opt = AdamW(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0., weight_decay=0.075,
     #       batch_size=BATCH_SIZE, samples_per_epoch=8000, epochs=46)
     # model = keras_model.compile_model_adamw(model, 0.075, 8000, 46)
-    model = load_model(trained_models_path + 'shoulderCV_1_nov.hdf5', custom_objects={
-        'keras_loss': keras_loss, 'keras_accuracy': keras_accuracy, 'keras_binary_accuracy': keras_binary_accuracy,
+    model = load_model(trained_models_path + '_shoulder_001_lrd-20-10.25.hdf5', custom_objects={
+        'keras_loss_v2': keras_loss_v2, 'keras_accuracy': keras_accuracy, 'keras_binary_accuracy': keras_binary_accuracy,
         'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
 
 

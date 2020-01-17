@@ -40,3 +40,5 @@ def find_new_img_path_from_image_index(img_ind, new_path):
             return src_path
 
     return None
+
+replace_all_image_paths(IMG_PATH, IMG_PATH)
