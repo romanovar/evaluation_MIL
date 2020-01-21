@@ -95,7 +95,7 @@ if train_mode:
                                patience=60,
                                mode='min',
                                verbose=1)
-    model_identifier = "_shoulder_001_lrd"
+    model_identifier = "_shoulder_001"
     checkpoint = ModelCheckpoint(
         filepath=trained_models_path + 'best_model' + model_identifier + '.h5',
         monitor='val_loss',
@@ -116,11 +116,11 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=20,
+        epochs=50,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
-        callbacks=[checkpoint, checkpoint_on_epoch_end, lrate]
+        callbacks=[checkpoint, checkpoint_on_epoch_end]
         # callbacks = [checkpoint, checkpoint_on_epoch_end, early_stop, lrate]
 
     )

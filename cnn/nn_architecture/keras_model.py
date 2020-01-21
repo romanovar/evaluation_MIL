@@ -1,5 +1,5 @@
 from keras.applications import ResNet50
-from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU
+from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU, Dropout
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -18,13 +18,14 @@ def build_model():
     for layer in base_model.layers:
         layer.trainable = False
     count = 0
-    # for layer in base_model.layers:
-    #     if 'res5' in layer.name: # or 'res4' in layer.name:
-    #         layer.trainable = True
-    #         count +=1
-    #         print('trainable layer')
-    #         print(count)
-    #         print(layer.name)
+    for layer in base_model.layers:
+        if 'res5' in layer.name: # or 'res4' in layer.name:
+            layer.trainable = True
+            count +=1
+            print('trainable layer')
+            print(count)
+            print(layer.name)
+
     last = base_model.output
 
     downsamp = MaxPooling2D(pool_size=1, strides=1, padding='Valid')(last)
