@@ -4,6 +4,9 @@ import keras as K
 
 
 ## input handles all classes simultaneously
+from keras.losses import binary_crossentropy, categorical_crossentropy
+
+
 def compute_image_label_from_localization_NORM(nn_output, y_true, P, clas_nr):
     pos_patches = tf.reshape((nn_output * y_true), (-1, P * P, clas_nr))
     neg_patches = tf.reshape((1 - nn_output) * (1 - y_true), (-1, P * P, clas_nr))
@@ -65,37 +68,18 @@ def custom_CE_loss(is_localization, labels, preds):
     return loss_class
 
 
-def binary_crossentropy(target, output, from_logits=False):
-    """Binary crossentropy between an output tensor and a target tensor.
-    # Arguments
-        target: A tensor with the same shape as `output`.
-        output: A tensor.
-        from_logits: Whether `output` is expected to be a logits tensor.
-            By default, we consider that `output`
-            encodes a probability distribution.
-    # Returns
-        A tensor.
-    """
-    # Note: tf.nn.sigmoid_cross_entropy_with_logits
-    # expects logits, Keras expects probabilities.
-    if not from_logits:
-        # transform back to logits
-        _epsilon = tf.convert_to_tensor(K.backend.epsilon(), output.dtype.base_dtype)
-        output = tf.clip_by_value(output, _epsilon, 1 - _epsilon)
-        output = tf.log(output / (1 - output))
-
-    return tf.nn.sigmoid_cross_entropy_with_logits(labels=target, logits=output)
-
-
 def keras_CE_loss(is_localization, labels, probs):
     L_bbox = tf.constant(5, dtype=tf.float32)
 
     # loss_classification_keras = tf.keras.backend.binary_crossentropy(labels,probs, from_logits=False)
     # loss_loc_keras = L_bbox*tf.keras.backend.binary_crossentropy(labels,probs, from_logits=False)
+    ## FROM_logits =False because we have sigmoid activation on last layes
     loss_classification_keras = binary_crossentropy(labels, probs, from_logits=False)
-    loss_loc_keras = L_bbox * binary_crossentropy(labels, probs)
-    loss_class_keras = tf.where(is_localization, loss_loc_keras, loss_classification_keras)
-    return loss_class_keras
+
+    # loss_loc_keras = L_bbox * binary_crossentropy(labels, probs)
+    # loss_class_keras = tf.where(is_localization, loss_loc_keras, loss_classification_keras)
+    # return loss_class_keras
+    return loss_classification_keras
 
 
 def compute_ground_truth(instance_labels_gt, m, class_nr):
@@ -255,7 +239,9 @@ def compute_loss_keras_v2(nn_output, instance_label_ground_truth, P, class_nr, p
     # loss_classification_keras = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
     loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
     total_loss = tf.reduce_sum(loss_classification_keras)
-    return total_loss
+    cat_crosse = categorical_crossentropy(class_label_ground_truth, img_label_pred)
+    # return total_loss
+    return cat_crosse
 
 
 def keras_loss_v2(y_true, y_pred):
