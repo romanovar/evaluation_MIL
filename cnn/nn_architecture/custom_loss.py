@@ -252,8 +252,8 @@ def compute_loss_keras_v2(nn_output, instance_label_ground_truth, P, class_nr, p
                                                        pool_method)
 
     # sanity check
-    loss_classification_keras = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
-    #loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    # loss_classification_keras = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
     total_loss = tf.reduce_sum(loss_classification_keras)
     return total_loss
 
