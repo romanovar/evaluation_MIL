@@ -71,6 +71,7 @@ if train_mode:
     valid_generator = gen.BatchGenerator(
         instances=df_val.values,
         batch_size=BATCH_SIZE,
+        shuffle=False,
         net_h=IMAGE_SIZE,
         net_w=IMAGE_SIZE,
         box_size=BOX_SIZE,
@@ -97,7 +98,7 @@ if train_mode:
                                verbose=1)
     model_identifier = "_shoulder_001"
     checkpoint = ModelCheckpoint(
-        filepath=trained_models_path + 'best_model' + model_identifier + '.h5',
+        filepath=trained_models_path + 'best_model' + model_identifier + "-{epoch:02d}-{val_loss:.2f}.hdf5",
         monitor='val_loss',
         verbose=2,
         save_best_only=True,
