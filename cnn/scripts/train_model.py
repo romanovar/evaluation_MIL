@@ -62,6 +62,7 @@ if train_mode:
         batch_size=BATCH_SIZE,
         net_h=IMAGE_SIZE,
         net_w=IMAGE_SIZE,
+        shuffle=True,
         norm=keras_utils.normalize,
         box_size=BOX_SIZE,
         processed_y=skip_processing,
@@ -70,7 +71,7 @@ if train_mode:
     valid_generator = gen.BatchGenerator(
         instances=df_val.values,
         batch_size=BATCH_SIZE,
-        shuffle=False,
+        shuffle=True,
         net_h=IMAGE_SIZE,
         net_w=IMAGE_SIZE,
         box_size=BOX_SIZE,
@@ -80,7 +81,7 @@ if train_mode:
 
     model = keras_model.build_model()
     model.summary()
-    # print(model.get_weights()[2])
+
     # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
     #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
     # model = keras_model.compile_model_regularization(model)
@@ -117,7 +118,6 @@ if train_mode:
         validation_steps=valid_generator.__len__(),
         verbose=1,
         callbacks=[checkpoint]
-        # callbacks = [checkpoint, checkpoint_on_epoch_end, early_stop, lrate]
     )
     print(model.get_weights()[2])
     print("history")
@@ -154,10 +154,6 @@ if train_mode:
     predictions = model.predict_generator(valid_generator, steps=valid_generator.__len__(), workers=1)
     np.save(prediction_results_path + 'predictions_val_set_TF', predictions,
             allow_pickle=True)
-    # np.save('C:/Users/s161590/Documents/Project_li/to-be-deleted/' + 'predictions_val_set_new_gen', predictions,
-    #         allow_pickle=True)
-    # np.save('C:/Users/s161590/Documents/Project_li/to-be-deleted/' + 'patch_labels_val_set_new_gen', patch_labels_class,
-    #         allow_pickle=True)
 
     ######## Identity function
     import numpy as np
@@ -194,8 +190,8 @@ else:
     # ########################################### VALIDATION SET######################################################
 
     predict_patch_and_save_results(model, 'val_set', df_val, skip_processing,
-                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)
 
     ########################################### TESTING SET########################################################
     predict_patch_and_save_results(model, 'test_set', test_set, skip_processing,
-                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)

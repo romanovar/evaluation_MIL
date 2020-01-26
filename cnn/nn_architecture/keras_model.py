@@ -1,30 +1,29 @@
 from keras.applications import ResNet50
+from keras.backend import binary_crossentropy
 from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU, Dropout
 from keras.models import Model
 from keras.optimizers import Adam
 
 from cnn.nn_architecture.AdamW import AdamW
 # from keras.optimizers_v2 import Adam
-from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_reg, keras_loss_v2
+from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_reg, keras_loss_v2, keras_loss_v3
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, keras_binary_accuracy, accuracy_asloss, \
     accuracy_asproduction
 
 
 def build_model():
-    #base_model = ResNet50V2(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
-
     base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
     # base_model.trainable = False
     for layer in base_model.layers:
         layer.trainable = False
-    count = 0
-    for layer in base_model.layers:
-        if 'res5' in layer.name: # or 'res4' in layer.name:
-            layer.trainable = True
-            count +=1
-            print('trainable layer')
-            print(count)
-            print(layer.name)
+    # count = 0
+    # for layer in base_model.layers:
+    #     if 'res5' in layer.name: # or 'res4' in layer.name:
+    #         layer.trainable = True
+    #         count +=1
+    #         print('trainable layer')
+    #         print(count)
+    #         print(layer.name)
 
     last = base_model.output
 
@@ -35,8 +34,6 @@ def build_model():
     recg_net = ReLU()(recg_net)
     recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
     model = Model(base_model.input, recg_net)
-
-
     return model
 
 
@@ -73,7 +70,7 @@ def compile_model(model):
 def compile_model_accuracy(model):
     optimizer = Adam(lr=0.0005)
     model.compile(optimizer=optimizer,
-                  loss=keras_loss_v2,
+                  loss=keras_loss_v3,
                   metrics=[keras_accuracy, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction])
     return model
 

@@ -41,4 +41,7 @@ def find_new_img_path_from_image_index(img_ind, new_path):
 
     return None
 
-replace_all_image_paths(IMG_PATH, IMG_PATH)
+
+new_img_path = replace_all_image_paths(npy_file0, IMG_PATH)
+
+np.save(folder + 'image_indices_Cardiomegalytest_set_CV4_1.00.npy', new_img_path)

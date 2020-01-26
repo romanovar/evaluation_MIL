@@ -33,6 +33,7 @@ def create_csv(path_to_png):
 
 def get_train_test_1fold(df):
     train_inds, test_inds = next(StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=0).split(df, df['Label']))
+    assert train_inds.all() != test_inds.all(), "overlapp occur"
     return df.iloc[train_inds], df.iloc[test_inds]
 
 

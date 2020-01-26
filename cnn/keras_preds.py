@@ -16,7 +16,7 @@ def predict_patch_and_save_results(saved_model, file_unique_name, data_set, proc
         box_size=box_size,
         norm=normalize,
         processed_y=processed_y,
-        shuffle=False,
+        shuffle=True,
         interpolation=mura_interpolation
     )
 

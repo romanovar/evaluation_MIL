@@ -1,10 +1,6 @@
 import tensorflow as tf
 import numpy as np
-import keras as K
-
-
-## input handles all classes simultaneously
-from keras.losses import binary_crossentropy, categorical_crossentropy
+from keras.losses import binary_crossentropy
 
 
 def compute_image_label_from_localization_NORM(nn_output, y_true, P, clas_nr):
@@ -28,8 +24,6 @@ def compute_image_label_from_localization_NORM(nn_output, y_true, P, clas_nr):
 
 
 def compute_image_label_in_classification_NORM(nn_output, P, clas_nr):
-    # epsilon = tf.pow(tf.cast(10, tf.float32), -15)
-    print("normalizinng probability")
     subtracted_prob = 1 - nn_output
     flat_mat = tf.reshape(subtracted_prob, (-1, P * P, clas_nr))
 
@@ -73,8 +67,7 @@ def keras_CE_loss(is_localization, labels, probs):
 
     # loss_classification_keras = tf.keras.backend.binary_crossentropy(labels,probs, from_logits=False)
     # loss_loc_keras = L_bbox*tf.keras.backend.binary_crossentropy(labels,probs, from_logits=False)
-    ## FROM_logits =False because we have sigmoid activation on last layes
-    loss_classification_keras = binary_crossentropy(labels, probs, from_logits=False)
+    loss_classification_keras = binary_crossentropy(labels, probs)
 
     # loss_loc_keras = L_bbox * binary_crossentropy(labels, probs)
     # loss_class_keras = tf.where(is_localization, loss_loc_keras, loss_classification_keras)
@@ -102,18 +95,6 @@ def test_compute_ground_truth_per_class_numpy(instance_labels_gt, m):
 
     return sum_active_patches, class_label_ground_truth, has_bbox
 
-#todo: delete if not used
-# def compute_loss(nn_output, instance_label_ground_truth, P):
-    # m = P * P
-    # sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m)
-    #
-    # img_label_pred = compute_image_label_prediction(has_bbox, nn_output, instance_label_ground_truth, P)
-    #
-    # loss_classification = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
-    # loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
-    #
-    # return loss_classification, loss_classification_keras, img_label_pred, class_label_ground_truth
-    #
 
 #todo: delete - not currently used
 # def loss_L2(Y_hat, Y, P, L2_rate=0.01):
@@ -148,22 +129,6 @@ def keras_loss_reg(y_true, y_pred):
                     if 'bias' not in v.name ]) * 0.0001
     # reg_l2 = 0.01 * tf.nn.l2_loss(tf.hidden_weights) + 0.01 * tf.nn.l2_loss(out_weights)
     return loss+lossL2
-
-
-##########################################################
-#todo: delete if not used
-# def binary_CE_loss_v2(is_loc, labels, probs):
-#     factor_loc = tf.constant(5, dtype=tf.float32)
-#
-#     _epsilon = tf.convert_to_tensor(K.backend.epsilon(), probs.dtype.base_dtype)
-#
-#     probs = tf.clip_by_value(probs, _epsilon, 1 - _epsilon)
-#
-#     loss_common = -(labels*tf.log(probs))-((1-labels)*tf.log(1-probs))
-#
-#     loss_class_keras = tf.where(is_loc, factor_loc*loss_common, loss_common)
-#     return loss_class_keras
-#
 
 
 def mean_pooling_segmentation_images(nn_output, y_true, P, clas_nr):
@@ -236,13 +201,52 @@ def compute_loss_keras_v2(nn_output, instance_label_ground_truth, P, class_nr, p
                                                        pool_method)
 
     # sanity check
-    # loss_classification_keras = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
-    loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    loss_classification_keras = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    # loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
     total_loss = tf.reduce_sum(loss_classification_keras)
-    cat_crosse = categorical_crossentropy(class_label_ground_truth, img_label_pred)
-    # return total_loss
-    return cat_crosse
+    return total_loss
 
 
 def keras_loss_v2(y_true, y_pred):
     return compute_loss_keras_v2(y_pred, y_true, P=16, class_nr=1, pool_method='nor')
+
+
+def compute_loss_keras_v2(nn_output, instance_label_ground_truth, P, class_nr, pool_method):
+    m = P * P
+    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m,
+                                                                                  class_nr)
+    img_label_pred = compute_image_label_prediction_v2(has_bbox, nn_output, instance_label_ground_truth, P, class_nr,
+                                                       pool_method)
+
+    # sanity check
+    loss_classification_keras = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    # loss_classification_keras = keras_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
+    total_loss = tf.reduce_sum(loss_classification_keras)
+    return total_loss
+
+
+def compute_loss_v3(nn_output, instance_label_ground_truth, P, class_nr, pool_method, bbox_weight):
+    '''
+    Computes image
+    :param nn_output: Patch predictions
+    :param instance_label_ground_truth: patch ground truth
+    :param P: number of patches to divide the image into, horizontally and vertically
+    :param class_nr: number of classes
+    :param pool_method: pooling method to derive image prediction
+    :param bbox_weight: weight in loss for samples with localization annotation
+    :return:
+    '''
+    m = P * P
+    sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m,
+                                                                                  class_nr)
+    img_label_pred = compute_image_label_prediction_v2(has_bbox, nn_output, instance_label_ground_truth, P, class_nr,
+                                                       pool_method)
+
+    loss = tf.where(tf.reshape(has_bbox, (-1,)),
+                    bbox_weight * binary_crossentropy(class_label_ground_truth, img_label_pred),
+                    binary_crossentropy(class_label_ground_truth, img_label_pred))
+    return loss
+
+
+def keras_loss_v3(y_true, y_pred):
+    return compute_loss_v3(y_pred, y_true, 16, 1, 'nor', bbox_weight=5)
