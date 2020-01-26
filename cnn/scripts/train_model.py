@@ -1,21 +1,23 @@
 import argparse
 import os
 
-import cnn.nn_architecture.keras_generators as gen
-from cnn.nn_architecture import keras_model
 import numpy as np
 import pandas as pd
 import yaml
-from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_v2
-from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, \
-    keras_binary_accuracy
+from keras import Input, Model
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.callbacks import LearningRateScheduler
 from keras.engine.saving import load_model
 
-from cnn import keras_utils
+import cnn.nn_architecture.keras_generators as gen
 import cnn.preprocessor.load_data_datasets as ldd
-from cnn.keras_preds import predict_patch_and_save_results
+from cnn import keras_utils
+from cnn.keras_preds import predict_patch_and_save_results, get_patch_labels_from_batches
+from cnn.keras_utils import process_loaded_labels
+from cnn.nn_architecture import keras_model
+from cnn.nn_architecture.custom_loss import keras_loss_v2, keras_loss_v3
+from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, \
+    keras_binary_accuracy, combine_predictions_each_batch
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
@@ -41,10 +43,8 @@ use_xray_dataset = config['use_xray_dataset']
 mura_interpolation = config['mura_interpolation']
 use_pascal_dataset = config['use_pascal_dataset']
 
-
-
 IMAGE_SIZE = 512
-BATCH_SIZE = 10
+BATCH_SIZE = 1
 BATCH_SIZE_TEST = 1
 BOX_SIZE = 16
 
@@ -55,7 +55,6 @@ elif use_pascal_dataset:
     df_train, df_val, df_test = ldd.load_preprocess_pascal(config)
 else:
     df_train, df_val, df_test = ldd.load_preprocess_mura(config)
-
 
 if train_mode:
     train_generator = gen.BatchGenerator(
@@ -81,15 +80,11 @@ if train_mode:
 
     model = keras_model.build_model()
     model.summary()
-
-    print(model.get_weights()[2])
+    # print(model.get_weights()[2])
     # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
     #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
-    #model = keras_model.compile_model_regularization(model)
+    # model = keras_model.compile_model_regularization(model)
     model = keras_model.compile_model_accuracy(model)
-
-    total_epochs = int(500000 / train_generator.__len__())
-    print("Total number of iterations: " + str(total_epochs))
 
     early_stop = EarlyStopping(monitor='val_loss',
                                min_delta=0.001,
@@ -117,13 +112,12 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=50,
+        epochs=1,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
-        callbacks=[checkpoint, checkpoint_on_epoch_end]
+        callbacks=[checkpoint]
         # callbacks = [checkpoint, checkpoint_on_epoch_end, early_stop, lrate]
-
     )
     print(model.get_weights()[2])
     print("history")
@@ -131,20 +125,53 @@ if train_mode:
     print(history.history['keras_accuracy'])
     np.save(results_path + 'train_info' + model_identifier + '.npy', history.history)
 
-    keras_utils.plot_train_validation(history.history['keras_accuracy'],
-                                      history.history['val_keras_accuracy'],
-                                      'train accuracy', 'validation accuracy', 'accuracy' + model_identifier,
-                                      'accuracy' + model_identifier, results_path)
-    keras_utils.plot_train_validation(history.history['accuracy_asproduction'],
-                                      history.history['val_accuracy_asproduction'],
-                                      'train accuracy', 'validation accuracy',
-                                      'accuracy_asproduction' + model_identifier,
-                                      'accuracy_asproduction' + model_identifier, results_path)
-
     keras_utils.plot_train_validation(history.history['loss'],
                                       history.history['val_loss'],
                                       'train loss', 'validation loss', 'loss' + model_identifier,
                                       'loss' + model_identifier, results_path)
+    ##### EVALUATE function
+
+    print("evaluate")
+    evaluate = model.evaluate_generator(
+        generator=valid_generator,
+        steps=valid_generator.__len__(),
+        verbose=1)
+    print("Evaluate")
+    print(evaluate)
+    ###################### old generator
+    predict_patch_and_save_results(model, 'val_set', df_val, skip_processing,
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                   mura_interpolation=mura_interpolation)
+    ############ GENERATOR
+    patch_labels = []
+    for i in range(0, df_val.iloc[:, 1].shape[0]):  # (15)
+        g = process_loaded_labels(df_val.iloc[i, 1])
+        patch_labels.append(g)
+    patch_labels_gt = np.asarray(patch_labels, dtype=np.float32).reshape(-1, 16, 16, 1)
+    np.save(prediction_results_path + 'patch_labels_val_set_TF', patch_labels_gt,
+            allow_pickle=True)
+
+    predictions = model.predict_generator(valid_generator, steps=valid_generator.__len__(), workers=1)
+    np.save(prediction_results_path + 'predictions_val_set_TF', predictions,
+            allow_pickle=True)
+    # np.save('C:/Users/s161590/Documents/Project_li/to-be-deleted/' + 'predictions_val_set_new_gen', predictions,
+    #         allow_pickle=True)
+    # np.save('C:/Users/s161590/Documents/Project_li/to-be-deleted/' + 'patch_labels_val_set_new_gen', patch_labels_class,
+    #         allow_pickle=True)
+
+    ######## Identity function
+    import numpy as np
+
+    x = Input((16, 16,))
+    m = Model(x, x)
+    m.compile(loss=keras_loss_v3, optimizer='adam', metrics=[])
+
+    pr = np.reshape(predictions, (-1, 16, 16,))
+    tr = np.reshape(patch_labels_gt, (-1, 16, 16,))
+
+    score1 = m.evaluate(x=pr, y=tr, batch_size=1, verbose=0)
+    print("Identity")
+    print(score1)
 else:
     # model = load_model(trained_models_path+'best_model_single_100.h5', custom_objects={
     #     'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
@@ -153,17 +180,16 @@ else:
     #       batch_size=BATCH_SIZE, samples_per_epoch=8000, epochs=46)
     # model = keras_model.compile_model_adamw(model, 0.075, 8000, 46)
     model = load_model(trained_models_path + '_shoulder_001_lrd-20-10.25.hdf5', custom_objects={
-        'keras_loss_v2': keras_loss_v2, 'keras_accuracy': keras_accuracy, 'keras_binary_accuracy': keras_binary_accuracy,
+        'keras_loss_v2': keras_loss_v2, 'keras_accuracy': keras_accuracy,
+        'keras_binary_accuracy': keras_binary_accuracy,
         'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
-
-
 
     ########################################### TRAINING SET########################################################
     file_unique_name = 'train_set'
     test_set = df_train
 
     predict_patch_and_save_results(model, file_unique_name, df_train, skip_processing,
-                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)
 
     # ########################################### VALIDATION SET######################################################
 

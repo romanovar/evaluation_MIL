@@ -2,11 +2,12 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 from cnn.nn_architecture.custom_performance_metrics import combine_predictions_each_batch, compute_auc_1class
 import cnn.nn_architecture.keras_generators as gen
-from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, plot_confusion_matrix
+from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, plot_confusion_matrix, \
+    process_loaded_labels
 
 
 def predict_patch_and_save_results(saved_model, file_unique_name, data_set, processed_y,
-                                   test_batch_size, box_size, image_size, res_path, mura_interpolation=True):
+                                   test_batch_size, box_size, image_size, res_path, mura_interpolation):
     test_generator = gen.BatchGenerator(
         instances=data_set.values,
         batch_size=test_batch_size,
@@ -32,6 +33,38 @@ def predict_patch_and_save_results(saved_model, file_unique_name, data_set, proc
         all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
     np.save(res_path + 'image_indices_' + file_unique_name, all_img_ind)
     np.save(res_path + 'patch_labels_' + file_unique_name, all_patch_labels)
+
+    # patch_labels = []
+    # image_ind = []
+    # for i in range(0, data_set.iloc[:, 1].shape[0]):  # (15)
+    #     g = process_loaded_labels(data_set.iloc[i, 1])
+    #     patch_labels.append(g)
+    #     res_img_ind = test_generator.get_batch_image_indices(i)
+    #     image_ind.append(res_img_ind)
+    # patch_labels_gt = np.asarray(patch_labels, dtype=np.float32).reshape(-1, 16, 16, 1)
+    # np.save('C:/Users/s161590/Documents/Project_li/to-be-deleted/' + 'patch_labels_val_set_TF3', patch_labels_gt,
+    #         allow_pickle=True)
+    # image_indices = np.array(image_ind)
+    # np.save('C:/Users/s161590/Documents/Project_li/to-be-deleted/' + 'image_indices_val_set_TF3', image_indices,
+    #         allow_pickle=True)
+    #
+    # predictions2 = saved_model.predict_generator(generator, steps=generator.__len__(), workers=1)
+    # np.save('C:/Users/s161590/Documents/Project_li/to-be-deleted/' + 'predictions_val_set_TF3', predictions2,
+    #         allow_pickle=True)
+
+
+def get_patch_labels_from_batches(generator, path, file_name):
+    all_img_ind = []
+    all_patch_labels = []
+    for batch_ind in range(generator.__len__()):
+        x, y = generator.__getitem__(batch_ind)
+        y_cast = y.astype(np.float32)
+        res_img_ind = generator.get_batch_image_indices(batch_ind)
+        all_img_ind = combine_predictions_each_batch(res_img_ind, all_img_ind, batch_ind)
+        all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
+    np.save(path + 'image_indices_' + file_name, all_img_ind)
+    np.save(path + 'patch_labels_' + file_name, all_patch_labels)
+    return all_img_ind, all_patch_labels
 
 
 #################################################################
