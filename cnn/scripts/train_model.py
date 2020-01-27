@@ -174,9 +174,19 @@ else:
     # model = keras_model.compile_model(model)
     # opt = AdamW(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0., weight_decay=0.075,
     #       batch_size=BATCH_SIZE, samples_per_epoch=8000, epochs=46)
+
+    ######################################################################################
     # model = keras_model.compile_model_adamw(model, 0.075, 8000, 46)
-    model = load_model(trained_models_path + '_shoulder_001_lrd-20-10.25.hdf5', custom_objects={
-        'keras_loss_v2': keras_loss_v2, 'keras_accuracy': keras_accuracy,
+
+    ######################################################################################
+    # model = load_model(trained_models_path + '_shoulder_001_lrd-20-10.25.hdf5', custom_objects={
+    #     'keras_loss_v2': keras_loss_v2, 'keras_accuracy': keras_accuracy,
+    #     'keras_binary_accuracy': keras_binary_accuracy,
+    #     'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
+
+    ######################################################################################
+    model = load_model(trained_models_path + '_shoulder_001-50-0.70.hdf5', custom_objects={
+        'keras_loss_v3': keras_loss_v3,  'keras_accuracy': keras_accuracy,
         'keras_binary_accuracy': keras_binary_accuracy,
         'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
 
