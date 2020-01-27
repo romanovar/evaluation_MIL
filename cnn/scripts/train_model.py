@@ -131,43 +131,73 @@ if train_mode:
                                       'loss' + model_identifier, results_path)
     ##### EVALUATE function
 
-    print("evaluate")
+    print("evaluate validation")
     evaluate = model.evaluate_generator(
         generator=valid_generator,
         steps=valid_generator.__len__(),
         verbose=1)
-    print("Evaluate")
+
+    evaluate_train = model.evaluate_generator(
+        generator=train_generator,
+        steps=train_generator.__len__(),
+        verbose=1)
+    test_generator = gen.BatchGenerator(
+        instances=df_test.values,
+        batch_size=BATCH_SIZE,
+        net_h=IMAGE_SIZE,
+        net_w=IMAGE_SIZE,
+        shuffle=True,
+        norm=keras_utils.normalize,
+        box_size=BOX_SIZE,
+        processed_y=skip_processing,
+        interpolation=mura_interpolation)
+
+    evaluate_test = model.evaluate_generator(
+        generator=test_generator,
+        steps=test_generator.__len__(),
+        verbose=1)
+    print("Evaluate Train")
+    print(evaluate_train)
+    print("Evaluate Valid")
     print(evaluate)
+    print("Evaluate test")
+    print(evaluate_test)
     ###################### old generator
     predict_patch_and_save_results(model, 'val_set', df_val, skip_processing,
                                    BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                    mura_interpolation=mura_interpolation)
-    ############ GENERATOR
-    patch_labels = []
-    for i in range(0, df_val.iloc[:, 1].shape[0]):  # (15)
-        g = process_loaded_labels(df_val.iloc[i, 1])
-        patch_labels.append(g)
-    patch_labels_gt = np.asarray(patch_labels, dtype=np.float32).reshape(-1, 16, 16, 1)
-    np.save(prediction_results_path + 'patch_labels_val_set_TF', patch_labels_gt,
-            allow_pickle=True)
-
-    predictions = model.predict_generator(valid_generator, steps=valid_generator.__len__(), workers=1)
-    np.save(prediction_results_path + 'predictions_val_set_TF', predictions,
-            allow_pickle=True)
-
-    ######## Identity function
-    import numpy as np
-
-    x = Input((16, 16,))
-    m = Model(x, x)
-    m.compile(loss=keras_loss_v3, optimizer='adam', metrics=[])
-
-    pr = np.reshape(predictions, (-1, 16, 16,))
-    tr = np.reshape(patch_labels_gt, (-1, 16, 16,))
-
-    score1 = m.evaluate(x=pr, y=tr, batch_size=1, verbose=0)
-    print("Identity")
-    print(score1)
+    predict_patch_and_save_results(model, 'train_set', df_train, skip_processing,
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                   mura_interpolation=mura_interpolation)
+    predict_patch_and_save_results(model, 'test_set', df_test, skip_processing,
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                   mura_interpolation=mura_interpolation)
+    # ############ GENERATOR
+    # patch_labels = []
+    # for i in range(0, df_val.iloc[:, 1].shape[0]):  # (15)
+    #     g = process_loaded_labels(df_val.iloc[i, 1])
+    #     patch_labels.append(g)
+    # patch_labels_gt = np.asarray(patch_labels, dtype=np.float32).reshape(-1, 16, 16, 1)
+    # np.save(prediction_results_path + 'patch_labels_val_set_TF', patch_labels_gt,
+    #         allow_pickle=True)
+    #
+    # predictions = model.predict_generator(valid_generator, steps=valid_generator.__len__(), workers=1)
+    # np.save(prediction_results_path + 'predictions_val_set_TF', predictions,
+    #         allow_pickle=True)
+    #
+    # ######## Identity function
+    # import numpy as np
+    #
+    # x = Input((16, 16,))
+    # m = Model(x, x)
+    # m.compile(loss=keras_loss_v3, optimizer='adam', metrics=[])
+    #
+    # pr = np.reshape(predictions, (-1, 16, 16,))
+    # tr = np.reshape(patch_labels_gt, (-1, 16, 16,))
+    #
+    # score1 = m.evaluate(x=pr, y=tr, batch_size=1, verbose=0)
+    # print("Identity")
+    # print(score1)
 else:
     # model = load_model(trained_models_path+'best_model_single_100.h5', custom_objects={
     #     'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
