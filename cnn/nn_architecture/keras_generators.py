@@ -56,6 +56,7 @@ class BatchGenerator(Sequence):
                 image = img_to_array(
                     load_img(image_dir, target_size=(self.net_h, self.net_w), color_mode='rgb'))
             else:
+                # IF one or both sides have bigger size than the input, then decrease is needed
                 if decrease_needed:
                     ratio = calculate_scale_ratio(img_width, img_height, self.net_w, self.net_h)
                     assert ratio >= 1.00, "wrong ratio - it will increase image size"
@@ -64,6 +65,7 @@ class BatchGenerator(Sequence):
                     image = img_to_array(load_img(image_dir, target_size=(int(img_height/ratio), int(img_width/ratio)),
                                                   color_mode='rgb'))
                 else:
+                    #ELSE just open image in its original form
                     image = img_to_array(load_img(image_dir, target_size=None, color_mode='rgb'))
                 ### PADDING
                 pad_needed = padding_needed(image)

@@ -18,10 +18,12 @@ def create_csv(path_to_png):
     instance_labels = []
 
     for src_path in Path(path_to_png).glob('**/*.png'):
-        image_name = os.path.basename(src_path)
+        # image_name = os.path.basename(src_path)
+        parent_folder_name =src_path.parts[-2]
+
         images_path_list.append(str(src_path))
-        bag_label = int(image_name.__contains__('cars'))
-        label_string = image_name.split('_')[0]
+        bag_label = int(parent_folder_name.__contains__('cars'))
+        label_string = parent_folder_name.split('_')[-1]
         # labels_list.append(bag_label)
         labels_list.append(label_string)
         instance_labels.append(create_instance_labels(bag_label, 16))
