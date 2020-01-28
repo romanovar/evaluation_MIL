@@ -50,7 +50,7 @@ BOX_SIZE = 16
 
 if use_xray_dataset:
     df_train, df_val, df_bbox_test, df_class_test = ldd.load_process_xray14(config)
-    test_set = pd.concat([df_bbox_test, df_class_test])
+    df_test = pd.concat([df_bbox_test, df_class_test])
 elif use_pascal_dataset:
     df_train, df_val, df_test = ldd.load_preprocess_pascal(config)
 else:
@@ -215,17 +215,15 @@ else:
     #     'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
 
     ######################################################################################
-    model = load_model(trained_models_path + '_shoulder_001-50-0.70.hdf5', custom_objects={
+    model = load_model(trained_models_path + 'best_model_shoulder_001-08-0.74.hdf5', custom_objects={
         'keras_loss_v3': keras_loss_v3,  'keras_accuracy': keras_accuracy,
         'keras_binary_accuracy': keras_binary_accuracy,
         'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
 
     ########################################### TRAINING SET########################################################
-    file_unique_name = 'train_set'
-    test_set = df_train
 
-    predict_patch_and_save_results(model, file_unique_name, df_train, skip_processing,
-                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)
+    #predict_patch_and_save_results(model, 'train_set', df_train, skip_processing,
+    #                               BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)
 
     # ########################################### VALIDATION SET######################################################
 
@@ -233,5 +231,5 @@ else:
                                    BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)
 
     ########################################### TESTING SET########################################################
-    predict_patch_and_save_results(model, 'test_set', test_set, skip_processing,
+    predict_patch_and_save_results(model, 'test_set', df_test, skip_processing,
                                    BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)

@@ -69,12 +69,8 @@ def load_preprocess_mura(config):
 
 def load_preprocess_pascal(config):
     pascal_image_path = config['pascal_image_path']
-    return ldp.load_pascal(pascal_image_path)
-
-    # df_train_final, df_val_final, df_test_final= ldm.prepare_mura_set(df_train_val, test_df_all_classes, class_name)
-
-    # return df_train_final, df_val_final, df_test_final
-
+    df = ldp.load_pascal(pascal_image_path)
+    return ldp.split_train_val_test(df)
 
 
 #TODO: delete if not used

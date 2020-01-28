@@ -14,6 +14,7 @@ from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accur
 from cnn.nn_architecture.custom_loss import keras_loss
 from cnn.keras_preds import predict_patch_and_save_results
 from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, filter_rows_and_columns
+from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -43,11 +44,15 @@ def cross_validation(config):
     mura_processed_train_labels_path = config['mura_processed_train_labels_path']
     mura_processed_test_labels_path = config['mura_processed_test_labels_path']
     mura_interpolation = config['mura_interpolation']
-
+    use_pascal_dataset = config['use_pascal_dataset']
+    pascal_image_path = config['pascal_image_path']
 
     if use_xray_dataset:
         xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
                                localization_labels_path, results_path, class_name)
+    elif use_pascal_dataset:
+        pascal_df = load_pascal(pascal_image_path)
+
     else:
         df_train_val, test_df_all_classes = load_mura(skip_processing, mura_processed_train_labels_path,
                                                       mura_processed_test_labels_path, mura_train_img_path,
@@ -60,6 +65,9 @@ def cross_validation(config):
         if use_xray_dataset:
             df_train, df_val, df_test, _, _,_ = ld.split_xray_cv(xray_df, CV_SPLITS,
                                                                  split, class_name)
+        elif use_pascal_dataset:
+            df_train, df_val, df_test = construct_train_test_cv(pascal_df, CV_SPLITS, split)
+
         else:
             df_train, df_val = split_data_cv(df_train_val, CV_SPLITS, split, random_seed=1, diagnose_col=class_name,
                                              ratio_to_keep=None)
@@ -96,8 +104,8 @@ def cross_validation(config):
             #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
 
             #   checkpoint on every epoch is not really needed here, CALLBACK REMOVED from the generator
-            # filepath = trained_models_path + "CV_patient_split_"+str(split)+"_-{epoch:02d}-{val_loss:.2f}.hdf5"
-            # checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
+            filepath = trained_models_path + "CV_patient_split_"+str(split)+"_-{epoch:02d}-{val_loss:.2f}.hdf5"
+            checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
 
             lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
             print("df train STEPS")
@@ -107,11 +115,11 @@ def cross_validation(config):
             history = model.fit_generator(
                 generator=train_generator,
                 steps_per_epoch=train_generator.__len__(),
-                epochs=2,
+                epochs=30,
                 validation_data=valid_generator,
                 validation_steps=valid_generator.__len__(),
                 verbose=1,
-                callbacks=[lrate]
+                callbacks=[checkpoint_on_epoch_end]
             )
             filepath = trained_models_path + class_name +"CV_"+str(split)+"_nov.hdf5"
             model.save(filepath)
@@ -120,13 +128,6 @@ def cross_validation(config):
             print(history.history['keras_accuracy'])
             np.save(results_path + 'train_info_'+str(split)+'.npy', history.history)
 
-            keras_utils.plot_train_validation(history.history['keras_accuracy'],history.history['val_keras_accuracy'],
-                                          'train accuracy', 'validation accuracy', 'CV_accuracy'+str(split), 'accuracy',
-                                              results_path)
-            keras_utils.plot_train_validation(history.history['accuracy_asproduction'],
-                                              history.history['val_accuracy_asproduction'],
-                                              'train accuracy', 'validation accuracy',
-                                              'CV_accuracy_asproduction'+str(split), 'accuracy_asproduction', results_path)
 
             keras_utils.plot_train_validation(history.history['loss'], history.history['val_loss'], 'train loss',
                                               'validation loss', 'CV_loss'+str(split), 'loss', results_path)
@@ -144,6 +145,47 @@ def cross_validation(config):
             predict_patch_and_save_results(model, 'test_set_'+ class_name+'_CV'+str(split), df_test, skip_processing,
                                            BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                            mura_interpolation)
+            predict_patch_and_save_results(model, 'train_set_' + class_name + '_CV' + str(split), df_train,
+                                           skip_processing,
+                                           BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                           mura_interpolation)
+            predict_patch_and_save_results(model, 'val_set_' + class_name + '_CV' + str(split), df_val,
+                                           skip_processing,
+                                           BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                           mura_interpolation)
+            ##### EVALUATE function
+
+            print("evaluate validation")
+            evaluate = model.evaluate_generator(
+                generator=valid_generator,
+                steps=valid_generator.__len__(),
+                verbose=1)
+
+            evaluate_train = model.evaluate_generator(
+                generator=train_generator,
+                steps=train_generator.__len__(),
+                verbose=1)
+            test_generator = gen.BatchGenerator(
+                instances=df_test.values,
+                batch_size=BATCH_SIZE,
+                net_h=IMAGE_SIZE,
+                net_w=IMAGE_SIZE,
+                shuffle=True,
+                norm=keras_utils.normalize,
+                box_size=BOX_SIZE,
+                processed_y=skip_processing,
+                interpolation=mura_interpolation)
+
+            evaluate_test = model.evaluate_generator(
+                generator=test_generator,
+                steps=test_generator.__len__(),
+                verbose=1)
+            print("Evaluate Train")
+            print(evaluate_train)
+            print("Evaluate Valid")
+            print(evaluate)
+            print("Evaluate test")
+            print(evaluate_test)
         else:
             files_found=0
             for file in Path(trained_models_path).glob("shoulderCV_0_nov" + "*.hdf5"):
