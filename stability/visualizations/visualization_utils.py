@@ -4,6 +4,7 @@ import matplotlib
 from PIL import ImageDraw
 from scipy.optimize import curve_fit
 
+from cnn.keras_utils import image_larger_input, calculate_scale_ratio
 from cnn.preprocessor.load_data_mura import padding_needed, pad_image
 from stability.utils import get_image_index
 
@@ -382,15 +383,30 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
         predictions_to_image_scale = int(512/16)
 
         img_ind = get_image_index(False, img_ind_coll[0], ind)
-
+        # img_path = "C:/Users/s161590/Downloads/voc2005_1.tar/voc2005_1/PNGImages/TUGraz_cars/carsgraz_234.png"
         img = plt.imread(img_path)
+        img_height = img.shape[0]
+        img_width = img.shape[1]
+        decrease_needed = image_larger_input(img_width=img_width, img_height=img_height,
+                                             input_width=512, input_height=512)
+
+        # img = plt.imread(img_path)
         if other_img_path is None:
             img_dir = img_ind
         else:
             img_dir = Path(other_img_path + get_image_index_from_pathstring(img_ind) + '.png').__str__()
 
+        if decrease_needed:
+            ratio = calculate_scale_ratio(image_width=img_width, image_height=img_height, input_width=512, input_height=512)
+            assert ratio >= 1.00, "wrong ratio - it will increase image size"
+            assert int( img_width/ ratio) ==  512 or int(img_height / ratio) == 512, \
+                "error in computation"
+            # image = img_to_array(load_img(image_dir, target_size=(int(img_height / ratio), int(img_width / ratio)),
+            #                               color_mode='rgb'))
+            img = cv2.resize(img, (int(img_width / ratio), int(img_height / ratio)))
+
         if padding_needed(img):
-            padded_image = pad_image(img)
+            padded_image = pad_image(img, 512, 512)
 
         fig, axs = plt.subplots(2, 3, figsize=(20, 10))
 

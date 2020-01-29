@@ -11,7 +11,7 @@ from cnn.nn_architecture import keras_model
 from cnn import keras_utils
 import cnn.preprocessor.load_data as ld
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, keras_binary_accuracy
-from cnn.nn_architecture.custom_loss import keras_loss
+from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_v3
 from cnn.keras_preds import predict_patch_and_save_results
 from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, filter_rows_and_columns
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
@@ -187,18 +187,30 @@ def cross_validation(config):
             print("Evaluate test")
             print(evaluate_test)
         else:
-            files_found=0
-            for file in Path(trained_models_path).glob("shoulderCV_0_nov" + "*.hdf5"):
+            files_found = 0
+            print(trained_models_path)
+            for file_path in Path("/data/rnromanova/trained_models/final/trained_models/cv_pascal/").glob(
+                    "CV_patient_split_0_-05" + "*.hdf5"):
+                print(file_path)
                 files_found += 1
 
             assert files_found == 1, "No model found/ Multiple models found, not clear which to use "
-            model = load_model( str(file),
-                                custom_objects={
-                                    'keras_loss': keras_loss, 'keras_accuracy': keras_accuracy,
-                                    'keras_binary_accuracy': keras_binary_accuracy,
-                                    'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
+            print(str(files_found))
+            model = load_model(str(file_path),
+                               custom_objects={
+                                   'keras_loss_v3': keras_loss_v3, 'keras_accuracy': keras_accuracy,
+                                   'keras_binary_accuracy': keras_binary_accuracy,
+                                   'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
             model = keras_model.compile_model_accuracy(model)
 
-            predict_patch_and_save_results(model, "test_set_CV"+(str(split)), df_test, skip_processing,
-                                           BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)
+            predict_patch_and_save_results(model, "train_set_CV" + (str(split)), df_train, skip_processing,
+                                           BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                           mura_interpolation)
+            predict_patch_and_save_results(model, "val_set_CV" + (str(split)), df_val, skip_processing,
+                                           BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                           mura_interpolation)
+            predict_patch_and_save_results(model, "test_set_CV" + (str(split)), df_test, skip_processing,
+                                           BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                           mura_interpolation)
+
 

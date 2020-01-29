@@ -14,8 +14,8 @@ from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, keras
 def build_model():
     base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
     # base_model.trainable = False
-    for layer in base_model.layers:
-        layer.trainable = False
+    #for layer in base_model.layers:
+    #    layer.trainable = False
     # count = 0
     # for layer in base_model.layers:
     #     if 'res5' in layer.name: # or 'res4' in layer.name:

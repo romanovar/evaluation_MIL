@@ -164,16 +164,20 @@ def train_on_subsets(config):
                 #                                   results_path)
 
                 keras_utils.plot_train_validation(history.history['loss'], history.history['val_loss'], 'train loss',
-                                                  'validation loss', 'CV_loss' + str(split), 'loss', results_path)
+                                                  'validation loss', 'CV_loss' + str(split)+ str(curr_classifier), 'loss', results_path)
 
                 ############################################    PREDICTIONS      #############################################
                 ########################################### TRAINING SET########################################################
-                # predict_patch_and_save_results(model, 'train_set_CV' + str(split), df_train, skip_processing,
-                #                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
-                #
-                ########################################### VALIDATION SET######################################################
-                # predict_patch_and_save_results(model, 'val_set_CV' + str(split), df_val, skip_processing,
-                #                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
+                predict_patch_and_save_results(model, class_name+'_train_set_CV' + str(split)+'_'+ str(curr_classifier),
+                                               df_train, skip_processing,
+                                               BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                               mura_interpolation)
+
+                ########################################## VALIDATION SET######################################################
+                predict_patch_and_save_results(model, class_name+'_val_set_CV' + str(split)+'_'+ str(curr_classifier),
+                                               df_val, skip_processing,
+                                               BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                               mura_interpolation)
 
                 ########################################### TESTING SET########################################################
                 predict_patch_and_save_results(model, class_name+
@@ -181,4 +185,4 @@ def train_on_subsets(config):
                                                str(class_name)+'_' +
                                                str(overlap_ratio), df_test,
                                                skip_processing, BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE,
-                                               prediction_results_path)
+                                               prediction_results_path, mura_interpolation)

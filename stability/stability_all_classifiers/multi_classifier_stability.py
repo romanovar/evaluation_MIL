@@ -224,7 +224,7 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     xyaxis = ['classifier1', 'classifier2', 'classifier3', 'classifier4', 'classifier5']
     xyaxis_short = ['Cl.1', 'Cl. 2', 'Cl. 3', 'Cl. 4', 'Cl. 5']
     if visualize_per_image:
-        for idx in range(0, 2):  # len(image_index_collection[0])):
+        for idx in range(0, 2): #len(image_index_collection[0])):
             img_ind = get_image_index(xray_dataset, image_index_collection[0], idx)
 
             print("index " + str(idx))

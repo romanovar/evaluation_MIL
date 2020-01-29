@@ -165,8 +165,8 @@ def filter_all_set_for_class(train_df, val_df, test_df, class_name):
 
 
 def padding_needed(img):
-    assert img.shape[0] <= 512, "x axis is bigger than 512 pixels"
-    assert img.shape[1] <= 512, "y axis is bigger than 512 pixels"
+    # assert img.shape[0] <= 512, "x axis is bigger than 512 pixels"
+    # assert img.shape[1] <= 512, "y axis is bigger than 512 pixels"
     if img.shape[0] == 512 and img.shape[1] == 512:
         return False
     else:
