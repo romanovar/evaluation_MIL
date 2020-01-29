@@ -198,9 +198,13 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     image_path = config['image_path']
     stability_res_path = config['stability_results']
     xray_dataset = config['use_xray_dataset']
+    use_pascal_dataset = config['use_pascal_dataset']
     class_name = config['class_name']
+
     if xray_dataset:
         dataset_identifier = 'xray'
+    elif use_pascal_dataset:
+        dataset_identifier = 'pascal'
     else:
         dataset_identifier = 'mura'
 
@@ -243,7 +247,7 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
             visualize_correlation_heatmap(reshaped_spearman_coll[:, :, idx], stability_res_path,
                                           '_classifiers_spearman_' + str(img_ind),
                                           xyaxis, dropDuplicates=True)
-        visualize_5_classifiers(xray_dataset, image_index_collection, image_labels_collection,
+        visualize_5_classifiers(xray_dataset, use_pascal_dataset, image_index_collection, image_labels_collection,
                                 raw_predictions_collection, image_path, stability_res_path, class_name, '_test_5_class')
     ## ADD inst AUC vs score
     ma_corr_jaccard_images = np.ma.masked_array(reshaped_corr_jacc_coll, np.isnan(reshaped_corr_jacc_coll))

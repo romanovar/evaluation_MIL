@@ -369,7 +369,7 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
 
 
 def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,  class_name,image_title_suffix,
-                                 other_img_path = None, histogram=False, threshold_transparency=0.01):
+                                 pascal_dataset, other_img_path = None, histogram=False, threshold_transparency=0.01):
     if threshold_transparency >= 0.5:
         image_title_suffix += '_jacc'
     elif threshold_transparency == 0:
@@ -383,7 +383,7 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
         predictions_to_image_scale = int(512/16)
 
         img_ind = get_image_index(False, img_ind_coll[0], ind)
-        # img_path = "C:/Users/s161590/Downloads/voc2005_1.tar/voc2005_1/PNGImages/TUGraz_cars/carsgraz_234.png"
+        img_path = "C:/Users/s161590/Downloads/voc2005_1.tar/voc2005_1/PNGImages/TUGraz_cars/carsgraz_234.png"
         img = plt.imread(img_path)
         img_height = img.shape[0]
         img_width = img.shape[1]
@@ -486,13 +486,18 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
             fig.colorbar(img6, ax=ax6, fraction=0.05)
 
         plt.tight_layout()
-        fig.savefig(results_path + get_image_index_from_pathstring(
-            img_ind) + '_' + class_name + image_title_suffix + '.jpg',
-                    bbox_inches='tight')
+        if pascal_dataset:
+            fig.savefig(results_path + str(ind) + '_' + class_name + image_title_suffix + '.jpg',
+                        bbox_inches='tight')
+        else:
+            fig.savefig(results_path + get_image_index_from_pathstring(
+                img_ind) + '_' + class_name + image_title_suffix + '.jpg',
+                        bbox_inches='tight')
         plt.close(fig)
 
 
-def visualize_5_classifiers(xray_dataset, img_ind_coll, labels_coll, raw_predictions_coll, img_path, results_path,
+def visualize_5_classifiers(xray_dataset, pascal_dataset, img_ind_coll, labels_coll, raw_predictions_coll,
+                            img_path, results_path,
                             class_name, image_title_suffix):
     '''
     Visualizes instance predictions from several classifers on a list of images
@@ -514,7 +519,8 @@ def visualize_5_classifiers(xray_dataset, img_ind_coll, labels_coll, raw_predict
                                                    threshold_transparency=0.5)
     else:
         visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,
-                                     class_name, image_title_suffix, other_img_path = img_path, histogram=True,
+                                     class_name, image_title_suffix, pascal_dataset= pascal_dataset,
+                                     other_img_path = img_path, histogram=True,
                                      threshold_transparency=0.5)
 
 
