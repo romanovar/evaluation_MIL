@@ -56,7 +56,7 @@ def split_train_val_test(df):
 
 
 def split_data_cv(df, nr_cv):
-    sss = StratifiedShuffleSplit(n_splits=nr_cv, random_state=0)
+    sss = StratifiedShuffleSplit(n_splits=nr_cv, test_size=0.2, random_state=0)
     train_ind_col = []
     test_ind_col = []
     for train_inds, test_inds in sss.split(df, df['Label']):
