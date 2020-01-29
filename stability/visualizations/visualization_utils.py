@@ -383,7 +383,7 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
         predictions_to_image_scale = int(512/16)
 
         img_ind = get_image_index(False, img_ind_coll[0], ind)
-        img_path = "C:/Users/s161590/Downloads/voc2005_1.tar/voc2005_1/PNGImages/TUGraz_cars/carsgraz_234.png"
+        # img_path = "C:/Users/s161590/Downloads/voc2005_1.tar/voc2005_1/PNGImages/TUGraz_cars/carsgraz_234.png"
         img = plt.imread(img_path)
         img_height = img.shape[0]
         img_width = img.shape[1]
