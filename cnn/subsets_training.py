@@ -114,7 +114,8 @@ def train_on_subsets(config):
                     norm=keras_utils.normalize,
                     box_size=BOX_SIZE,
                     processed_y=skip_processing,
-                    interpolation=mura_interpolation)
+                    interpolation=mura_interpolation,
+                    shuffle=True)
 
                 valid_generator = gen.BatchGenerator(
                     instances=df_val.values,
@@ -124,7 +125,8 @@ def train_on_subsets(config):
                     box_size=BOX_SIZE,
                     norm=keras_utils.normalize,
                     processed_y=skip_processing,
-                    interpolation=mura_interpolation)
+                    interpolation=mura_interpolation,
+                    shuffle=True)
 
                 model = keras_model.build_model()
                 model = keras_model.compile_model_accuracy(model)

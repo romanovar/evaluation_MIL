@@ -68,7 +68,7 @@ def compile_model(model):
 
 
 def compile_model_accuracy(model):
-    optimizer = Adam(lr=0.000001)
+    optimizer = Adam(lr=0.00001)
     model.compile(optimizer=optimizer,
                   loss=keras_loss_v3,
                   metrics=[keras_accuracy, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction])
