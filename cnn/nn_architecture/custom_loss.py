@@ -123,7 +123,7 @@ def keras_loss(y_true, y_pred):
 
 
 def keras_loss_reg(y_true, y_pred):
-    loss =  compute_loss_keras(y_pred, y_true, P=16, class_nr=1)
+    loss =  compute_loss_v3(y_pred, y_true, 16, 1, 'nor', bbox_weight=5)
     vars = tf.trainable_variables()
     lossL2 = tf.add_n([ tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in vars
                     if 'bias' not in v.name ]) * 0.0001

@@ -482,6 +482,7 @@ def get_train_subset_xray(orig_train_set, train_bbox_nr, random_seed, ratio_to_k
     if obs_to_keep > 0:
         np.random.seed(seed=random_seed)
         class_train_ind_keep = np.random.choice(orig_train_set.index, int(obs_to_keep), replace=False)
+        print("class train to keep")
         print(class_train_ind_keep)
         train_subset = orig_train_set.loc[class_train_ind_keep]
         return train_subset

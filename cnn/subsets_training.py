@@ -10,6 +10,7 @@ from cnn.keras_preds import predict_patch_and_save_results
 from cnn.preprocessor.load_data import load_xray, split_xray_cv
 from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, get_train_subset_mura, \
     filter_rows_and_columns
+from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -33,38 +34,32 @@ def train_on_subsets(config):
     mura_processed_train_labels_path = config['mura_processed_train_labels_path']
     mura_processed_test_labels_path = config['mura_processed_test_labels_path']
     mura_interpolation = config['mura_interpolation']
+    pascal_image_path = config['pascal_image_path']
+    use_pascal_dataset = config['use_pascal_dataset']
+
 
     IMAGE_SIZE = 512
-    BATCH_SIZE = 1
+    BATCH_SIZE = 10
     BATCH_SIZE_TEST = 1
     BOX_SIZE = 16
 
-    # if skip_processing:
-    #     xray_df = ld.load_csv(processed_labels_path)
-    #     print(xray_df.shape)
-    #     print('Cardiomegaly label division')
-    #     print(xray_df['Cardiomegaly'].value_counts())
-    # else:
-    #     label_df = ld.get_classification_labels(classication_labels_path, False)
-    #     processed_df = ld.preprocess_labels(label_df, image_path)
-    #     xray_df = ld.couple_location_labels(localization_labels_path, processed_df, ld.PATCH_SIZE, results_path)
-    # print(xray_df.shape)
-    # print("Splitting data ...")
+    overlap_ratio = 0.95
+    CV_SPLITS = 5
+    number_classifiers = 5
+    # this should have the same length as the number of classifiers
+    subset_seeds = [1234, 5678, 9012, 3456, 7890]
+
     if use_xray_dataset:
         xray_df = load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
                             localization_labels_path, results_path, class_name)
+    elif use_pascal_dataset:
+        pascal_df = load_pascal(pascal_image_path)
     else:
         df_train_val, test_df_all_classes = load_mura(skip_processing, mura_processed_train_labels_path,
                                                       mura_processed_test_labels_path, mura_train_img_path,
                                                       mura_train_labels_path, mura_test_labels_path, mura_test_img_path)
 
-    # class_name = "Cardiomegaly"
-    overlap_ratio = 0.95
 
-    ## USING CV SPLIT TO USE A SPECIFIC TRAIN AND TEST DATA
-
-    CV_SPLITS = 5
-    number_classifiers = 5
     for split in range(0, CV_SPLITS):
         # df_train, df_val, df_test, \
         # df_bbox_train, df_bbox_test, train_only_class = ld.get_train_test_CV(xray_df, CV_SPLITS, split, random_seed=1,
@@ -82,32 +77,34 @@ def train_on_subsets(config):
             df_train, df_val, df_test, df_bbox_train, \
             df_bbox_test, train_only_class = split_xray_cv(xray_df, CV_SPLITS,
                                                            split, class_name)
+        elif use_pascal_dataset:
+            df_train, df_val, df_test = construct_train_test_cv(pascal_df, CV_SPLITS, split)
         else:
             df_train, df_val = split_data_cv(df_train_val, CV_SPLITS, split, random_seed=1, diagnose_col=class_name,
                                              ratio_to_keep=None)
             df_test = filter_rows_and_columns(test_df_all_classes, class_name)
 
-        seeds = np.random.randint(low=100, high=1000, size=number_classifiers)
-        np.save(results_path + 'subsets_seed_CV' + str(split) + '_' + str(number_classifiers)+class_name, seeds)
-
         for curr_classifier in range(0, number_classifiers):
-            if split == 0:
+            if split == 1:
                 print("#####################################################")
                 print("SPLIT :" + str(split))
                 print("classifier #: " + str(curr_classifier))
                 if use_xray_dataset:
                     class_train_subset = ld.get_train_subset_xray(train_only_class, df_bbox_train.shape[0],
-                                                                  random_seed=seeds[curr_classifier],
+                                                                  random_seed=subset_seeds[curr_classifier],
                                                                   ratio_to_keep=overlap_ratio)
                     print("new subset is :" + str(class_train_subset.shape))
                     df_train_subset = pd.concat([df_bbox_train, class_train_subset])
                     print(df_bbox_train.shape)
                     print(class_train_subset.shape)
+                elif use_pascal_dataset:
+                    df_train_subset = get_train_subset_mura(df_train, random_seed=subset_seeds[curr_classifier],
+                                                            ratio_to_keep=overlap_ratio)
                 else:
-                    df_train_subset = get_train_subset_mura(df_train, random_seed=seeds[curr_classifier],
+                    df_train_subset = get_train_subset_mura(df_train, random_seed=subset_seeds[curr_classifier],
                                                             ratio_to_keep=overlap_ratio)
 
-            if train_mode and split == 0:
+            if train_mode and split == 1:
                 ##O##O##_##O#O##_################################ TRAIN ###########################################################
                 train_generator = gen.BatchGenerator(
                     instances=df_train_subset.values,
@@ -131,7 +128,7 @@ def train_on_subsets(config):
 
                 model = keras_model.build_model()
                 model = keras_model.compile_model_accuracy(model)
-                lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
+                # lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
 
                 print("df train STEPS")
                 print(len(df_train) // BATCH_SIZE)
@@ -140,11 +137,10 @@ def train_on_subsets(config):
                 history = model.fit_generator(
                     generator=train_generator,
                     steps_per_epoch=train_generator.__len__(),
-                    epochs=10,
+                    epochs=4,
                     validation_data=valid_generator,
                     validation_steps=valid_generator.__len__(),
-                    verbose=1,
-                    callbacks=[lrate]
+                    verbose=1
                 )
                 filepath = trained_models_path + 'subset_' + class_name + "_CV" + str(split) + '_' + str(
                     curr_classifier) + '_' + \
@@ -156,16 +152,16 @@ def train_on_subsets(config):
                 np.save(results_path + 'train_info_' + str(split) + '_' + str(curr_classifier) + '_' +
                         str(overlap_ratio) + '.npy', history.history)
 
-                keras_utils.plot_train_validation(history.history['keras_accuracy'],
-                                                  history.history['val_keras_accuracy'],
-                                                  'train accuracy', 'validation accuracy', 'CV_accuracy' + str(split),
-                                                  'accuracy',
-                                                  results_path)
-                keras_utils.plot_train_validation(history.history['accuracy_asproduction'],
-                                                  history.history['val_accuracy_asproduction'],
-                                                  'train accuracy', 'validation accuracy',
-                                                  'CV_accuracy_asproduction' + str(split), 'accuracy_asproduction',
-                                                  results_path)
+                # keras_utils.plot_train_validation(history.history['keras_accuracy'],
+                #                                   history.history['val_keras_accuracy'],
+                #                                   'train accuracy', 'validation accuracy', 'CV_accuracy' + str(split),
+                #                                   'accuracy',
+                #                                   results_path)
+                # keras_utils.plot_train_validation(history.history['accuracy_asproduction'],
+                #                                   history.history['val_accuracy_asproduction'],
+                #                                   'train accuracy', 'validation accuracy',
+                #                                   'CV_accuracy_asproduction' + str(split), 'accuracy_asproduction',
+                #                                   results_path)
 
                 keras_utils.plot_train_validation(history.history['loss'], history.history['val_loss'], 'train loss',
                                                   'validation loss', 'CV_loss' + str(split), 'loss', results_path)

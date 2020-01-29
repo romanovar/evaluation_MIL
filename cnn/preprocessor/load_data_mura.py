@@ -140,6 +140,8 @@ def get_train_subset_mura(train_set, random_seed, ratio_to_keep):
     if obs_to_keep > 0:
         np.random.seed(seed=random_seed)
         class_train_ind_keep = np.random.choice(train_set.index, int(obs_to_keep), replace=False)
+        print("train ind to keep ")
+        print(class_train_ind_keep)
         train_subset = train_set.loc[class_train_ind_keep]
         return train_subset
     else:
