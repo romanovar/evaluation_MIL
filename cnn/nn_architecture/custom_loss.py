@@ -175,7 +175,7 @@ def lse_pooling_segmentation_images(nn_output, y_true, P, clas_nr, r =1):
     return result2
 
 
-def compute_image_label_prediction_v2(has_bbox, nn_output_class, y_true_class, P, class_nr, pooling_operator):
+def compute_image_label_prediction_v2(has_bbox, nn_output_class, y_true_class, P, class_nr, pooling_operator, r):
     assert pooling_operator in ['mean', 'nor', 'lse'], "ensure you have the right pooling method "
 
     if pooling_operator.lower()=='nor':
@@ -188,17 +188,17 @@ def compute_image_label_prediction_v2(has_bbox, nn_output_class, y_true_class, P
     elif pooling_operator.lower()=='lse':
         prob = tf.where(has_bbox,
                         lse_pooling_segmentation_images(nn_output_class, y_true_class, P, class_nr),
-                        lse_pooling_bag_level(nn_output_class, r=1))
+                        lse_pooling_bag_level(nn_output_class, r=r))
 
     return prob
 
 
-def compute_loss_keras_v2(nn_output, instance_label_ground_truth, P, class_nr, pool_method):
+def compute_loss_keras_v2(nn_output, instance_label_ground_truth, P, class_nr, pool_method, r):
     m = P * P
     sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m,
                                                                                   class_nr)
     img_label_pred = compute_image_label_prediction_v2(has_bbox, nn_output, instance_label_ground_truth, P, class_nr,
-                                                       pool_method)
+                                                       pool_method, r)
 
     # sanity check
     loss_classification_keras = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
@@ -216,7 +216,7 @@ def compute_loss_keras_v2(nn_output, instance_label_ground_truth, P, class_nr, p
     sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m,
                                                                                   class_nr)
     img_label_pred = compute_image_label_prediction_v2(has_bbox, nn_output, instance_label_ground_truth, P, class_nr,
-                                                       pool_method)
+                                                       pool_method, r)
 
     # sanity check
     loss_classification_keras = custom_CE_loss(has_bbox, class_label_ground_truth, img_label_pred)
@@ -225,7 +225,7 @@ def compute_loss_keras_v2(nn_output, instance_label_ground_truth, P, class_nr, p
     return total_loss
 
 
-def compute_loss_v3(nn_output, instance_label_ground_truth, P, class_nr, pool_method, bbox_weight):
+def compute_loss_v3(nn_output, instance_label_ground_truth, P, class_nr, pool_method, r, bbox_weight):
     '''
     Computes image
     :param nn_output: Patch predictions
@@ -240,7 +240,7 @@ def compute_loss_v3(nn_output, instance_label_ground_truth, P, class_nr, pool_me
     sum_active_patches, class_label_ground_truth, has_bbox = compute_ground_truth(instance_label_ground_truth, m,
                                                                                   class_nr)
     img_label_pred = compute_image_label_prediction_v2(has_bbox, nn_output, instance_label_ground_truth, P, class_nr,
-                                                       pool_method)
+                                                       pool_method, r)
 
     loss = tf.where(tf.reshape(has_bbox, (-1,)),
                     bbox_weight * binary_crossentropy(class_label_ground_truth, img_label_pred),
@@ -249,4 +249,4 @@ def compute_loss_v3(nn_output, instance_label_ground_truth, P, class_nr, pool_me
 
 
 def keras_loss_v3(y_true, y_pred):
-    return compute_loss_v3(y_pred, y_true, 16, 1, 'nor', bbox_weight=5)
+    return compute_loss_v3(y_pred, y_true, 16, 1, 'nor', r=1, bbox_weight=5)
