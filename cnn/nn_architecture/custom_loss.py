@@ -122,15 +122,6 @@ def keras_loss(y_true, y_pred):
     return compute_loss_keras(y_pred, y_true, P=16, class_nr=1)
 
 
-def keras_loss_reg(y_true, y_pred):
-    loss =  compute_loss_v3(y_pred, y_true, 16, 1, 'nor', bbox_weight=5)
-    vars = tf.trainable_variables()
-    lossL2 = tf.add_n([ tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in vars
-                    if 'bias' not in v.name ]) * 0.0001
-    # reg_l2 = 0.01 * tf.nn.l2_loss(tf.hidden_weights) + 0.01 * tf.nn.l2_loss(out_weights)
-    return loss+lossL2
-
-
 def mean_pooling_segmentation_images(nn_output, y_true, P, clas_nr):
     pos_patches = tf.reshape((nn_output * y_true), (-1, P * P, clas_nr))
     neg_patches = tf.reshape((1 - nn_output) * (1 - y_true), (-1, P * P, clas_nr))
@@ -250,3 +241,19 @@ def compute_loss_v3(nn_output, instance_label_ground_truth, P, class_nr, pool_me
 
 def keras_loss_v3(y_true, y_pred):
     return compute_loss_v3(y_pred, y_true, 16, 1, 'nor', r=1, bbox_weight=5)
+
+
+def keras_loss_v3_nor(y_true, y_pred):
+    return compute_loss_v3(y_pred, y_true, 16, 1, 'nor', r=1, bbox_weight=5)
+
+
+def keras_loss_v3_lse(y_true, y_pred):
+    return compute_loss_v3(y_pred, y_true, 16, 1, 'lse', r=1, bbox_weight=5)
+
+
+def keras_loss_v3_lse01(y_true, y_pred):
+    return compute_loss_v3(y_pred, y_true, 16, 1, 'lse', r=0.1, bbox_weight=5)
+
+
+def keras_loss_v3_mean(y_true, y_pred):
+    return compute_loss_v3(y_pred, y_true, 16, 1, 'mean', r=1, bbox_weight=5)

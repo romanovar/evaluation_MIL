@@ -1,25 +1,22 @@
+skip_processing_labels: true/false - using a preprossed csv file to  start loading data
+train_mode: true/false - whether to train models or to load a saved model and predict
+use_xray_dataset: true/false - if true Xray used
+class_name: 'shoulder' /"Cardiomegaly" Class which will be predicted
+mura_interpolation: true/false - if Xray used - true, else false
+pascal_image_path: path to images
+use_pascal_dataset: true/false - If false and use_xray_dataset=false, then MURA is used
+
 image_path: directory folder to xray images
 classication_labels_path: path to chest XRay Data_Entry_2017.csv
 localization_labels_path: path to chest XRay Bbox_List_2017.csv
-results_path: folder where results are stored
-processed_labels_path: path to preprocessed csv processed_Y.csv
-skip_processing_labels: false/true
+processed_labels_path: path to preprocessed csv of Xray dataset
 mura_train_img_path: path to mura train_image_paths.csv
 mura_train_labels_path: path to mura train_labeled_studies.csv
 mura_test_img_path: path to mura valid_image_paths.csv
 mura_test_labels_path: path to mura valid_labeled_studies.csv
 mura_processed_train_labels_path: path to mura processed train file - train_mura.csv
 mura_processed_test_labels_path: path to mura processed test file - test_mura.csv
-generated_images_path: path to save images
-prediction_results_path: path to save predictions
+results_path: folder where results are stored
+prediction_results_path: path to save prediction files
 trained_models_path: path to save rtained models
 stability_results: path to save stability results
-skip_processing_labels: true/false
-train_mode: true/false
-test_single_image: true/false
-prediction_skip_processing: true/false
-use_xray_dataset: true/false
-class_name: 'shoulder' /"Cardiomegaly"
-mura_interpolation: true/false
-pascal_image_path: path to images
-use_pascal_dataset: true/false

@@ -42,6 +42,11 @@ trained_models_path = config['trained_models_path']
 use_xray_dataset = config['use_xray_dataset']
 mura_interpolation = config['mura_interpolation']
 use_pascal_dataset = config['use_pascal_dataset']
+nr_epochs = config['nr_epochs']
+lr = config[ 'lr']
+lrate_decay = config['lrate_decay']
+reg_weight = config['reg_weight']
+pooling_operator = config['pooling_operator']
 
 IMAGE_SIZE = 512
 BATCH_SIZE = 1
@@ -79,13 +84,13 @@ if train_mode:
         processed_y=skip_processing,
         interpolation=mura_interpolation)
 
-    model = keras_model.build_model()
+    model = keras_model.build_model(reg_weight=reg_weight)
     model.summary()
 
     # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
     #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
     # model = keras_model.compile_model_regularization(model)
-    model = keras_model.compile_model_accuracy(model)
+    model = keras_model.compile_model_accuracy(model, lr, pooling_operator)
 
     early_stop = EarlyStopping(monitor='val_loss',
                                min_delta=0.001,
@@ -113,11 +118,11 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=1,
+        epochs=nr_epochs,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
-        callbacks=[checkpoint]
+        callbacks=[checkpoint, lrate]
     )
     print(model.get_weights()[2])
     print("history")
@@ -129,6 +134,11 @@ if train_mode:
                                       history.history['val_loss'],
                                       'train loss', 'validation loss', 'loss' + model_identifier,
                                       'loss' + model_identifier, results_path)
+
+    settings = np.array({'lr: ': lr, 'lrate_decay: ': lrate_decay,
+                  'reg_weight: ': reg_weight, 'pooling_operator: ':pooling_operator})
+    np.save(results_path + 'train_settings.npy', settings)
+
     ##### EVALUATE function
 
     print("evaluate validation")
@@ -172,32 +182,7 @@ if train_mode:
     predict_patch_and_save_results(model, 'test_set', df_test, skip_processing,
                                    BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                    mura_interpolation=mura_interpolation)
-    # ############ GENERATOR
-    # patch_labels = []
-    # for i in range(0, df_val.iloc[:, 1].shape[0]):  # (15)
-    #     g = process_loaded_labels(df_val.iloc[i, 1])
-    #     patch_labels.append(g)
-    # patch_labels_gt = np.asarray(patch_labels, dtype=np.float32).reshape(-1, 16, 16, 1)
-    # np.save(prediction_results_path + 'patch_labels_val_set_TF', patch_labels_gt,
-    #         allow_pickle=True)
-    #
-    # predictions = model.predict_generator(valid_generator, steps=valid_generator.__len__(), workers=1)
-    # np.save(prediction_results_path + 'predictions_val_set_TF', predictions,
-    #         allow_pickle=True)
-    #
-    # ######## Identity function
-    # import numpy as np
-    #
-    # x = Input((16, 16,))
-    # m = Model(x, x)
-    # m.compile(loss=keras_loss_v3, optimizer='adam', metrics=[])
-    #
-    # pr = np.reshape(predictions, (-1, 16, 16,))
-    # tr = np.reshape(patch_labels_gt, (-1, 16, 16,))
-    #
-    # score1 = m.evaluate(x=pr, y=tr, batch_size=1, verbose=0)
-    # print("Identity")
-    # print(score1)
+
 else:
     # model = load_model(trained_models_path+'best_model_single_100.h5', custom_objects={
     #     'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
