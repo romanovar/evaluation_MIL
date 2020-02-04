@@ -19,7 +19,7 @@ from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 1
+BATCH_SIZE = 10
 BATCH_SIZE_TEST = 1
 BOX_SIZE = 16
 
@@ -200,7 +200,7 @@ def cross_validation(config):
             files_found = 0
             print(trained_models_path)
             for file_path in Path("/data/rnromanova/trained_models/final/trained_models/cv_pascal/").glob(
-                    "CV_patient_split_0_-05" + "*.hdf5"):
+                    "CV_patient_split_0"+str(split) + "*.hdf5"):
                 print(file_path)
                 files_found += 1
 
