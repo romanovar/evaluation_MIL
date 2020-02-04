@@ -47,6 +47,12 @@ def cross_validation(config):
     use_pascal_dataset = config['use_pascal_dataset']
     pascal_image_path = config['pascal_image_path']
 
+    nr_epochs = config['nr_epochs']
+    lr = config['lr']
+    lrate_decay = config['lrate_decay']
+    reg_weight = config['reg_weight']
+    pooling_operator = config['pooling_operator']
+
     if use_xray_dataset:
         xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
                                localization_labels_path, results_path, class_name)
@@ -98,9 +104,9 @@ def cross_validation(config):
                 interpolation=mura_interpolation,
                 shuffle=True)
 
-            model = keras_model.build_model()
+            model = keras_model.build_model(reg_weight)
 
-            model = keras_model.compile_model_accuracy(model)
+            model = keras_model.compile_model_accuracy(model, lr, pool_op=pooling_operator)
             # model = keras_model.compile_model_regularization(model)
             # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
             #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
@@ -117,11 +123,11 @@ def cross_validation(config):
             history = model.fit_generator(
                 generator=train_generator,
                 steps_per_epoch=train_generator.__len__(),
-                epochs=30,
+                epochs=nr_epochs,
                 validation_data=valid_generator,
                 validation_steps=valid_generator.__len__(),
                 verbose=1,
-                callbacks=[checkpoint_on_epoch_end]
+                callbacks=[checkpoint_on_epoch_end, lrate]
             )
             filepath = trained_models_path + class_name +"CV_"+str(split)+"_nov.hdf5"
             model.save(filepath)
@@ -130,7 +136,9 @@ def cross_validation(config):
             print(history.history['keras_accuracy'])
             np.save(results_path + 'train_info_'+str(split)+'.npy', history.history)
 
-
+            settings = np.array({'lr: ': lr, 'lrate_decay: ': lrate_decay,
+                                 'reg_weight: ': reg_weight, 'pooling_operator: ': pooling_operator})
+            np.save(results_path + 'train_settings.npy', settings)
             keras_utils.plot_train_validation(history.history['loss'], history.history['val_loss'], 'train loss',
                                               'validation loss', 'CV_loss'+str(split), 'loss', results_path)
 

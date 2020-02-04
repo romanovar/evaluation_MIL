@@ -1,7 +1,7 @@
 import numpy as np
 from cnn.preprocessor import load_data as ld
 import pandas as pd
-from keras.callbacks import LearningRateScheduler
+from keras.callbacks import LearningRateScheduler, ModelCheckpoint
 from cnn.nn_architecture import keras_generators as gen
 from cnn import keras_utils
 from cnn.nn_architecture import keras_model
@@ -37,9 +37,14 @@ def train_on_subsets(config):
     pascal_image_path = config['pascal_image_path']
     use_pascal_dataset = config['use_pascal_dataset']
 
+    nr_epochs = config['nr_epochs']
+    lr = config['lr']
+    lrate_decay = config['lrate_decay']
+    reg_weight = config['reg_weight']
+    pooling_operator = config['pooling_operator']
 
     IMAGE_SIZE = 512
-    BATCH_SIZE = 10
+    BATCH_SIZE = 1
     BATCH_SIZE_TEST = 1
     BOX_SIZE = 16
 
@@ -61,18 +66,6 @@ def train_on_subsets(config):
 
 
     for split in range(0, CV_SPLITS):
-        # df_train, df_val, df_test, \
-        # df_bbox_train, df_bbox_test, train_only_class = ld.get_train_test_CV(xray_df, CV_SPLITS, split, random_seed=1,
-        #                                                                      label_col=class_name, ratio_to_keep=None)
-        #
-        # print('Training set: ' + str(df_train.shape))
-        # print('Validation set: ' + str(df_val.shape))
-        # print('Localization testing set: ' + str(df_test.shape))
-        # seeds = np.random.randint(low=100, high=1000, size=number_classifiers)
-        # print(seeds)
-        # np.save(results_path + 'subsets_seed_CV' + str(split) + '_' + str(number_classifiers), seeds)
-        # train_ind_coll = []
-
         if use_xray_dataset:
             df_train, df_val, df_test, df_bbox_train, \
             df_bbox_test, train_only_class = split_xray_cv(xray_df, CV_SPLITS,
@@ -128,9 +121,13 @@ def train_on_subsets(config):
                     interpolation=mura_interpolation,
                     shuffle=True)
 
-                model = keras_model.build_model()
-                model = keras_model.compile_model_accuracy(model)
-                # lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
+                model = keras_model.build_model(reg_weight)
+                model = keras_model.compile_model_accuracy(model, lr, pooling_operator)
+                lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
+
+                filepath = trained_models_path + "CV_patient_split_" + str(split) + "_-{epoch:02d}-{val_loss:.2f}.hdf5"
+                checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False,
+                                                          mode='min')
 
                 print("df train STEPS")
                 print(len(df_train) // BATCH_SIZE)
@@ -139,10 +136,11 @@ def train_on_subsets(config):
                 history = model.fit_generator(
                     generator=train_generator,
                     steps_per_epoch=train_generator.__len__(),
-                    epochs=4,
+                    epochs=nr_epochs,
                     validation_data=valid_generator,
                     validation_steps=valid_generator.__len__(),
-                    verbose=1
+                    verbose=1,
+                    callbacks=[checkpoint_on_epoch_end, lrate]
                 )
                 filepath = trained_models_path + 'subset_' + class_name + "_CV" + str(split) + '_' + str(
                     curr_classifier) + '_' + \
@@ -154,16 +152,9 @@ def train_on_subsets(config):
                 np.save(results_path + 'train_info_' + str(split) + '_' + str(curr_classifier) + '_' +
                         str(overlap_ratio) + '.npy', history.history)
 
-                # keras_utils.plot_train_validation(history.history['keras_accuracy'],
-                #                                   history.history['val_keras_accuracy'],
-                #                                   'train accuracy', 'validation accuracy', 'CV_accuracy' + str(split),
-                #                                   'accuracy',
-                #                                   results_path)
-                # keras_utils.plot_train_validation(history.history['accuracy_asproduction'],
-                #                                   history.history['val_accuracy_asproduction'],
-                #                                   'train accuracy', 'validation accuracy',
-                #                                   'CV_accuracy_asproduction' + str(split), 'accuracy_asproduction',
-                #                                   results_path)
+                settings = np.array({'lr: ': lr, 'lrate_decay: ': lrate_decay,
+                                     'reg_weight: ': reg_weight, 'pooling_operator: ': pooling_operator})
+                np.save(results_path + 'train_settings.npy', settings)
 
                 keras_utils.plot_train_validation(history.history['loss'], history.history['val_loss'], 'train loss',
                                                   'validation loss', 'CV_loss' + str(split)+ str(curr_classifier), 'loss', results_path)
