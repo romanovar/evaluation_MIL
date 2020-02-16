@@ -39,7 +39,6 @@ def train_on_subsets(config):
 
     nr_epochs = config['nr_epochs']
     lr = config['lr']
-    lrate_decay = config['lrate_decay']
     reg_weight = config['reg_weight']
     pooling_operator = config['pooling_operator']
 
@@ -152,8 +151,7 @@ def train_on_subsets(config):
                 np.save(results_path + 'train_info_' + str(split) + '_' + str(curr_classifier) + '_' +
                         str(overlap_ratio) + '.npy', history.history)
 
-                settings = np.array({'lr: ': lr, 'lrate_decay: ': lrate_decay,
-                                     'reg_weight: ': reg_weight, 'pooling_operator: ': pooling_operator})
+                settings = np.array({'lr: ': lr, 'reg_weight: ': reg_weight, 'pooling_operator: ': pooling_operator})
                 np.save(results_path + 'train_settings.npy', settings)
 
                 keras_utils.plot_train_validation(history.history['loss'], history.history['val_loss'], 'train loss',

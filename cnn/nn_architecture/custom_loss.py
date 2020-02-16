@@ -145,6 +145,10 @@ def lse_pooling_bag_level(nn_output, r =1):
     return (1/r)*(tf.log(mean))
 
 
+def max_pooling_bag_level(nn_output):
+    return tf.reduce_max(nn_output, axis=[1, 2])
+
+
 def lse_pooling_segmentation_images(nn_output, y_true, P, clas_nr, r =1):
 
     pos_patch_labels_filter = tf.equal(y_true, 1.0)
@@ -166,8 +170,14 @@ def lse_pooling_segmentation_images(nn_output, y_true, P, clas_nr, r =1):
     return result2
 
 
+def max_pooling_segmentation_images(nn_output, y_true, P, clas_nr):
+    pos_patches = tf.reshape((nn_output * y_true), (-1, P * P, clas_nr))
+    max = tf.reduce_max(pos_patches, axis=1)
+    return max
+
+
 def compute_image_label_prediction_v2(has_bbox, nn_output_class, y_true_class, P, class_nr, pooling_operator, r):
-    assert pooling_operator in ['mean', 'nor', 'lse'], "ensure you have the right pooling method "
+    assert pooling_operator in ['mean', 'nor', 'lse', 'max'], "ensure you have the right pooling method "
 
     if pooling_operator.lower()=='nor':
         prob = tf.where(has_bbox, compute_image_label_from_localization_NORM(nn_output_class, y_true_class, P, class_nr),
@@ -180,6 +190,10 @@ def compute_image_label_prediction_v2(has_bbox, nn_output_class, y_true_class, P
         prob = tf.where(has_bbox,
                         lse_pooling_segmentation_images(nn_output_class, y_true_class, P, class_nr),
                         lse_pooling_bag_level(nn_output_class, r=r))
+    elif pooling_operator.lower()=='max':
+        prob = tf.where(has_bbox,
+                        max_pooling_segmentation_images(nn_output_class, y_true_class, P, class_nr),
+                        max_pooling_bag_level(nn_output_class))
 
     return prob
 
@@ -257,3 +271,7 @@ def keras_loss_v3_lse01(y_true, y_pred):
 
 def keras_loss_v3_mean(y_true, y_pred):
     return compute_loss_v3(y_pred, y_true, 16, 1, 'mean', r=1, bbox_weight=5)
+
+
+def keras_loss_v3_max(y_true, y_pred):
+    return compute_loss_v3(y_pred, y_true, 16, 1, 'max', r=1, bbox_weight=5)

@@ -44,7 +44,6 @@ mura_interpolation = config['mura_interpolation']
 use_pascal_dataset = config['use_pascal_dataset']
 nr_epochs = config['nr_epochs']
 lr = config[ 'lr']
-lrate_decay = config['lrate_decay']
 reg_weight = config['reg_weight']
 pooling_operator = config['pooling_operator']
 
@@ -135,8 +134,7 @@ if train_mode:
                                       'train loss', 'validation loss', 'loss' + model_identifier,
                                       'loss' + model_identifier, results_path)
 
-    settings = np.array({'lr: ': lr, 'lrate_decay: ': lrate_decay,
-                  'reg_weight: ': reg_weight, 'pooling_operator: ':pooling_operator})
+    settings = np.array({'lr: ': lr, 'reg_weight: ': reg_weight, 'pooling_operator: ':pooling_operator})
     np.save(results_path + 'train_settings.npy', settings)
 
     ##### EVALUATE function
@@ -200,7 +198,7 @@ else:
     #     'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
 
     ######################################################################################
-    model = load_model(trained_models_path + 'best_model_shoulder_001-08-0.74.hdf5', custom_objects={
+    model = load_model(trained_models_path + '_xray_0003-30-0.38.hdf5', custom_objects={
         'keras_loss_v3': keras_loss_v3,  'keras_accuracy': keras_accuracy,
         'keras_binary_accuracy': keras_binary_accuracy,
         'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
