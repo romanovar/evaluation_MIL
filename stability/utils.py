@@ -95,7 +95,7 @@ def save_mean_stability(img_ind, jacc, corr_jacc, iou, spearman, res_path, file_
     df.to_csv(res_path+'mean_stability_'+file_identifier+'.csv')
 
 
-def save_mean_stability_auc(img_ind, auc, corr_jacc, spearman, res_path, file_identifier):
+def save_mean_stability_auc(img_ind, auc, corr_jacc, spearman, res_path, file_identifier, ap):
     df = pd.DataFrame()
     df['Image_ind'] = 0
     df['Mean Instance AUC'] = -100
@@ -111,5 +111,5 @@ def save_mean_stability_auc(img_ind, auc, corr_jacc, spearman, res_path, file_id
     df['Standard deviation AUC'] = np.std(auc, axis=1)
     df['Mean corrected jaccard'] = corr_jacc
     df['Mean Spearman'] = spearman
-
+    df['Mean AP'] = np.mean(ap, axis=1)
     df.to_csv(res_path + 'mean_stability_inst_auc_' + file_identifier + '.csv')
