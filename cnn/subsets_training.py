@@ -1,18 +1,25 @@
+import os
+from pathlib import Path
 import numpy as np
-from cnn.preprocessor import load_data as ld
 import pandas as pd
 from keras.callbacks import LearningRateScheduler, ModelCheckpoint
-from cnn.nn_architecture import keras_generators as gen
+from keras.engine.saving import load_model
+
 from cnn import keras_utils
-from cnn.nn_architecture import keras_model
-import os
 from cnn.keras_preds import predict_patch_and_save_results
+from cnn.nn_architecture import keras_generators as gen
+from cnn.nn_architecture import keras_model
+from cnn.nn_architecture.custom_loss import keras_loss_v3_nor
+from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, keras_binary_accuracy, accuracy_asloss, \
+    accuracy_asproduction
+from cnn.preprocessor import load_data as ld
 from cnn.preprocessor.load_data import load_xray, split_xray_cv
-from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, get_train_subset_mura, \
+from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, get_train_subset_mura, \
     filter_rows_and_columns
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 
 
 def train_on_subsets(config):
@@ -177,3 +184,39 @@ def train_on_subsets(config):
                                                str(overlap_ratio), df_test,
                                                skip_processing, BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE,
                                                prediction_results_path, mura_interpolation)
+            elif not train_mode:
+                files_found = 0
+                print(trained_models_path)
+                for file_path in Path(trained_models_path).glob(
+                        "CV_patient_split_" + str(curr_classifier) + "_-04" + "*.hdf5"):
+                    print(file_path)
+                    files_found += 1
+
+                assert files_found == 1, "No model found/ Multiple models found, not clear which to use "
+                print(str(files_found))
+                ### OLD MODEL loading
+                # model = load_model(str(file_path),
+                #                    custom_objects={
+                #                        'keras_loss_v2': keras_loss_v2, 'keras_accuracy': keras_accuracy,
+                #                        'keras_binary_accuracy': keras_binary_accuracy,
+                #                        'accuracy_asloss': accuracy_asloss,
+                #                        'accuracy_asproduction': accuracy_asproduction})
+
+                model = load_model(str(file_path),
+                                   custom_objects={
+                                       'keras_loss_v3_nor': keras_loss_v3_nor, 'keras_accuracy': keras_accuracy,
+                                       'keras_binary_accuracy': keras_binary_accuracy,
+                                       'accuracy_asloss': accuracy_asloss,
+                                       'accuracy_asproduction': accuracy_asproduction})
+
+                model = keras_model.compile_model_accuracy(model, lr, pooling_operator)
+
+                predict_patch_and_save_results(model, "train_set_CV" + (str(split)), df_train, skip_processing,
+                                               BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                               mura_interpolation)
+                predict_patch_and_save_results(model, "val_set_CV" + (str(split)), df_val, skip_processing,
+                                               BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                               mura_interpolation)
+                predict_patch_and_save_results(model, "test_set_CV" + (str(split)), df_test, skip_processing,
+                                               BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
+                                               mura_interpolation)
