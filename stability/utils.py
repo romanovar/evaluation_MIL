@@ -2,9 +2,7 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 
 from stability.preprocessor.preprocessing import binarize_predictions
-from stability.stability_2classifiers.scores_2classifiers import compute_additional_scores_kappa, corrected_IOU, \
-    corrected_overlap_coefficient, corrected_positive_Jaccard, positive_Jaccard_index_batch, \
-    corrected_Jaccard_pigeonhole, overlap_coefficient
+from stability.stability_2classifiers.scores_2classifiers import compute_additional_scores_kappa
 import numpy as np
 
 
@@ -100,10 +98,7 @@ def save_mean_stability_auc(img_ind, auc, corr_jacc, spearman, res_path, file_id
     df['Image_ind'] = 0
     df['Mean Instance AUC'] = -100
     df['Standard deviation AUC'] = -100
-
-    # df['Mean Jaccard'] = -100
     df['Mean corrected jaccard'] = -100
-    # df['mean IoU'] = -100
     df['Mean Spearman'] = -100
 
     df['Image_ind'] = img_ind
@@ -113,3 +108,28 @@ def save_mean_stability_auc(img_ind, auc, corr_jacc, spearman, res_path, file_id
     df['Mean Spearman'] = spearman
     df['Mean AP'] = np.mean(ap, axis=1)
     df.to_csv(res_path + 'mean_stability_inst_auc_' + file_identifier + '.csv')
+
+
+def save_mean_dice(img_ind,dice, accuracy, res_path, file_identifier):
+    '''
+
+    :param img_ind: list with image names/ indeces
+    :param dice: list with dice scores for each image
+    :param accuracy: list with accuracy for each image
+    :param res_path: path to save generated file
+    :param file_identifier: unique name to save the file
+    :return: save s a .csv file with the dice score and accuracy from all classifiers for each image
+    '''
+    df = pd.DataFrame()
+    df['Image_ind'] = 0
+    df['Mean DICE'] = -100
+    df['STD DICE'] = -100
+    df['Mean Accuracy'] = -100
+
+    df['Image_ind'] = img_ind
+    df['Mean DICE'] = np.mean(dice, axis=1)
+    df['STD DICE'] = np.std(dice, axis=1)
+    df['Mean Accuracy'] = np.mean(accuracy, axis=1)
+    df.to_csv(res_path + 'mean_dice_inst_' + file_identifier + '.csv')
+
+

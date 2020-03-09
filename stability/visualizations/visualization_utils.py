@@ -1,7 +1,6 @@
-import PIL
 from pathlib import Path
+
 import matplotlib
-from PIL import ImageDraw
 from scipy.optimize import curve_fit
 
 from cnn.keras_utils import image_larger_input, calculate_scale_ratio
@@ -13,7 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 import matplotlib.cm as cm
-import matplotlib
 import seaborn as sns
 
 from stability.preprocessor.preprocessing import binarize_predictions
@@ -32,18 +30,18 @@ def get_image_index_from_pathstring(string_path):
     return string_path[-16:-4]
 
 
-def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_predictions_coll, classifier_name,
+def visualize_single_image_1class_2predictions(img_ind_coll, labels_coll, raw_predictions_coll, classifier_name,
                                                auc_score, raw_predictions_coll2, classifier_name2, auc_score2,
                                                img_path, results_path, class_name,
-                                               image_title_suffix,  jaccard_ind, corrected_jaccard,
-                                               corrected_jaccard_pigeonhole,  corrected_iou, overlap_ind, corr_overlap,
+                                               image_title_suffix, jaccard_ind, corrected_jaccard,
+                                               corrected_jaccard_pigeonhole, corrected_iou, overlap_ind, corr_overlap,
                                                pearson_corr_coef, spearman_corr_coef):
     # for each row/observation in the batch
     for ind in range(0, img_ind_coll.shape[0]):
         print(ind)
         threshold_transparency = 0.01
 
-        instance_label_gt = labels_coll[ind, :, :,0]
+        instance_label_gt = labels_coll[ind, :, :, 0]
         img_ind = img_ind_coll[ind]
         raw_prediction = raw_predictions_coll[ind, :, :, 0]
         auc = auc_score[ind]
@@ -54,14 +52,13 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         img_dir = Path(img_path + get_image_index_from_pathstring(img_ind) + '.png').__str__()
         img = plt.imread(img_dir)
 
-        scale_width = int(img.shape[1]/16)
-        scale_height =int(img.shape[0]/16)
+        scale_width = int(img.shape[1] / 16)
+        scale_height = int(img.shape[0] / 16)
         fig, axs = plt.subplots(2, 2, figsize=(10, 10))
-
 
         ## PREDICTIONS: BBOX of prediction and label
         ax1 = plt.subplot(1, 2, 1)
-        ax1.set_title('Prediction Classifier '+ classifier_name, {'fontsize': 9})
+        ax1.set_title('Prediction Classifier ' + classifier_name, {'fontsize': 9})
         y = (np.where(instance_label_gt == instance_label_gt.max()))[0]
         x = (np.where(instance_label_gt == instance_label_gt.max()))[1]
         upper_left_x = np.min(x)
@@ -74,8 +71,7 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
         else:
             img_bbox = img
         cv2.rectangle(img_bbox, (upper_left_x * scale_width, upper_left_y * scale_height),
-                                 ((np.amax(x) + 1) * scale_width, (np.amax(y) + 1) * scale_height), (125, 0, 0), 5)
-
+                      ((np.amax(x) + 1) * scale_width, (np.amax(y) + 1) * scale_height), (125, 0, 0), 5)
 
         ax1.imshow(img_bbox)
         red_patch = matplotlib.patches.Patch(color='red', label='Ground truth annotation')
@@ -83,38 +79,41 @@ def visualize_single_image_1class_2predictions(img_ind_coll,labels_coll,  raw_pr
 
         pred_resized = np.kron(raw_prediction, np.ones((64, 64), dtype=float))
         pred_resized[pred_resized < threshold_transparency] = np.nan
-        img1_mask = ax1.imshow(pred_resized, 'BuPu', zorder=0, alpha = 0.8, vmin=0, vmax=1)
-        ax1.set_xlabel("AUC instance score: "+ ("{0:.3f}".format(auc)))
-        fig.colorbar(img1_mask,ax=ax1, fraction=0.046)
+        img1_mask = ax1.imshow(pred_resized, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
+        ax1.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc)))
+        fig.colorbar(img1_mask, ax=ax1, fraction=0.046)
 
-        fig.text(-0.2, 0.5, '\n Only patches with prediction score above '+ str(threshold_transparency) +" are shown! ",
+        fig.text(-0.2, 0.5,
+                 '\n Only patches with prediction score above ' + str(threshold_transparency) + " are shown! ",
                  horizontalalignment='center',
                  verticalalignment='center', fontsize=9)
 
         ## PREDICTIONS: BBOX of prediction and label
         ax2 = plt.subplot(1, 2, 2)
-        ax2.set_title('Prediction Classifier '+ classifier_name2, {'fontsize': 9})
+        ax2.set_title('Prediction Classifier ' + classifier_name2, {'fontsize': 9})
 
         ax2.imshow(img_bbox, 'bone')
         pred_resized2 = np.kron(raw_prediction2, np.ones((64, 64), dtype=float))
         pred_resized2[pred_resized2 < threshold_transparency] = np.nan
-        img2_mask = ax2.imshow(pred_resized2, 'BuPu', zorder=0, alpha=0.8,  vmin=0, vmax=1)
+        img2_mask = ax2.imshow(pred_resized2, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
         ax2.set_xlabel("AUC instance score: " + ("{0:.3f}".format(auc2)))
         fig.colorbar(img2_mask, ax=ax2, fraction=0.046)
 
-        fig.text(-0.2, 0.43, '\n Overlap index: ' + "{:.2f}".format(overlap_ind[ind])+
-                 '\n Corrected overlap index: ' + "{:.2f}".format(corr_overlap[ind])+
-                  '\n positive Jaccard distance: ' + "{:.2f}".format(jaccard_ind[ind])+
-                 '\n Corrected positive Jaccard distance: ' + "{:.2f}".format(corrected_jaccard[ind])+
-                 '\n Corrected positive Jaccard using pigeonhole: ' + "{:.2f}".format(corrected_jaccard_pigeonhole[ind])+
+        fig.text(-0.2, 0.43, '\n Overlap index: ' + "{:.2f}".format(overlap_ind[ind]) +
+                 '\n Corrected overlap index: ' + "{:.2f}".format(corr_overlap[ind]) +
+                 '\n positive Jaccard distance: ' + "{:.2f}".format(jaccard_ind[ind]) +
+                 '\n Corrected positive Jaccard distance: ' + "{:.2f}".format(corrected_jaccard[ind]) +
+                 '\n Corrected positive Jaccard using pigeonhole: ' + "{:.2f}".format(
+            corrected_jaccard_pigeonhole[ind]) +
                  '\n Corrected IoU: ' + "{:.2f}".format(corrected_iou[ind]) +
-                 '\n Pearson correlation coefficient: ' + "{:.2f}".format(pearson_corr_coef[ind])+
+                 '\n Pearson correlation coefficient: ' + "{:.2f}".format(pearson_corr_coef[ind]) +
                  '\n Spearman rank correlation coefficient: ' + "{:.2f}".format(spearman_corr_coef[ind]),
                  horizontalalignment='center', verticalalignment='center', fontsize=9)
 
         plt.tight_layout()
-        fig.savefig(results_path + get_image_index_from_pathstring(img_ind) + '_' + class_name + image_title_suffix + '.jpg',
-                    bbox_inches='tight')
+        fig.savefig(
+            results_path + get_image_index_from_pathstring(img_ind) + '_' + class_name + image_title_suffix + '.jpg',
+            bbox_inches='tight')
         plt.close(fig)
 
 
@@ -129,9 +128,9 @@ def overlap_predictions_heatmap(raw_predictions_coll, img_ind, classifiers_nr=5)
 
 def bar_columns_repetitive_predictions(raw_predictions_coll, img_ind, classifiers_nr=5):
     sum_binary_pred_all_classifiers = overlap_predictions_heatmap(raw_predictions_coll, img_ind)
-    x_labels= []
+    x_labels = []
     data = []
-    for overlap_nr in range(0, classifiers_nr+1):
+    for overlap_nr in range(0, classifiers_nr + 1):
         data.append(np.sum(sum_binary_pred_all_classifiers == overlap_nr, dtype=int))
         x_labels.append(overlap_nr)
     return data, x_labels
@@ -140,7 +139,7 @@ def bar_columns_repetitive_predictions(raw_predictions_coll, img_ind, classifier
 def overlay_predictions(raw_predictions_coll, img_ind):
     classifiers_nr = 5
     binary_pred_coll = []
-    for classifier in range(0, classifiers_nr ):
+    for classifier in range(0, classifiers_nr):
         binary_pred_coll.append(np.array(raw_predictions_coll[classifier][img_ind, :, :, 0] >= 0.5, dtype=np.int))
     # sum overlap  across all 5 classifiers
     sum_binary_pred_all_classifiers = np.sum(np.asarray(binary_pred_coll), axis=0)
@@ -150,7 +149,7 @@ def overlay_predictions(raw_predictions_coll, img_ind):
 def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll,
                                                results_path,
                                                class_name,
-                                               image_title_suffix, other_img_path=None, histogram = True,
+                                               image_title_suffix, other_img_path=None, histogram=True,
                                                threshold_transparency=0.01):
     '''
     This functions visualizes the prediction of different classifiers only for xray dataset
@@ -264,19 +263,17 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
         img5_mask = ax5.imshow(pred_resized5, 'BuPu', zorder=0, alpha=0.8, vmin=0, vmax=1)
         fig.colorbar(img5_mask, ax=ax5, fraction=0.046)
 
-
         if histogram:
             data, xlabels = bar_columns_repetitive_predictions(raw_predictions_coll, ind)
             ax4 = plt.subplot(2, 3, 6)
             ax4.bar(xlabels, data, align='center', alpha=0.5)
-
 
             ax4.set_xlabel('Times classified as positive')
             ax4.set_ylabel('Number of instances')
         else:
             heatmap_overlap = overlap_predictions_heatmap(raw_predictions_coll, ind)
             ax6 = plt.subplot(2, 3, 6)
-            img6  = ax6.imshow(heatmap_overlap, 'seismic', vmin=0, vmax=5)
+            img6 = ax6.imshow(heatmap_overlap, 'seismic', vmin=0, vmax=5)
             fig.colorbar(img6, ax=ax6, fraction=0.05)
 
         plt.tight_layout()
@@ -286,8 +283,8 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
         plt.close(fig)
 
 
-def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,  class_name,image_title_suffix,
-                                 pascal_dataset, other_img_path = None, histogram=False, threshold_transparency=0.01):
+def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path, class_name, image_title_suffix,
+                                 pascal_dataset, other_img_path=None, histogram=False, threshold_transparency=0.01):
     if threshold_transparency >= 0.5:
         image_title_suffix += '_jacc'
     elif threshold_transparency == 0:
@@ -298,7 +295,7 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
 
         # instance_label_gt = labels_coll[0][ind, :, :, 0]
         img_path = img_ind_coll[0][ind]
-        predictions_to_image_scale = int(512/16)
+        predictions_to_image_scale = int(512 / 16)
 
         img_ind = get_image_index(False, img_ind_coll[0], ind)
         # img_path = "C:/Users/s161590/Downloads/voc2005_1.tar/voc2005_1/PNGImages/TUGraz_cars/carsgraz_234.png"
@@ -315,9 +312,10 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
             img_dir = Path(other_img_path + get_image_index_from_pathstring(img_ind) + '.png').__str__()
 
         if decrease_needed:
-            ratio = calculate_scale_ratio(image_width=img_width, image_height=img_height, input_width=512, input_height=512)
+            ratio = calculate_scale_ratio(image_width=img_width, image_height=img_height, input_width=512,
+                                          input_height=512)
             assert ratio >= 1.00, "wrong ratio - it will increase image size"
-            assert int( img_width/ ratio) ==  512 or int(img_height / ratio) == 512, \
+            assert int(img_width / ratio) == 512 or int(img_height / ratio) == 512, \
                 "error in computation"
             # image = img_to_array(load_img(image_dir, target_size=(int(img_height / ratio), int(img_width / ratio)),
             #                               color_mode='rgb'))
@@ -433,12 +431,12 @@ def visualize_5_classifiers(xray_dataset, pascal_dataset, img_ind_coll, labels_c
         visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll,
                                                    results_path,
                                                    class_name,
-                                                   image_title_suffix, other_img_path = img_path, histogram=False,
+                                                   image_title_suffix, other_img_path=img_path, histogram=False,
                                                    threshold_transparency=0.5)
     else:
         visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,
-                                     class_name, image_title_suffix, pascal_dataset= pascal_dataset,
-                                     other_img_path = img_path, histogram=True,
+                                     class_name, image_title_suffix, pascal_dataset=pascal_dataset,
+                                     other_img_path=img_path, histogram=True,
                                      threshold_transparency=0.5)
 
 
@@ -450,15 +448,15 @@ def draw_heatmap(df, labels, ax, font_size_annotations, drop_duplicates):
 
         htmp = sns.heatmap(df, cmap=cmap, mask=mask, square=True, annot=True,
                            annot_kws={"size": font_size_annotations}, xticklabels=labels, yticklabels=labels,
-                           linewidth=.5, cbar_kws={"shrink": .5}, ax=ax,  vmin=0, vmax=1)
+                           linewidth=.5, cbar_kws={"shrink": .5}, ax=ax, vmin=0, vmax=1)
     else:
         htmp = sns.heatmap(df, cmap=cmap, square=True, annot=True,
                            annot_kws={"size": font_size_annotations}, xticklabels=labels, yticklabels=labels,
-                           linewidth=.5, cbar_kws={"shrink": .5}, ax=ax,  vmin=0, vmax=1)
+                           linewidth=.5, cbar_kws={"shrink": .5}, ax=ax, vmin=0, vmax=1)
     return htmp
 
 
-def visualize_correlation_heatmap(df, res_path, img_ind, labels, dropDuplicates = True):
+def visualize_correlation_heatmap(df, res_path, img_ind, labels, dropDuplicates=True):
     sns.set_style(style='white')
     f, ax = plt.subplots(figsize=(7, 5))
     htmp = draw_heatmap(df, labels, ax, 15, dropDuplicates)
@@ -468,7 +466,8 @@ def visualize_correlation_heatmap(df, res_path, img_ind, labels, dropDuplicates 
     return htmp
 
 
-def combine_correlation_heatmaps_next_to_each_other(df1, df2, subtitle1, subtitle2, labels, res_path, img_ind, drop_duplicates):
+def combine_correlation_heatmaps_next_to_each_other(df1, df2, subtitle1, subtitle2, labels, res_path, img_ind,
+                                                    drop_duplicates):
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
     sns.set_style(style='white')
     sns.set(font_scale=1)
@@ -477,7 +476,7 @@ def combine_correlation_heatmaps_next_to_each_other(df1, df2, subtitle1, subtitl
     htmp = draw_heatmap(df1, labels, ax1, 10, drop_duplicates)
     ax1.set_title('Stability Index: ' + subtitle1, {'fontsize': 9})
 
-    ax2= plt.subplot(1, 2, 2)
+    ax2 = plt.subplot(1, 2, 2)
     htmp = draw_heatmap(df2, labels, ax2, 10, drop_duplicates)
     ax2.set_title('Stability Index: ' + subtitle2, {'fontsize': 9})
     plt.show()
@@ -486,7 +485,7 @@ def combine_correlation_heatmaps_next_to_each_other(df1, df2, subtitle1, subtitl
     return htmp
 
 
-def make_scatterplot(y_axis_collection, y_axis_title, x_axis_collection, x_axis_title, res_path, threshold_prefix =None):
+def make_scatterplot(y_axis_collection, y_axis_title, x_axis_collection, x_axis_title, res_path, threshold_prefix=None):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
     colors = cm.rainbow(np.linspace(0, 1, len(y_axis_collection)))
@@ -501,10 +500,10 @@ def make_scatterplot(y_axis_collection, y_axis_title, x_axis_collection, x_axis_
     plt.show()
     if threshold_prefix is not None:
         fig.savefig(
-            res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '_'+ str(threshold_prefix)+'.jpg',
+            res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '_' + str(threshold_prefix) + '.jpg',
             bbox_inches='tight')
     else:
-        fig.savefig(res_path +  'scatter_' + x_axis_title + '_' + y_axis_title + '.jpg', bbox_inches='tight')
+        fig.savefig(res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '.jpg', bbox_inches='tight')
 
     plt.close(fig)
 
@@ -514,7 +513,7 @@ def exp_fit_func(x, a, b, c):
 
 
 def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_collection, x_axis_title, res_path, y_errors,
-                                   fitting_curve = False, error_bar = False, bin_threshold_prefix =None, x_errors=None):
+                                   fitting_curve=False, error_bar=False, bin_threshold_prefix=None, x_errors=None):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
 
@@ -524,7 +523,7 @@ def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_colle
         x_errors = np.zeros(np.array(x_axis_collection).shape)
     for x, y, y_error_bar, x_error_bar in zip(x_axis_collection, y_axis_collection, y_errors, x_errors):
         ax.scatter(x, y, edgecolors='none', s=30, color="b")
-        if (error_bar==True) and (y_errors is not None):
+        if (error_bar == True) and (y_errors is not None):
             ax.errorbar(x, y, xerr=x_error_bar, yerr=y_error_bar, color="b")
     ax.set(xlim=(0, 1), ylim=(0, 1))
     if fitting_curve:
@@ -539,8 +538,7 @@ def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_colle
         print("I am the fitting curve: ")
         print(popt)
         plt.plot(np.sort(x_axis_collection), exp_fit_func(np.sort(x_axis_collection), *popt), 'r--',
-                 label = 'fit: a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt))
-
+                 label='fit: a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt))
 
     plt.xlabel(x_axis_title)
     plt.ylabel(y_axis_title)
@@ -550,18 +548,18 @@ def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_colle
 
     if bin_threshold_prefix is not None:
         fig.savefig(
-            res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '_'+ str(bin_threshold_prefix)+'.jpg',
+            res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '_' + str(bin_threshold_prefix) + '.jpg',
             bbox_inches='tight')
     else:
-        fig.savefig(res_path +  'scatter_' + x_axis_title + '_' + y_axis_title + '.jpg', bbox_inches='tight')
+        fig.savefig(res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '.jpg', bbox_inches='tight')
 
     plt.close(fig)
 
 
-def make_scatterplot_with_errorbar_v2(y_axis_collection, y_axis_collection2,  y_axis_title, x_axis_collection,
-                                      x_axis_title, res_path, y_errors, y_errors2, error_bar = False,
-                                      bin_threshold_prefix =None, x_errors=None):
-    fig = plt.figure(figsize=( 15,10))
+def make_scatterplot_with_errorbar_v2(y_axis_collection, y_axis_collection2, y_axis_title, x_axis_collection,
+                                      x_axis_title, res_path, y_errors, y_errors2, error_bar=False,
+                                      bin_threshold_prefix=None, x_errors=None):
+    fig = plt.figure(figsize=(15, 10))
     ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
     plt.grid("True")
     colors = cm.rainbow(np.linspace(0, 1, len(y_axis_collection)))
@@ -579,7 +577,7 @@ def make_scatterplot_with_errorbar_v2(y_axis_collection, y_axis_collection2,  y_
         ax.scatter(x, y, c=color, edgecolors='none', s=150)
         ax.scatter(x, y2, c=color, edgecolors='none', s=150, marker=">")
 
-        if (error_bar==True) and (y_errors is not None):
+        if (error_bar == True) and (y_errors is not None):
             ax.errorbar(x, y, xerr=x_error_bar, yerr=y_error_bar, ecolor=color)
             ax.errorbar(x, y2, xerr=x_error_bar, yerr=y_error_bar2, ecolor=color)
 
@@ -591,10 +589,10 @@ def make_scatterplot_with_errorbar_v2(y_axis_collection, y_axis_collection2,  y_
 
     if bin_threshold_prefix is not None:
         fig.savefig(
-            res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '_'+ str(bin_threshold_prefix)+'.jpg',
+            res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '_' + str(bin_threshold_prefix) + '.jpg',
             bbox_inches='tight')
     else:
-        fig.savefig(res_path +  'scatter_' + x_axis_title + '_' + y_axis_title + '.jpg', bbox_inches='tight')
+        fig.savefig(res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '.jpg', bbox_inches='tight')
 
     plt.close(fig)
 
@@ -608,15 +606,17 @@ def scatterplot_AUC_stabscore(y_axis_collection1, y_axis_title1, y_axis_collecti
     concat_metrics = np.append([np.asarray(y_axis_collection1)], [np.asarray(y_axis_collection2)], axis=0)
     mean_metrics = np.mean(concat_metrics, axis=0)
     stand_dev = np.std(concat_metrics, axis=0)
-    make_scatterplot(mean_metrics, 'mean_'+y_axis_title1 + '_'+y_axis_title2, x_axis_collection, x_axis_title,
-                                   res_path, threshold_prefix=threshold)
-    make_scatterplot_with_errorbar(mean_metrics, 'mean_'+y_axis_title1 + '_'+y_axis_title2 + '_error', x_axis_collection, x_axis_title,
-                                   res_path,fitting_curve=False, y_errors=stand_dev, error_bar=True,
+    make_scatterplot(mean_metrics, 'mean_' + y_axis_title1 + '_' + y_axis_title2, x_axis_collection, x_axis_title,
+                     res_path, threshold_prefix=threshold)
+    make_scatterplot_with_errorbar(mean_metrics, 'mean_' + y_axis_title1 + '_' + y_axis_title2 + '_error',
+                                   x_axis_collection, x_axis_title,
+                                   res_path, fitting_curve=False, y_errors=stand_dev, error_bar=True,
                                    bin_threshold_prefix=threshold)
 
 
-def plot_change_stability_varying_threshold_per_image(overlap_coll, jacc_coll, corr_overlap_col, corr_jaccard_coll, corr_iou_coll,
-                                            corr_jaccard_pgn_coll, img_ind, threshold_coll, res_path):
+def plot_change_stability_varying_threshold_per_image(overlap_coll, jacc_coll, corr_overlap_col, corr_jaccard_coll,
+                                                      corr_iou_coll,
+                                                      corr_jaccard_pgn_coll, img_ind, threshold_coll, res_path):
     plot_line_graph(overlap_coll, 'Overlap coefficient', jacc_coll, 'Positive Jaccard distance',
                     corr_overlap_col, 'Corrected Overlap coefficient', corr_jaccard_coll,
                     'Corrected Positive Jaccard distance', corr_iou_coll, "Corrected IoU",
@@ -665,12 +665,12 @@ def plot_change_stability_varying_threshold(raw_predictions1, raw_predictions2, 
     for idx in range(0, len(image_indices)):
         img_index = (image_indices[idx])[-16:-4]
 
-        plot_change_stability_varying_threshold_per_image(np.asarray(overlap_collection)[:,idx],
-                                                          np.asarray(jacc_collection)[:,idx],
-                                                          np.asarray(corr_overlap_collection)[:,idx],
-                                                          np.asarray(corr_jacc_collection)[:,idx],
-                                                          np.asarray(corr_iou_collection)[:,idx],
-                                                          np.asarray(jacc_pgn_collection)[:,idx],
+        plot_change_stability_varying_threshold_per_image(np.asarray(overlap_collection)[:, idx],
+                                                          np.asarray(jacc_collection)[:, idx],
+                                                          np.asarray(corr_overlap_collection)[:, idx],
+                                                          np.asarray(corr_jacc_collection)[:, idx],
+                                                          np.asarray(corr_iou_collection)[:, idx],
+                                                          np.asarray(jacc_pgn_collection)[:, idx],
                                                           img_index, threshold_list, res_path)
         std = np.std(np.asarray(corr_jacc_collection)[:, idx])
         st_dev_collection.append(round(std, 4))
@@ -679,23 +679,22 @@ def plot_change_stability_varying_threshold(raw_predictions1, raw_predictions2, 
 
 def visualize_instAUC_vs_stability_index(auc_1, auc1_text, auc_2, overlap, corr_overlap, jacc, corr_jacc, corr_jacc_pgn,
                                          corr_iou, res_path, threshold_bin):
-    scatterplot_AUC_stabscore(auc_1, auc1_text, auc_2, "AUC2", overlap, "overlap_coeff", res_path,threshold_bin)
-    scatterplot_AUC_stabscore(auc_1,  auc1_text, auc_2, "AUC2", corr_overlap, "corrected_overlap", res_path,
+    scatterplot_AUC_stabscore(auc_1, auc1_text, auc_2, "AUC2", overlap, "overlap_coeff", res_path, threshold_bin)
+    scatterplot_AUC_stabscore(auc_1, auc1_text, auc_2, "AUC2", corr_overlap, "corrected_overlap", res_path,
                               threshold_bin)
-    scatterplot_AUC_stabscore(auc_1,  auc1_text, auc_2, "AUC2", corr_jacc_pgn, "corrected_jaccard_pigeonhole", res_path,
+    scatterplot_AUC_stabscore(auc_1, auc1_text, auc_2, "AUC2", corr_jacc_pgn, "corrected_jaccard_pigeonhole", res_path,
                               threshold_bin)
-    scatterplot_AUC_stabscore(auc_1,  auc1_text, auc_2, "AUC2", corr_iou, "corrected_iou", res_path, threshold_bin)
-    scatterplot_AUC_stabscore(auc_1,  auc1_text, auc_2, "AUC2", jacc, "jaccard", res_path, threshold_bin)
-    scatterplot_AUC_stabscore(auc_1,  auc1_text, auc_2, "AUC2", corr_jacc, "corrected_jaccard", res_path, threshold_bin)
+    scatterplot_AUC_stabscore(auc_1, auc1_text, auc_2, "AUC2", corr_iou, "corrected_iou", res_path, threshold_bin)
+    scatterplot_AUC_stabscore(auc_1, auc1_text, auc_2, "AUC2", jacc, "jaccard", res_path, threshold_bin)
+    scatterplot_AUC_stabscore(auc_1, auc1_text, auc_2, "AUC2", corr_jacc, "corrected_jaccard", res_path, threshold_bin)
 
 
-def plot_line_graph(line1, label1, line2, label2, line3, label3, line4, label4, line5, label5,  line6, label6,
+def plot_line_graph(line1, label1, line2, label2, line3, label3, line4, label4, line5, label5, line6, label6,
                     x_axis_data, x_label, results_path, fig_name, text_string):
-
     fig = plt.figure()
     fig.text(0, 0, text_string, horizontalalignment='center', verticalalignment='center', fontsize=9)
     ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
-    plt.plot(x_axis_data, line1, 'g', label = label1)
+    plt.plot(x_axis_data, line1, 'g', label=label1)
     plt.plot(x_axis_data, line2, 'b', label=label2)
     if line5 is not None:
         plt.plot(x_axis_data, line5, '-r', label=label5)
@@ -712,8 +711,7 @@ def plot_line_graph(line1, label1, line2, label2, line3, label3, line4, label4, 
     plt.legend()
     plt.show()
     fig.savefig(
-        results_path +  fig_name + '.jpg',
+        results_path + fig_name + '.jpg',
         bbox_inches='tight')
     plt.close(fig)
     plt.clf()
-
