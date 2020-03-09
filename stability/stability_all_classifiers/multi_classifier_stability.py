@@ -624,11 +624,22 @@ def convert_mask_image_to_binary_matrix(mask_parent_folder, masks):
 
 
 def stability_all_classifiers_instance_level_pascal(config, classifiers):
+    '''
+    This functions measures the instance performance only on the Pascal dataset
+    :param config: configurations
+    :param classifiers: list of classifier names
+    :return: evaluation of the stability score against the instance performance.
+             instance performance is measured with the dice score betweeen predictions and available segmentations.
+             Saves .csv files for dice score across classifiers for each image and visualizations of stability
+             against instance performance.
+    '''
     image_path = config['image_path']
     stability_res_path = config['stability_results']
-    masks_path1 = "C:/Users/s161590/Downloads/voc2005_1.tar/voc2005_1/GTMasks/ETHZ_sideviews_cars"
+    pascal_image_path = config['pascal_image_path']
+    pascal_dir  = str(pascal_image_path.parent).replace("\\", "/")
+    masks_path1 = pascal_dir + "/GTMasks/ETHZ_sideviews_cars"
 
-    masks_path_2 = "C:/Users/s161590/Downloads/voc2005_1.tar/voc2005_1/GTMasks/TUGraz_cars"
+    masks_path_2 =  pascal_dir + "/GTMasks/TUGraz_cars"
 
     prediction_results_path = config['prediction_results_path']
 
@@ -637,7 +648,6 @@ def stability_all_classifiers_instance_level_pascal(config, classifiers):
     indices_to_keep_coll= []
     for ind in range(5):
         img_ind = np.load(prediction_results_path+'image_indices_'+classifiers[ind], allow_pickle=True)
-        # image_indices_coll.append(img_ind)
         gt_masks, image_name_to_keep, indices_to_keep, parents_folder =filter_images_with_masks(masks_path1, masks_path_2, img_ind)
         masks_labels_coll.append(gt_masks)
         image_name_coll.append(image_name_to_keep)
