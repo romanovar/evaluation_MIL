@@ -1,4 +1,5 @@
 import numpy as np
+from pathlib import Path
 from keras_preprocessing.image import load_img, img_to_array
 from sklearn.metrics import roc_auc_score, average_precision_score
 
@@ -636,7 +637,7 @@ def stability_all_classifiers_instance_level_pascal(config, classifiers):
     image_path = config['image_path']
     stability_res_path = config['stability_results']
     pascal_image_path = config['pascal_image_path']
-    pascal_dir  = str(pascal_image_path.parent).replace("\\", "/")
+    pascal_dir  = str(Path(pascal_image_path).parent).replace("\\", "/")
     masks_path1 = pascal_dir + "/GTMasks/ETHZ_sideviews_cars"
 
     masks_path_2 =  pascal_dir + "/GTMasks/TUGraz_cars"
