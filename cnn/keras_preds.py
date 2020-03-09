@@ -1,9 +1,8 @@
 import numpy as np
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, roc_auc_score
 from cnn.nn_architecture.custom_performance_metrics import combine_predictions_each_batch, compute_auc_1class
 import cnn.nn_architecture.keras_generators as gen
-from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, plot_confusion_matrix, \
-    process_loaded_labels
+from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, plot_confusion_matrix
 
 
 def predict_patch_and_save_results(saved_model, file_unique_name, data_set, processed_y,
@@ -33,24 +32,6 @@ def predict_patch_and_save_results(saved_model, file_unique_name, data_set, proc
         all_patch_labels = combine_predictions_each_batch(y_cast, all_patch_labels, batch_ind)
     np.save(res_path + 'image_indices_' + file_unique_name, all_img_ind)
     np.save(res_path + 'patch_labels_' + file_unique_name, all_patch_labels)
-
-    # patch_labels = []
-    # image_ind = []
-    # for i in range(0, data_set.iloc[:, 1].shape[0]):  # (15)
-    #     g = process_loaded_labels(data_set.iloc[i, 1])
-    #     patch_labels.append(g)
-    #     res_img_ind = test_generator.get_batch_image_indices(i)
-    #     image_ind.append(res_img_ind)
-    # patch_labels_gt = np.asarray(patch_labels, dtype=np.float32).reshape(-1, 16, 16, 1)
-    # np.save('C:/Users/s161590/Documents/Project_li/to-be-deleted/' + 'patch_labels_val_set_TF3', patch_labels_gt,
-    #         allow_pickle=True)
-    # image_indices = np.array(image_ind)
-    # np.save('C:/Users/s161590/Documents/Project_li/to-be-deleted/' + 'image_indices_val_set_TF3', image_indices,
-    #         allow_pickle=True)
-    #
-    # predictions2 = saved_model.predict_generator(generator, steps=generator.__len__(), workers=1)
-    # np.save('C:/Users/s161590/Documents/Project_li/to-be-deleted/' + 'predictions_val_set_TF3', predictions2,
-    #         allow_pickle=True)
 
 
 def get_patch_labels_from_batches(generator, path, file_name):
@@ -148,6 +129,19 @@ def save_generated_files(res_path, file_unique_name, image_labels, image_predict
     np.save(res_path + '/accurate_localization_' + file_unique_name, accurate_localizations)
     np.save(res_path + '/dice_' + file_unique_name, dice)
 
+import pandas as pd
+
+
+def save_dice(img_ind,dice, res_path, file_identifier):
+    df = pd.DataFrame()
+    df['Image_ind'] = 0
+
+    df['DICE'] = -100
+
+    df['Image_ind'] = img_ind
+    df['Mean DICE'] = dice
+    df.to_csv(res_path + 'dice_inst_' + file_identifier + '.csv')
+
 
 def process_prediction(file_unique_name, res_path, pool_method, img_pred_method, r,
                        threshold_binarization=0.5, iou_threshold=0.1):
@@ -177,7 +171,16 @@ def process_prediction(file_unique_name, res_path, pool_method, img_pred_method,
                                                                                 th_iou=iou_threshold), 0)
     dice_scores = np.where(has_bbox, compute_dice(predictions, patch_labels, th_binarization=threshold_binarization),
                            -1)
-    return image_labels, image_predictions, has_bbox, accurate_localization, dice_scores
+    inst_auc_coll = []
+    image_indices_bbox = np.where(dice_scores>-1)[0]
+    save_dice(image_indices[image_indices_bbox],dice_scores[image_indices_bbox], res_path, file_unique_name)
+    index_segmentaion_images = np.where(has_bbox == True)[0]
+    for ind in range(index_segmentaion_images.shape[0]):
+
+        inst_auc = roc_auc_score(patch_labels[index_segmentaion_images[ind]].reshape(-1),
+                                 predictions[index_segmentaion_images[ind]].reshape(-1))
+        inst_auc_coll.append([inst_auc])
+    return image_labels, image_predictions, has_bbox, accurate_localization, dice_scores, inst_auc_coll
 
 
 def compute_save_accuracy_results(data_set_name, res_path, has_bbox, acc_localization):
@@ -199,6 +202,14 @@ def compute_save_dice_results(data_set_name, res_path, has_bbox, dice_scores):
     print("DICE")
     print(mean_dice)
     save_evaluation_results(["dice"], mean_dice, "dice_" + data_set_name + '.csv', res_path,
+                            add_col=None, add_value=None)
+
+
+def compute_save_inst_auc_results(data_set_name, res_path, inst_auc):
+    mean_auc = np.mean(inst_auc, axis=0)
+    print("Instance AUC")
+    print(mean_auc)
+    save_evaluation_results(["inst_auc"], mean_auc, "inst_auc_" + data_set_name + '.csv', res_path,
                             add_col=None, add_value=None)
 
 
@@ -279,6 +290,10 @@ def compute_bag_prediction_lse_on_segmentation(nn_output, patch_labels, r):
     return result
 
 
+def compute_bag_prediction_max(patch_pred):
+    return np.max(patch_pred, axis=(1, 2))
+
+
 def compute_bag_prediction_as_production(patch_pred, pool_method, lse_r):
     '''
 
@@ -287,13 +302,15 @@ def compute_bag_prediction_as_production(patch_pred, pool_method, lse_r):
     :param lse_r: R hyperparameter - only applicable if the pooling method is 'LSE'
     :return:
     '''
-    assert pool_method in ['mean', 'nor', 'lse'], "ensure you have the right pooling method "
+    assert pool_method in ['mean', 'nor', 'lse', 'max'], "ensure you have the right pooling method "
     if pool_method.lower() == 'nor':
         return compute_bag_prediction_nor(patch_pred)
     elif pool_method.lower() == 'mean':
         return compute_bag_prediction_mean(patch_pred)
     elif pool_method.lower() == 'lse':
         return compute_bag_prediction_lse(patch_pred, r=lse_r)
+    elif pool_method.lower() == 'max':
+        return compute_bag_prediction_max(patch_pred)
 
 
 def compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool_method,r):
@@ -332,7 +349,7 @@ def compute_bag_prediction(predictions, has_bbox, patch_labels, pool_method, r, 
     :return:
     '''
     assert image_prediction_method.lower() in ['as_production', 'as_training'], "Invalid image prediction method"
-    assert pool_method in ['mean', 'nor', 'lse'], "ensure you have the right pooling method "
+    assert pool_method in ['mean', 'nor', 'lse', 'max'], "ensure you have the right pooling method "
 
     if image_prediction_method.lower() == 'as_production':
         return compute_bag_prediction_as_production(predictions, pool_method, r)
