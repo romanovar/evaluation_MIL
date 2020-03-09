@@ -31,15 +31,16 @@ class_name = config['class_name']
 image_prediction_method = 'as_production'
 dataset_name = 'subset_test_set_CV0_4_0.95'
 pool_method = 'nor'
-r=1
+r = 0.1
+
 image_labels, image_predictions, \
-has_bbox, accurate_localizations, dice_scores = keras_preds.process_prediction(dataset_name,
-                                                                               predict_res_path,
-                                                                               r=r,
-                                                                               pool_method=pool_method,
-                                                                               img_pred_method=image_prediction_method,
-                                                                               threshold_binarization=0.5,
-                                                                               iou_threshold=0.1)
+has_bbox, accurate_localizations, dice_scores, inst_auc = keras_preds.process_prediction(dataset_name,
+                                                                                         predict_res_path,
+                                                                                         r=r,
+                                                                                         pool_method=pool_method,
+                                                                                         img_pred_method=image_prediction_method,
+                                                                                         threshold_binarization=0.5,
+                                                                                         iou_threshold=0.1)
 
 keras_preds.save_generated_files(predict_res_path, dataset_name, image_labels, image_predictions,
                                  has_bbox, accurate_localizations, dice_scores)
@@ -47,6 +48,7 @@ keras_preds.save_generated_files(predict_res_path, dataset_name, image_labels, i
 if use_xray:
     keras_preds.compute_save_accuracy_results(dataset_name, predict_res_path, has_bbox, accurate_localizations)
     keras_preds.compute_save_dice_results(dataset_name, predict_res_path, has_bbox, dice_scores)
+    keras_preds.compute_save_inst_auc_results(dataset_name, predict_res_path, inst_auc)
     keras_preds.compute_save_auc(dataset_name, image_prediction_method, predict_res_path,
                                  image_labels, image_predictions, class_name)
 else:
