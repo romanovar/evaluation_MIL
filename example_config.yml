@@ -9,7 +9,7 @@ use_pascal_dataset: true/false - If false and use_xray_dataset=false, then MURA 
 nr_epochs: nr of epochs to train
 lr: learning rate
 reg_weight:  between 0 and 1; 0 means no regularization
-pooling_operator:  'nor', 'mean', 'lse', 'lse_01'
+pooling_operator:  'nor', 'mean', 'lse', 'lse_01', 'max'
 
 image_path: directory folder to xray images
 classication_labels_path: path to chest XRay Data_Entry_2017.csv
