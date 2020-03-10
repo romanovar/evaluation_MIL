@@ -119,6 +119,8 @@ operator - `LSE, NOR, Mean`
 
 `simulate_score_behavior.npy` runs experiments of how the proposed scores behave with various proportions of agreeing and disagreeing predictions.
 
- `do_pairwise_stability.npy`
-
- `do_stability_all_classifiers.npy` runs all the experiments
+ `do_stability_all_classifiers.npy` runs all the experiments for stability. 
+   * `stability_all_classifiers()` saves .csv files of stability for each image across classifiers,
+            visualizations for each stability score across classifiers and per image,
+             visualizations of nan values of the stability scores
+   * `stability_all_classifiers_instance_level_pascal()` investigates the instance performance against the stability 
