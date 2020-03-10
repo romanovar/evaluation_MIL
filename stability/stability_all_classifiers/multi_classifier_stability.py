@@ -17,74 +17,6 @@ from stability.visualizations.visualization_utils import visualize_single_image_
     visualize_5_classifiers_mura, visualize_5_classifiers
 
 
-def stability_all_classifiers_bag_level(config, classifiers, only_segmentation_images, only_positive_images):
-    image_path = config['image_path']
-    image_path = 'C:/Users/s161590/Documents/Project_li/bbox_images/'
-
-    prediction_results_path = config['prediction_results_path']
-    stability_res_path = config['stability_results']
-
-    image_labels_collection, image_index_collection, raw_predictions_collection, \
-    bag_labels_collection, bag_predictions_collection, identifier = get_analysis_data_subset(config,
-                                                                                             classifiers,
-                                                                                             only_segmentation_images,
-                                                                                             only_positive_images)
-
-    _, corr_jacc_coll, _, _, _, _ = get_binary_scores_forthreshold_v2(0.5, raw_predictions_collection)
-
-    pearson_corr_collection, spearman_rank_corr_collection = compute_correlation_scores_v2(raw_predictions_collection)
-
-    reshaped_corr_jacc_coll = np.asarray(corr_jacc_coll).reshape(5, 5, len(image_index_collection[0]))
-    reshaped_spearman_coll = np.asarray(spearman_rank_corr_collection).reshape(5, 5, len(image_index_collection[0]))
-    # 5 x 5 x 28
-
-    stability_res_corr_jacc, stability_jacc_classifiers = get_value_unique_combinations(reshaped_corr_jacc_coll)
-
-    ########## AVERAGE  ############################
-    mean_corr_jacc = np.mean(np.ma.masked_array(stability_res_corr_jacc, np.isnan(stability_res_corr_jacc)))
-    total_nan_values_jacc = np.count_nonzero(np.isnan(np.array(stability_res_corr_jacc)))
-    norm_nan_values_jacc = total_nan_values_jacc / len(stability_res_corr_jacc)
-
-    stability_res_spearman, stability_res_spearman_classifiers = get_value_unique_combinations(reshaped_spearman_coll)
-    mean_spearman = np.mean(stability_res_spearman)
-
-    bag_auc_all_cl = compute_auc_classifiers(bag_predictions_collection, bag_labels_collection)
-    mean_bag_auc = np.mean(bag_auc_all_cl)
-
-
-    ################ average across CLASSIFIERS #############################
-    mean_corr_jacc_classifiers = np.mean(np.ma.masked_array(stability_jacc_classifiers,
-                                                            np.isnan(stability_jacc_classifiers)), axis=1)
-    mean_spearman_classifiers = np.mean(np.ma.masked_array(stability_res_spearman_classifiers,
-                                                           np.isnan(stability_res_spearman_classifiers)), axis=1)
-    make_scatterplot_with_errorbar_v2(np.asarray(mean_corr_jacc_classifiers), np.asarray(mean_spearman_classifiers),
-                                      'stability score',
-                                      np.asarray(bag_auc_all_cl),
-                                      'bag auc', stability_res_path, y_errors=None, y_errors2=None, error_bar=False,
-                                      bin_threshold_prefix=0, x_errors=None)
-    xyaxis = ['classifier1', 'classifier2', 'classifier3', 'classifier4', 'classifier5']
-    xyaxis_short = ['Cl.1', 'Cl. 2', 'Cl. 3', 'Cl. 4', 'Cl. 5']
-
-    ma_corr_jaccard_images = np.ma.masked_array(reshaped_corr_jacc_coll)
-    print(ma_corr_jaccard_images)
-
-    ############ visualizing NANs of corrected jaccard ###################
-    nan_matrix_norm = get_matrix_total_nans_stability_score(corr_jacc_coll, image_index_collection, normalize=True)
-    visualize_correlation_heatmap(nan_matrix_norm, stability_res_path, '_jacc_nan_norm', xyaxis, dropDuplicates=True)
-    nan_matrix = get_matrix_total_nans_stability_score(corr_jacc_coll, image_index_collection, normalize=False)
-    visualize_correlation_heatmap(nan_matrix, stability_res_path, '_jacc_nan', xyaxis, dropDuplicates=True)
-
-    average_jacc_index_inst = np.average(ma_corr_jaccard_images, axis=-1)
-    avg_abs_sprearman = np.average(abs(reshaped_spearman_coll), axis=-1)
-
-    # ###################### BAG AUC vs STABILITY ###################################
-
-    visualize_bag_vs_stability(bag_auc_all_cl, average_jacc_index_inst, 'bag_AUC', '',
-                               'corr_jaccard' + identifier, stability_res_path)
-    visualize_bag_vs_stability(bag_auc_all_cl, avg_abs_sprearman, 'bag_AUC', '',
-                               'spearman' + identifier, stability_res_path)
-
-
 def get_matrix_total_nans_stability_score(stab_index_collection, total_images_collection, normalize):
     nan_matrix = np.count_nonzero(np.isnan(np.array(stab_index_collection).
                                            reshape(5, 5, len(total_images_collection[0]))), axis=-1)
@@ -441,6 +373,16 @@ def get_analysis_data_subset(config, classifiers, only_segmentation_images, only
 
 
 def stability_all_classifiers_instance_level(config, classifiers, only_segmentation_images, only_positive_images):
+    '''
+
+    :param config:
+    :param classifiers: list of results names
+    :param only_segmentation_images: True: only images with available segmentation to consider. This should be True
+    :param only_positive_images: True: only images with positive label to consider
+    :return: saves .csv files of stability for each image across classifiers,
+            visualizations for each stability score across classifiers and per image,
+             visualizations of nan values of the stability scores
+    '''
     image_path = config['image_path']
     stability_res_path = config['stability_results']
 
@@ -634,7 +576,6 @@ def stability_all_classifiers_instance_level_pascal(config, classifiers):
              Saves .csv files for dice score across classifiers for each image and visualizations of stability
              against instance performance.
     '''
-    image_path = config['image_path']
     stability_res_path = config['stability_results']
     pascal_image_path = config['pascal_image_path']
     pascal_dir  = str(Path(pascal_image_path).parent).replace("\\", "/")
