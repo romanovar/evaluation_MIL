@@ -123,4 +123,4 @@ operator - `LSE, NOR, Mean`
    * `stability_all_classifiers()` saves .csv files of stability for each image across classifiers,
             visualizations for each stability score across classifiers and per image,
              visualizations of nan values of the stability scores
-   * `stability_all_classifiers_instance_level_pascal()` investigates the instance performance against the stability 
+   * `stability_all_classifiers_instance_level()` investigates the instance performance against the stability 
