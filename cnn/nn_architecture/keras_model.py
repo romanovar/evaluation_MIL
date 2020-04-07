@@ -1,7 +1,7 @@
-from keras import regularizers
+from keras import regularizers, Sequential
 from keras.applications import ResNet50
 from keras.backend import binary_crossentropy
-from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU, Dropout
+from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU, Dropout, Dense, Flatten
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -14,7 +14,7 @@ from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, keras
 
 
 def build_model(reg_weight):
-    base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
+    # base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
     # base_model.trainable = False
     #for layer in base_model.layers:
     #    layer.trainable = False
@@ -27,17 +27,38 @@ def build_model(reg_weight):
     #         print(count)
     #         print(layer.name)
 
-    last = base_model.output
+    # last = base_model.output
 
-    downsamp = MaxPooling2D(pool_size=1, strides=1, padding='Valid')(last)
+    layer1 = Conv2D(512, kernel_size=(3,3), padding='same', activation='relu', input_shape=(512, 512, 3))
+    recg_net = MaxPooling2D(pool_size=1, strides=1, padding='Valid')(layer1)
 
-    recg_net = Conv2D(512, kernel_size=(3,3), padding='same', activity_regularizer=regularizers.l2(reg_weight))(downsamp)
-    recg_net = BatchNormalization()(recg_net)
-    recg_net = ReLU()(recg_net)
-    recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
-    model = Model(base_model.input, recg_net)
+    recg_net = Conv2D(512, kernel_size=(3,3), padding='same', activation='relu')(recg_net)
+    recg_net = MaxPooling2D(pool_size=1, strides=1, padding='Valid')(recg_net)
+    recg_net = Dropout(0.3)(recg_net)
+
+    recg_net = Dense(512, activation='relu')(recg_net) #, activity_regularizer=l2(0.001)
+    out_layer = Dense(512, activation='relu')(recg_net) #, activity_regularizer=l2(0.001)
+
+    # recg_net = BatchNormalization()(recg_net)
+    # recg_net = ReLU()(recg_net)
+    # recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
+    model = Model(layer1.input, out_layer)
     return model
 
+
+def build_model_new():
+    model = Sequential([
+        Conv2D(128, kernel_size=(3,3), padding='same', activation='relu', input_shape=(512, 512, 3)),
+        MaxPooling2D((4,4), padding='valid'),
+        Conv2D(64, kernel_size=(3,3), padding='same', activation='relu'),
+
+        MaxPooling2D((4,4), padding='valid'),
+        Conv2D(32, kernel_size=(3, 3), padding='same', activation='relu'),
+        MaxPooling2D((2, 2) , padding='valid'),
+        # Dense(256, activation='relu'),
+        Conv2D(1, kernel_size=(1, 1), padding='same', activation='sigmoid')])
+
+    return model
 
 def step_decay(epoch, lr, decay=None):
     '''

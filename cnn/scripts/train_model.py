@@ -1,9 +1,9 @@
 import argparse
 import os
-
 import numpy as np
 import pandas as pd
 import yaml
+import tensorflow as tf
 from keras import Input, Model
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.callbacks import LearningRateScheduler
@@ -48,8 +48,8 @@ reg_weight = config['reg_weight']
 pooling_operator = config['pooling_operator']
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 1
-BATCH_SIZE_TEST = 1
+BATCH_SIZE = 7
+BATCH_SIZE_TEST = 7
 BOX_SIZE = 16
 
 if use_xray_dataset:
@@ -83,7 +83,7 @@ if train_mode:
         processed_y=skip_processing,
         interpolation=mura_interpolation)
 
-    model = keras_model.build_model(reg_weight=reg_weight)
+    model = keras_model.build_model_new()
     model.summary()
 
     # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
@@ -117,11 +117,11 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=nr_epochs,
+        epochs=70,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
-        verbose=1,
-        callbacks=[checkpoint, lrate]
+        verbose=1
+        # callbacks=[checkpoint, lrate]
     )
     print(model.get_weights()[2])
     print("history")

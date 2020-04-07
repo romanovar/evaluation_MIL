@@ -29,7 +29,7 @@ use_xray = config['use_xray_dataset']
 class_name = config['class_name']
 
 image_prediction_method = 'as_production'
-dataset_name = 'subset_test_set_CV0_4_0.95'
+dataset_name = 'train_set'
 pool_method = 'nor'
 r = 0.1
 

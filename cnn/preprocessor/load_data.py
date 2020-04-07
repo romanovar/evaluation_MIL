@@ -312,6 +312,10 @@ def keep_observations_of_positive_patients(Y, res_path, class_name):
         return Y2
 
 
+def keep_observations_with_label(Y, class_name):
+    return Y.loc[Y['Finding Labels'].str.contains(class_name)]
+
+
 def get_rows_from_indices(df, train_inds, test_inds):
     return df.iloc[train_inds], df.iloc[test_inds]
 
@@ -342,6 +346,16 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None, label_c
         visualize_population(pd.concat([df_bbox_test, df_class_test]), 'test_group', res_path, FINDINGS)
 
     label_patches = label_col + '_loc'
+    print("Population: ")
+    print("Train dataset ")
+    print("No Finding: "+ str(df_train.loc[df_train['Finding Labels'].str.contains('No Finding')].shape[0]))
+    print(label_col+ ": " + str(df_train.loc[df_train['Finding Labels'].str.contains(label_col)].shape[0]))
+    print("Validation dataset ")
+    print("No Finding: " + str(df_val.loc[df_val['Finding Labels'].str.contains('No Finding')].shape[0]))
+    print(label_col + ": " + str(df_val.loc[df_val['Finding Labels'].str.contains(label_col)].shape[0]))
+    print("Test without bounding boxes dataset ")
+    print("No Finding: " + str(df_class_test.loc[df_class_test['Finding Labels'].str.contains('No Finding')].shape[0]))
+    print(label_col + ": " + str(df_class_test.loc[df_class_test['Finding Labels'].str.contains(label_col)].shape[0]))
     if label_col is not None:
         train_set, val_set = keep_index_and_1diagnose_columns(df_train, label_patches),\
                              keep_index_and_1diagnose_columns(df_val,  label_patches)
@@ -493,15 +507,20 @@ def get_train_subset_xray(orig_train_set, train_bbox_nr, random_seed, ratio_to_k
 def load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path, localization_labels_path,
               results_path, class_name):
     if skip_processing:
-        filtered_patients_df = load_csv(processed_labels_path)
+        xray_df = load_csv(processed_labels_path)
         print('Cardiomegaly label division')
-        print(filtered_patients_df['Cardiomegaly'].value_counts())
+        no_findings_samples = keep_observations_with_label(xray_df, "No Finding")[:1000]
+        class_positive_samples = keep_observations_with_label(xray_df, class_name)[:1000]
+        filtered_patients_df = pd.concat([no_findings_samples, class_positive_samples])
+        print(filtered_patients_df[class_name].value_counts())
     else:
         label_df = get_classification_labels(classication_labels_path, False)
         processed_df = preprocess_labels(label_df, image_path)
         xray_df = couple_location_labels(localization_labels_path, processed_df, PATCH_SIZE, results_path)
-        filtered_patients_df = keep_observations_of_positive_patients(xray_df, results_path, class_name)
-
+        # filtered_patients_df = keep_observations_of_positive_patients(xray_df, results_path, class_name)
+        no_findings_samples = keep_observations_with_label(xray_df, "No Finding")
+        class_positive_samples = keep_observations_with_label(xray_df, class_name)
+        filtered_patients_df = pd.concat([no_findings_samples, class_positive_samples])
     return filtered_patients_df
 
 
