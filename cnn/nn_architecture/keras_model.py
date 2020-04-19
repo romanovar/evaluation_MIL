@@ -14,35 +14,30 @@ from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, keras
 
 
 def build_model(reg_weight):
-    # base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
+    base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
     # base_model.trainable = False
     #for layer in base_model.layers:
     #    layer.trainable = False
-    # count = 0
-    # for layer in base_model.layers:
-    #     if 'res5' in layer.name: # or 'res4' in layer.name:
-    #         layer.trainable = True
-    #         count +=1
-    #         print('trainable layer')
-    #         print(count)
-    #         print(layer.name)
+    count = 0
+    for layer in base_model.layers:
+        if 'res5' in layer.name: # or 'res4' in layer.name:
+            layer.trainable = True
+            count +=1
+            print('trainable layer')
+            print(count)
+            print(layer.name)
 
-    # last = base_model.output
+    last = base_model.output
+    #last = Dropout(0.2)(last)
 
-    layer1 = Conv2D(512, kernel_size=(3,3), padding='same', activation='relu', input_shape=(512, 512, 3))
-    recg_net = MaxPooling2D(pool_size=1, strides=1, padding='Valid')(layer1)
+    downsamp = MaxPooling2D(pool_size=1, strides=1, padding='Valid')(last)
 
-    recg_net = Conv2D(512, kernel_size=(3,3), padding='same', activation='relu')(recg_net)
-    recg_net = MaxPooling2D(pool_size=1, strides=1, padding='Valid')(recg_net)
-    recg_net = Dropout(0.3)(recg_net)
-
-    recg_net = Dense(512, activation='relu')(recg_net) #, activity_regularizer=l2(0.001)
-    out_layer = Dense(512, activation='relu')(recg_net) #, activity_regularizer=l2(0.001)
-
-    # recg_net = BatchNormalization()(recg_net)
-    # recg_net = ReLU()(recg_net)
-    # recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
-    model = Model(layer1.input, out_layer)
+    recg_net = Conv2D(512, kernel_size=(3,3), padding='same', activation='relu', activity_regularizer=regularizers.l2(reg_weight))(downsamp)
+    recg_net = BatchNormalization()(recg_net)
+    #recg_net = Dropout(0.2)(recg_net)
+    recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
+    model = Model(base_model.input, recg_net)
+    
     return model
 
 
@@ -73,6 +68,12 @@ def step_decay(epoch, lr, decay=None):
         if(epoch%10==0) and (epoch > 0):
             lrate = lr * decay
         return lrate
+
+
+def dynamic_lr(epoch):
+    return 1e-6 * 10 **(epoch/20)
+
+
 
 
 def compile_model_adamw(model, weight_dec, batch_size, samples_epoch, epochs):

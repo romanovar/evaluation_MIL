@@ -19,8 +19,8 @@ from cnn.nn_architecture.custom_loss import keras_loss_v2, keras_loss_v3
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, \
     keras_binary_accuracy, combine_predictions_each_batch
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+tf.keras.backend.clear_session()
 
 def load_config(path):
     with open(path, 'r') as ymlfile:
@@ -48,8 +48,8 @@ reg_weight = config['reg_weight']
 pooling_operator = config['pooling_operator']
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 7
-BATCH_SIZE_TEST = 7
+BATCH_SIZE = 10
+BATCH_SIZE_TEST = 10  
 BOX_SIZE = 16
 
 if use_xray_dataset:
@@ -83,7 +83,7 @@ if train_mode:
         processed_y=skip_processing,
         interpolation=mura_interpolation)
 
-    model = keras_model.build_model_new()
+    model = keras_model.build_model(reg_weight)
     model.summary()
 
     # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
@@ -110,6 +110,8 @@ if train_mode:
     checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
 
     lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
+    
+    dynamic_lrate = LearningRateScheduler(keras_model.dynamic_lr)
     print("df train STEPS")
     print(len(df_train) // BATCH_SIZE)
     print(train_generator.__len__())
@@ -117,11 +119,10 @@ if train_mode:
     history = model.fit_generator(
         generator=train_generator,
         steps_per_epoch=train_generator.__len__(),
-        epochs=70,
+        epochs=nr_epochs,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1
-        # callbacks=[checkpoint, lrate]
     )
     print(model.get_weights()[2])
     print("history")
@@ -133,7 +134,15 @@ if train_mode:
                                       history.history['val_loss'],
                                       'train loss', 'validation loss', 'loss' + model_identifier,
                                       'loss' + model_identifier, results_path)
+    
+    import numpy as np
+    import matplotlib.pyplot as plt
 
+    #plt.semilogx(history.history["lr"], history.history["loss"])
+    #plt.axis([1e-6, 1, 0, 30])
+    #plt.savefig(results_path + '/' +'lr.png')
+    #plt.clf()
+    
     settings = np.array({'lr: ': lr, 'reg_weight: ': reg_weight, 'pooling_operator: ':pooling_operator})
     np.save(results_path + 'train_settings.npy', settings)
 

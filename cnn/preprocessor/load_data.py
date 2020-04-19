@@ -509,8 +509,8 @@ def load_xray(skip_processing, processed_labels_path, classication_labels_path, 
     if skip_processing:
         xray_df = load_csv(processed_labels_path)
         print('Cardiomegaly label division')
-        no_findings_samples = keep_observations_with_label(xray_df, "No Finding")[:1000]
-        class_positive_samples = keep_observations_with_label(xray_df, class_name)[:1000]
+        no_findings_samples = keep_observations_with_label(xray_df, "No Finding")[:10000]
+        class_positive_samples = keep_observations_with_label(xray_df, class_name)
         filtered_patients_df = pd.concat([no_findings_samples, class_positive_samples])
         print(filtered_patients_df[class_name].value_counts())
     else:

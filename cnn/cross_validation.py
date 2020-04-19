@@ -49,7 +49,6 @@ def cross_validation(config):
 
     nr_epochs = config['nr_epochs']
     lr = config['lr']
-    lrate_decay = config['lrate_decay']
     reg_weight = config['reg_weight']
     pooling_operator = config['pooling_operator']
 
