@@ -125,11 +125,10 @@ def cross_validation(config):
                 epochs=nr_epochs,
                 validation_data=valid_generator,
                 validation_steps=valid_generator.__len__(),
-                verbose=1,
-                callbacks=[checkpoint_on_epoch_end, lrate]
+                verbose=1
             )
-            filepath = trained_models_path + class_name +"CV_"+str(split)+"_nov.hdf5"
-            model.save(filepath)
+            # filepath = trained_models_path + class_name +"CV_"+str(split)+"_nov.hdf5"
+            # model.save(filepath)
             print("history")
             print(history.history)
             print(history.history['keras_accuracy'])
