@@ -173,7 +173,8 @@ def process_prediction(file_unique_name, res_path, pool_method, img_pred_method,
                            -1)
     inst_auc_coll = []
     image_indices_bbox = np.where(dice_scores>-1)[0]
-    save_dice(image_indices[image_indices_bbox],dice_scores[image_indices_bbox], res_path, file_unique_name)
+    if len(image_indices_bbox) > 0:
+        save_dice(image_indices[image_indices_bbox],dice_scores[image_indices_bbox], res_path, file_unique_name)
     index_segmentaion_images = np.where(has_bbox == True)[0]
     for ind in range(index_segmentaion_images.shape[0]):
 
