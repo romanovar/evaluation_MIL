@@ -18,9 +18,11 @@ from cnn.nn_architecture import keras_model
 from cnn.nn_architecture.custom_loss import keras_loss_v2, keras_loss_v3
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, \
     keras_binary_accuracy, combine_predictions_each_batch
+from cnn.preprocessor.process_input import preprocess_images_from_dataframe, fetch_preprocessed_images_csv
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 tf.keras.backend.clear_session()
+
 
 def load_config(path):
     with open(path, 'r') as ymlfile:
@@ -34,7 +36,9 @@ parser.add_argument('-c', '--config_path', type=str,
 args = parser.parse_args()
 config = load_config(args.config_path)
 
+resized_images_before_training = config['resized_images_before_training']
 skip_processing = config['skip_processing_labels']
+image_path = config['image_path']
 results_path = config['results_path']
 prediction_results_path = config['prediction_results_path']
 train_mode = config['train_mode']
@@ -46,11 +50,14 @@ nr_epochs = config['nr_epochs']
 lr = config[ 'lr']
 reg_weight = config['reg_weight']
 pooling_operator = config['pooling_operator']
+class_name = config['class_name']
+
 
 IMAGE_SIZE = 512
 BATCH_SIZE = 10
 BATCH_SIZE_TEST = 10  
 BOX_SIZE = 16
+
 
 if use_xray_dataset:
     df_train, df_val, df_bbox_test, df_class_test = ldd.load_process_xray14(config)
@@ -60,20 +67,30 @@ elif use_pascal_dataset:
 else:
     df_train, df_val, df_test = ldd.load_preprocess_mura(config)
 
+
+## currently only working for Xray dataset
+if resized_images_before_training:
+    df_train = fetch_preprocessed_images_csv(image_path, 'train_folder')
+    df_val = fetch_preprocessed_images_csv(image_path, 'val_folder')
+    df_test = fetch_preprocessed_images_csv(image_path, 'test_folder')
+
+
+train_generator = gen.BatchGenerator(
+    instances=df_train.values,
+    resized_image = resized_images_before_training,
+    batch_size=BATCH_SIZE,
+    net_h=IMAGE_SIZE,
+    net_w=IMAGE_SIZE,
+    shuffle=True,
+    norm=keras_utils.normalize,
+    box_size=BOX_SIZE,
+    processed_y=skip_processing,
+    interpolation=mura_interpolation)
 if train_mode:
-    train_generator = gen.BatchGenerator(
-        instances=df_train.values,
-        batch_size=BATCH_SIZE,
-        net_h=IMAGE_SIZE,
-        net_w=IMAGE_SIZE,
-        shuffle=True,
-        norm=keras_utils.normalize,
-        box_size=BOX_SIZE,
-        processed_y=skip_processing,
-        interpolation=mura_interpolation)
 
     valid_generator = gen.BatchGenerator(
         instances=df_val.values,
+        resized_image = resized_images_before_training,
         batch_size=BATCH_SIZE,
         shuffle=True,
         net_h=IMAGE_SIZE,
@@ -160,6 +177,7 @@ if train_mode:
         verbose=1)
     test_generator = gen.BatchGenerator(
         instances=df_test.values,
+        resized_image = resized_images_before_training,
         batch_size=BATCH_SIZE,
         net_h=IMAGE_SIZE,
         net_w=IMAGE_SIZE,
@@ -182,13 +200,16 @@ if train_mode:
     ###################### old generator
     predict_patch_and_save_results(model, 'val_set', df_val, skip_processing,
                                    BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                   mura_interpolation=mura_interpolation)
+                                   mura_interpolation=mura_interpolation,
+                                   resized_images_before_training = resized_images_before_training)
     predict_patch_and_save_results(model, 'train_set', df_train, skip_processing,
                                    BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                   mura_interpolation=mura_interpolation)
+                                   mura_interpolation=mura_interpolation,
+                                   resized_images_before_training = resized_images_before_training)
     predict_patch_and_save_results(model, 'test_set', df_test, skip_processing,
                                    BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                   mura_interpolation=mura_interpolation)
+                                   mura_interpolation=mura_interpolation,
+                                   resized_images_before_training=resized_images_before_training)
 
 else:
     # model = load_model(trained_models_path+'best_model_single_100.h5', custom_objects={
@@ -220,8 +241,10 @@ else:
     # ########################################### VALIDATION SET######################################################
 
     predict_patch_and_save_results(model, 'val_set', df_val, skip_processing,
-                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation,
+                                   resized_images_before_training)
 
     ########################################### TESTING SET########################################################
     predict_patch_and_save_results(model, 'test_set', df_test, skip_processing,
-                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation,
+                                   resized_images_before_training)

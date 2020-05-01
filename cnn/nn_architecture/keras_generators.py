@@ -10,7 +10,7 @@ from cnn.keras_utils import process_loaded_labels, image_larger_input, calculate
 
 
 class BatchGenerator(Sequence):
-    def __init__(self, instances, batch_size=16, shuffle=True,
+    def __init__(self, instances, resized_image, batch_size=16, shuffle=True,
                  norm=None, net_h=512, net_w=512, box_size=16, processed_y = None, interpolation=True):
 
         self.instances = instances
@@ -22,6 +22,7 @@ class BatchGenerator(Sequence):
         self.box_size = box_size
         self.processed_y = processed_y
         self.interpolation = interpolation
+        self.resized_image = resized_image
 
         if shuffle: np.random.shuffle(self.instances)
 
@@ -47,31 +48,33 @@ class BatchGenerator(Sequence):
         # do the logic to fill in the inputs and the output
         for train_instance in self.instances[l_bound:r_bound]:
             image_dir = train_instance[0]
-            img_width, img_height = load_img(image_dir, target_size=None, color_mode='rgb').size
+            image = load_img(image_dir, target_size=None, color_mode='rgb')
+            img_width, img_height = image.size
             decrease_needed = image_larger_input(img_width, img_height, self.net_w, self.net_h)
+            image = img_to_array(image)
 
-
-            if self.interpolation:
-                #### NEAREST INTERPOLATION
-                image = img_to_array(
-                    load_img(image_dir, target_size=(self.net_h, self.net_w), color_mode='rgb'))
-            else:
-                # IF one or both sides have bigger size than the input, then decrease is needed
-                if decrease_needed:
-                    ratio = calculate_scale_ratio(img_width, img_height, self.net_w, self.net_h)
-                    assert ratio >= 1.00, "wrong ratio - it will increase image size"
-                    assert int(img_height/ratio) == self.net_h or int(img_width/ratio) == self.net_w, \
-                        "error in computation"
-                    image = img_to_array(load_img(image_dir, target_size=(int(img_height/ratio), int(img_width/ratio)),
-                                                  color_mode='rgb'))
+            if not self.resized_image:
+                if self.interpolation:
+                    #### NEAREST INTERPOLATION
+                    image = img_to_array(
+                        load_img(image_dir, target_size=(self.net_h, self.net_w), color_mode='rgb'))
                 else:
-                    #ELSE just open image in its original form
-                    image = img_to_array(load_img(image_dir, target_size=None, color_mode='rgb'))
-                ### PADDING
-                pad_needed = padding_needed(image)
+                    # IF one or both sides have bigger size than the input, then decrease is needed
+                    if decrease_needed:
+                        ratio = calculate_scale_ratio(img_width, img_height, self.net_w, self.net_h)
+                        assert ratio >= 1.00, "wrong ratio - it will increase image size"
+                        assert int(img_height/ratio) == self.net_h or int(img_width/ratio) == self.net_w, \
+                            "error in computation"
+                        image = img_to_array(load_img(image_dir, target_size=(int(img_height/ratio), int(img_width/ratio)),
+                                                      color_mode='rgb'))
+                    else:
+                        #ELSE just open image in its original form
+                        image = img_to_array(load_img(image_dir, target_size=None, color_mode='rgb'))
+                    ### PADDING
+                    pad_needed = padding_needed(image)
 
-                if pad_needed:
-                    image = pad_image(image, final_size_x=self.net_w, final_size_y=self.net_h)
+                    if pad_needed:
+                        image = pad_image(image, final_size_x=self.net_w, final_size_y=self.net_h)
 
             if self.norm != None:
                 x_batch[instance_count] = self.norm(image)
@@ -81,16 +84,13 @@ class BatchGenerator(Sequence):
             train_instances_classes = []
 
             if self.processed_y is not None:
-                for i in range(1, train_instance.shape[0]):  # (15)
-                    if self.processed_y:
-                        g = process_loaded_labels(train_instance[i])
-                        train_instances_classes.append(g)
-                    else:
-                        # labels = np.fromstring(train_instance[i], dtype=int, sep=' ')
-                        # train_instances_classes.append(train_instance[i])
-                        labels = process_loaded_labels(train_instance[i])
 
-                        train_instances_classes.append(labels)
+                for class_index in range(1, train_instance.shape[0]):  # (15)
+                    assert self.processed_y==True, "Error, I do not know how to handle the processing of labels"
+                    if self.processed_y:
+                        class_labels = process_loaded_labels(train_instance[class_index])
+                        train_instances_classes.append(class_labels)
+
                 y_batch[instance_count] = np.transpose(np.asarray(train_instances_classes), [1, 2, 0])
             else:
                 y_batch[instance_count]= None

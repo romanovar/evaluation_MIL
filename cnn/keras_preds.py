@@ -6,9 +6,11 @@ from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, 
 
 
 def predict_patch_and_save_results(saved_model, file_unique_name, data_set, processed_y,
-                                   test_batch_size, box_size, image_size, res_path, mura_interpolation):
+                                   test_batch_size, box_size, image_size, res_path, mura_interpolation,
+                                   resized_images_before_training):
     test_generator = gen.BatchGenerator(
         instances=data_set.values,
+        resized_image = resized_images_before_training,
         batch_size=test_batch_size,
         net_h=image_size,
         net_w=image_size,
