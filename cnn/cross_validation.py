@@ -46,6 +46,7 @@ def cross_validation(config):
     mura_interpolation = config['mura_interpolation']
     use_pascal_dataset = config['use_pascal_dataset']
     pascal_image_path = config['pascal_image_path']
+    resized_images_before_training=config['resized_images_before_training']
 
     nr_epochs = config['nr_epochs']
     lr = config['lr']
@@ -53,8 +54,12 @@ def cross_validation(config):
     pooling_operator = config['pooling_operator']
 
     if use_xray_dataset:
-        xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
-                               localization_labels_path, results_path, class_name)
+        if resized_images_before_training:
+            xray_df = ld.load_csv(image_path+'/preprocessed_images.csv')
+        else:
+            xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
+                                   localization_labels_path, results_path)
+            xray_df = ld.filter_observations(xray_df, class_name, 'No Finding')
     elif use_pascal_dataset:
         pascal_df = load_pascal(pascal_image_path)
 
@@ -65,7 +70,6 @@ def cross_validation(config):
 
     CV_SPLITS = 5
     for split in range(0, CV_SPLITS):
-
 
         if use_xray_dataset:
             df_train, df_val, df_test, _, _,_ = ld.split_xray_cv(xray_df, CV_SPLITS,

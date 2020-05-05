@@ -21,29 +21,22 @@ def load_process_xray14(config):
     class_name = config['class_name']
 
     xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
-                           localization_labels_path, results_path, class_name)
+                           localization_labels_path, results_path)
+    xray_df = ld.filter_observations(xray_df, class_name, 'No Finding')
     print(xray_df.shape)
     print("Splitting data ...")
 
-    init_train_idx, df_train_init, df_val, \
-    df_bbox_test, df_class_test, df_bbox_train = ld.get_train_test(xray_df, random_state=1, do_stats=False,
+    df_train, df_val, df_test = ld.get_train_test(xray_df, random_state=1, do_stats=False,
                                                                    res_path = results_path,
                                                                    label_col = class_name)
 
-    array_bbox_sizes = df_bbox_train.iloc[:, 1].apply(lambda x: test_size_bbox(x))
-
-    df_train=df_train_init
-    print('Training set: '+ str(df_train_init.shape))
-    print('Validation set: '+ str(df_val.shape))
-    print('Localization testing set: '+ str(df_bbox_test.shape))
-    print('Classification testing set: '+ str(df_class_test.shape))
-
-    # df_train = keras_utils.create_overlap_set_bootstrap(df_train_init, 0.9, seed=2)
-    init_train_idx = df_train['Dir Path'].index.values
-
-    # new_seed, new_tr_ind = ld.create_overlapping_test_set(init_train_idx, 1, 0.95,0.85, xray_df)
-    # print(new_tr_ind)
-    return df_train, df_val, df_bbox_test, df_class_test
+    label_patches = class_name + '_loc'
+    if class_name is not None:
+        df_train_filtered_cols, df_val_filtered_cols, df_test_filtered_cols =\
+            ld.keep_index_and_1diagnose_columns(df_train, label_patches), \
+            ld.keep_index_and_1diagnose_columns(df_val,  label_patches),\
+            ld.keep_index_and_1diagnose_columns(df_test,  label_patches)
+    return df_train_filtered_cols, df_val_filtered_cols, df_test_filtered_cols
 
 
 def load_preprocess_mura(config):

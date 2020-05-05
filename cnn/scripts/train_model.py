@@ -60,8 +60,7 @@ BOX_SIZE = 16
 
 
 if use_xray_dataset:
-    df_train, df_val, df_bbox_test, df_class_test = ldd.load_process_xray14(config)
-    df_test = pd.concat([df_bbox_test, df_class_test])
+    df_train, df_val, df_test = ldd.load_process_xray14(config)
 elif use_pascal_dataset:
     df_train, df_val, df_test = ldd.load_preprocess_pascal(config)
 else:

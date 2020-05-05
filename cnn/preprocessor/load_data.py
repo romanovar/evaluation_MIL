@@ -336,6 +336,7 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None, label_c
     train_idx = np.concatenate((train_clas_idx, train_bbox_idx), axis=None)
     df_train = pd.concat([df_class_train, df_bbox_train])
     df_val = df_class_val
+    df_test = pd.concat([df_class_test, df_bbox_test])
 
     if do_stats and res_path is not None:
         visualize_population(Y, 'whole_df_group', res_path, FINDINGS)
@@ -356,14 +357,20 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None, label_c
     print("Test without bounding boxes dataset ")
     print("No Finding: " + str(df_class_test.loc[df_class_test['Finding Labels'].str.contains('No Finding')].shape[0]))
     print(label_col + ": " + str(df_class_test.loc[df_class_test['Finding Labels'].str.contains(label_col)].shape[0]))
-    if label_col is not None:
-        train_set, val_set = keep_index_and_1diagnose_columns(df_train, label_patches),\
-                             keep_index_and_1diagnose_columns(df_val,  label_patches)
-        bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test,  label_patches),\
-                                keep_index_and_1diagnose_columns(df_class_test,  label_patches)
-        bbox_train = keep_index_and_1diagnose_columns(df_bbox_train, label_patches)
+    # if label_col is not None:
+    #     train_set, val_set = keep_index_and_1diagnose_columns(df_train, label_patches),\
+    #                          keep_index_and_1diagnose_columns(df_val,  label_patches)
+    #     bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test,  label_patches),\
+    #                             keep_index_and_1diagnose_columns(df_class_test,  label_patches)
+    #     bbox_train = keep_index_and_1diagnose_columns(df_bbox_train, label_patches)
 
-    return train_idx, train_set, val_set, bbox_test, class_test, bbox_train
+
+    print('Training set: '+ str(df_train.shape))
+    print('Validation set: '+ str(df_val.shape))
+    print('Localization testing set: '+ str(df_bbox_test.shape))
+    print('Classification testing set: '+ str(df_class_test.shape))
+
+    return df_train, df_val, df_test
 
 
 def get_train_test_v2(Y, random_state=None, do_stats=False, res_path =None, label_col=None):
@@ -504,24 +511,25 @@ def get_train_subset_xray(orig_train_set, train_bbox_nr, random_seed, ratio_to_k
         return orig_train_set
 
 
+def filter_observations(df, positive_obs, negative_obs):
+    no_findings_samples = keep_observations_with_label(df, negative_obs)[:10000]
+    class_positive_samples = keep_observations_with_label(df, positive_obs)
+    filtered_patients_df = pd.concat([no_findings_samples, class_positive_samples])
+    print(filtered_patients_df[positive_obs].value_counts())
+    return filtered_patients_df
+
+
 def load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path, localization_labels_path,
-              results_path, class_name):
+              results_path):
     if skip_processing:
         xray_df = load_csv(processed_labels_path)
         print('Cardiomegaly label division')
-        no_findings_samples = keep_observations_with_label(xray_df, "No Finding")[:10000]
-        class_positive_samples = keep_observations_with_label(xray_df, class_name)
-        filtered_patients_df = pd.concat([no_findings_samples, class_positive_samples])
-        print(filtered_patients_df[class_name].value_counts())
+
     else:
         label_df = get_classification_labels(classication_labels_path, False)
         processed_df = preprocess_labels(label_df, image_path)
         xray_df = couple_location_labels(localization_labels_path, processed_df, PATCH_SIZE, results_path)
-        # filtered_patients_df = keep_observations_of_positive_patients(xray_df, results_path, class_name)
-        no_findings_samples = keep_observations_with_label(xray_df, "No Finding")
-        class_positive_samples = keep_observations_with_label(xray_df, class_name)
-        filtered_patients_df = pd.concat([no_findings_samples, class_positive_samples])
-    return filtered_patients_df
+    return xray_df
 
 
 def split_xray_cv(xray_df, cv_splits, split, class_name):

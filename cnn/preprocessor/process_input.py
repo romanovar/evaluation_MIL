@@ -56,23 +56,22 @@ def resize_image(image_dir, image_new_height, image_new_width, resize_method):
 
 
 def preprocess_images_from_dataframe(df, image_new_height, image_new_width, resize_method, parent_folder,
-                                     new_folder_name):
+                                     new_folder_name, df2):
 
     processed_images_dir = create_new_directory(parent_folder, new_folder_name)
     new_df = df.copy()
 
     for index, row in df.iterrows():
         image_dir = row['Dir Path']
-        image_name = str.split(image_dir, '\\')[-1]
-
+        image_name = os.path.split(image_dir)[-1]
         resized_image = resize_image(image_dir, image_new_height, image_new_width, resize_method)
         img_array = img_to_array(resized_image)
 
         save_img(processed_images_dir+'/'+image_name, img_array)
-
+        df2.loc[df2['Image Index'] == image_name, 'Dir Path'] =  processed_images_dir+'/'+image_name
         new_df.loc[index]['Dir Path'] = processed_images_dir+'/'+image_name
     new_df.to_csv(processed_images_dir+'/processed_'+new_folder_name+'.csv')
-    return new_df
+    return new_df, df2
 
 
 def fetch_preprocessed_images_csv(parent_folder, new_folder_name):
@@ -80,3 +79,7 @@ def fetch_preprocessed_images_csv(parent_folder, new_folder_name):
     assert os.path.exists(new_path), " Directory not found. Please, run preprocess_images.py first"
     if os.path.exists(new_path):
         return pd.read_csv(new_path+'/processed_'+new_folder_name+'.csv', index_col=0)
+
+
+def combine_preprocessed_csv(df_train, df_test, df_val):
+    return pd.concat([df_train, df_val, df_test])
