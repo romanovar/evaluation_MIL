@@ -44,10 +44,10 @@ xray_df = pd.read_csv(processed_labels_path).copy()
 
 ## currently only working for Xray dataset
 if resized_images_before_training:
-    df_train, xray_df = preprocess_images_from_dataframe(df_train[:10], IMAGE_SIZE, IMAGE_SIZE, mura_interpolation, image_path,
+    df_train, xray_df = preprocess_images_from_dataframe(df_train, IMAGE_SIZE, IMAGE_SIZE, mura_interpolation, image_path,
                                                 'train_folder', xray_df)
-    df_val, xray_df = preprocess_images_from_dataframe(df_val[:10], IMAGE_SIZE, IMAGE_SIZE, mura_interpolation, image_path,
+    df_val, xray_df = preprocess_images_from_dataframe(df_val, IMAGE_SIZE, IMAGE_SIZE, mura_interpolation, image_path,
                                               'val_folder', xray_df)
-    df_test, xray_df = preprocess_images_from_dataframe(df_test[:10], IMAGE_SIZE, IMAGE_SIZE, mura_interpolation, image_path,
+    df_test, xray_df = preprocess_images_from_dataframe(df_test, IMAGE_SIZE, IMAGE_SIZE, mura_interpolation, image_path,
                                                'test_folder', xray_df)
     xray_df.to_csv(image_path+'/all_processed_images.csv')
