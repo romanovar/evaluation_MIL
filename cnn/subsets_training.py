@@ -43,6 +43,8 @@ def train_on_subsets(config):
     mura_interpolation = config['mura_interpolation']
     pascal_image_path = config['pascal_image_path']
     use_pascal_dataset = config['use_pascal_dataset']
+    resized_images_before_training = config['resized_images_before_training']
+
 
     nr_epochs = config['nr_epochs']
     lr = config['lr']
@@ -61,8 +63,13 @@ def train_on_subsets(config):
     subset_seeds = [1234, 5678, 9012, 3456, 7890]
 
     if use_xray_dataset:
-        xray_df = load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
-                            localization_labels_path, results_path, class_name)
+        if resized_images_before_training:
+            xray_df = ld.load_csv(image_path+'/all_processed_images.csv')
+        else:
+            xray_df = load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
+                            localization_labels_path, results_path)
+        xray_df = ld.filter_observations(xray_df, class_name, 'No Finding')
+
     elif use_pascal_dataset:
         pascal_df = load_pascal(pascal_image_path)
     else:

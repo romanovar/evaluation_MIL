@@ -55,11 +55,11 @@ def cross_validation(config):
 
     if use_xray_dataset:
         if resized_images_before_training:
-            xray_df = ld.load_csv(image_path+'/preprocessed_images.csv')
+            xray_df = ld.load_csv(image_path+'/all_processed_images.csv')
         else:
             xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
                                    localization_labels_path, results_path)
-            xray_df = ld.filter_observations(xray_df, class_name, 'No Finding')
+        xray_df = ld.filter_observations(xray_df, class_name, 'No Finding')
     elif use_pascal_dataset:
         pascal_df = load_pascal(pascal_image_path)
 
