@@ -60,21 +60,30 @@ BOX_SIZE = 16
 
 
 if use_xray_dataset:
-    df_train, df_val, df_test = ldd.load_process_xray14(config)
+    if resized_images_before_training:
+        xray_df = fetch_preprocessed_images_csv(image_path, 'processed_imgs')
+    else:
+        xray_df = ldd.load_process_xray14(config)
+    df_train, df_val, df_test = ldd.split_filter_data(config, xray_df)
+
 elif use_pascal_dataset:
     df_train, df_val, df_test = ldd.load_preprocess_pascal(config)
 else:
     df_train, df_val, df_test = ldd.load_preprocess_mura(config)
 
 
-## currently only working for Xray dataset
-if resized_images_before_training:
-    df_train = fetch_preprocessed_images_csv(image_path, 'train_folder')
-    df_val = fetch_preprocessed_images_csv(image_path, 'val_folder')
-    df_test = fetch_preprocessed_images_csv(image_path, 'test_folder')
+# ## currently only working for Xray dataset
+#
+#     df_train = fetch_preprocessed_images_csv(image_path, 'train_folder')
+#     df_val = fetch_preprocessed_images_csv(image_path, 'val_folder')
+#
+#     np.save(results_path+"df_train", df_train.to_numpy())
+#     np.save(results_path + "df_test", df_test.to_numpy())
+#     np.save(results_path + "df_val", df_val.to_numpy())
 
-
-train_generator = gen.BatchGenerator(
+if train_mode:
+    tf.keras.backend.clear_session()
+    train_generator = gen.BatchGenerator(
     instances=df_train.values,
     resized_image = resized_images_before_training,
     batch_size=BATCH_SIZE,
@@ -85,7 +94,6 @@ train_generator = gen.BatchGenerator(
     box_size=BOX_SIZE,
     processed_y=skip_processing,
     interpolation=mura_interpolation)
-if train_mode:
 
     valid_generator = gen.BatchGenerator(
         instances=df_val.values,

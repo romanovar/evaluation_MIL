@@ -14,8 +14,10 @@ import cnn.preprocessor.load_data as ld
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, keras_binary_accuracy
 from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_v3, keras_loss_v3_nor
 from cnn.keras_preds import predict_patch_and_save_results
+from cnn.preprocessor.load_data_datasets import load_process_xray14
 from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, filter_rows_and_columns
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
+from cnn.preprocessor.process_input import fetch_preprocessed_images_csv
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -56,11 +58,9 @@ def cross_validation(config):
 
     if use_xray_dataset:
         if resized_images_before_training:
-            xray_df = pd.read_csv(image_path+'/all_processed_images.csv', index_col=0)
+            xray_df = fetch_preprocessed_images_csv(image_path, 'processed_imgs')
         else:
-            xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
-                                   localization_labels_path, results_path)
-        xray_df = ld.filter_observations(xray_df, class_name, 'No Finding')
+            xray_df = load_process_xray14(config)
     elif use_pascal_dataset:
         pascal_df = load_pascal(pascal_image_path)
 
