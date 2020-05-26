@@ -55,6 +55,7 @@ def build_model_new():
 
     return model
 
+
 def step_decay(epoch, lr, decay=None):
     '''
     :param epoch: current epoch
@@ -71,7 +72,7 @@ def step_decay(epoch, lr, decay=None):
 
 
 def dynamic_lr(epoch):
-    return 1e-6 * 10 **(epoch/20)
+    return 1e-5 * 10 **(epoch/20)
 
 
 
