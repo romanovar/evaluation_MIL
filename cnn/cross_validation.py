@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from keras.callbacks import LearningRateScheduler
 from keras.callbacks import ModelCheckpoint
 from keras.engine.saving import load_model
@@ -55,7 +56,7 @@ def cross_validation(config):
 
     if use_xray_dataset:
         if resized_images_before_training:
-            xray_df = ld.load_csv(image_path+'/all_processed_images.csv')
+            xray_df = pd.read_csv(image_path+'/all_processed_images.csv', index_col=0)
         else:
             xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
                                    localization_labels_path, results_path)
@@ -74,6 +75,7 @@ def cross_validation(config):
         if use_xray_dataset:
             df_train, df_val, df_test, _, _,_ = ld.split_xray_cv(xray_df, CV_SPLITS,
                                                                  split, class_name)
+
         elif use_pascal_dataset:
             df_train, df_val, df_test = construct_train_test_cv(pascal_df, CV_SPLITS, split)
 
@@ -87,6 +89,7 @@ def cross_validation(config):
             ############################################ TRAIN ###########################################################
             train_generator = gen.BatchGenerator(
                 instances=df_train.values,
+                resized_image=resized_images_before_training,
                 batch_size=BATCH_SIZE,
                 net_h=IMAGE_SIZE,
                 net_w=IMAGE_SIZE,
@@ -98,6 +101,7 @@ def cross_validation(config):
 
             valid_generator = gen.BatchGenerator(
                 instances=df_val.values,
+                resized_image=resized_images_before_training,
                 batch_size=BATCH_SIZE,
                 net_h=IMAGE_SIZE,
                 net_w=IMAGE_SIZE,
@@ -178,6 +182,7 @@ def cross_validation(config):
                 verbose=1)
             test_generator = gen.BatchGenerator(
                 instances=df_test.values,
+                resized_image=resized_images_before_training,
                 batch_size=BATCH_SIZE,
                 net_h=IMAGE_SIZE,
                 net_w=IMAGE_SIZE,
