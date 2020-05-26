@@ -59,7 +59,6 @@ def preprocess_images_from_dataframe(df, image_new_height, image_new_width, resi
                                      new_folder_name, df2):
 
     processed_images_dir = create_new_directory(parent_folder, new_folder_name)
-    new_df = df.copy()
 
     for index, row in df.iterrows():
         image_dir = row['Dir Path']
@@ -69,16 +68,16 @@ def preprocess_images_from_dataframe(df, image_new_height, image_new_width, resi
 
         save_img(processed_images_dir+'/'+image_name, img_array)
         df2.loc[df2['Image Index'] == image_name, 'Dir Path'] =  processed_images_dir+'/'+image_name
-        new_df.loc[index]['Dir Path'] = processed_images_dir+'/'+image_name
-    new_df.to_csv(processed_images_dir+'/processed_'+new_folder_name+'.csv')
-    return new_df, df2
+        df.loc[index, 'Dir Path'] = processed_images_dir+'/'+image_name
+    df.to_csv(parent_folder+new_folder_name+'.csv')
+    return df, df2
 
 
 def fetch_preprocessed_images_csv(parent_folder, new_folder_name):
     new_path = os.path.join(parent_folder, new_folder_name)
     assert os.path.exists(new_path), " Directory not found. Please, run preprocess_images.py first"
     if os.path.exists(new_path):
-        return pd.read_csv(new_path+'/processed_'+new_folder_name+'.csv', index_col=0)
+        return pd.read_csv(parent_folder+new_folder_name+'.csv', index_col=0)
 
 
 def combine_preprocessed_csv(df_train, df_test, df_val):
