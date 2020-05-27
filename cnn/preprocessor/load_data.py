@@ -214,7 +214,7 @@ def get_process_annotated_png(ann_list, path_to_png="C:/Users/s161590/Desktop/Da
     for src_path in Path(path_to_png).glob('**/*.png'):
         image_ind = os.path.basename(src_path)
         for img in ann_list:
-            #tODO: should NOT only load these files --> currently is a test purpose
+            #TODO: should NOT only load these files --> currently is a test purpose
             if img == image_ind:
                 png_files.append(process_image(src_path))
     print("Annotated images found: " + str(np.array(png_files).shape))
@@ -232,7 +232,7 @@ def get_process_annotated_png(ann_list, path_to_png="C:/Users/s161590/Desktop/Da
 
 # shuffle split ensuring that same patient ID is only in test or train
 
-
+## TODO: refactor
 def split_test_train_v2(df, test_ratio=0.2, random_state=None):
     train_inds, test_inds = next(
         GroupShuffleSplit(test_size=test_ratio, random_state=random_state).split(df, groups=df['Patient ID']))

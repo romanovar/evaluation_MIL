@@ -29,7 +29,7 @@ use_xray = config['use_xray_dataset']
 class_name = config['class_name']
 
 image_prediction_method = 'as_production'
-dataset_name = 'test_set_Cardiomegaly_CV0'
+dataset_name = 'test_set'
 pool_method = 'nor'
 r = 0.1
 
@@ -50,7 +50,7 @@ if use_xray:
     keras_preds.compute_save_dice_results(dataset_name, predict_res_path, has_bbox, dice_scores)
     keras_preds.compute_save_auc(dataset_name, image_prediction_method, predict_res_path,
                                  image_labels, image_predictions, class_name)
-    keras_preds.compute_save_inst_auc_results(dataset_name, predict_res_path, inst_auc)
+    # keras_preds.compute_save_inst_auc_results(dataset_name, predict_res_path, inst_auc)
 else:
     keras_preds.compute_save_auc(dataset_name, image_prediction_method, predict_res_path,
                                  image_labels, image_predictions, class_name)
