@@ -5,10 +5,10 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 
 from cnn.keras_utils import calculate_scale_ratio, image_larger_input
 from cnn.preprocessor.load_data_mura import pad_image, padding_needed
-from stability.preprocessor.preprocessing import load_predictions_v2, indices_segmentation_images_v2, \
+from stability.preprocessor.preprocessing import load_predictions, indices_segmentation_images_v2, \
     filter_predictions_files_on_indeces, indices_positive_images
-from stability.stability_2classifiers.stability_2classifiers import compute_correlation_scores_v2, \
-    get_binary_scores_forthreshold_v2
+from stability.stability_2classifiers.stability_2classifiers import compute_continuous_stability_scores, \
+    compute_binary_stability_scores
 from stability.utils import get_image_index, save_additional_kappa_scores_forthreshold, save_mean_stability, \
     save_mean_stability_auc, save_mean_dice
 from stability.visualizations.visualization_utils import visualize_single_image_1class_5classifiers, \
@@ -192,7 +192,8 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     :param config:
     :param classifiers: list of the unique names of all classifiers
     :param only_segmentation_images: True: only images with available segmentation to consider
-    :param only_positive_images: True: only images with positive labelto consider
+                                    False: all images used for computing stability score
+    :param only_positive_images: True: only images with positive label to consider
     :param visualize_per_image: True: visualize predictions for each image and
                                 visualize stability scores correlation per image
     :return: saves .csv files of stability for each image across classifiers,
@@ -212,16 +213,17 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     else:
         dataset_identifier = 'mura'
 
+    predictions, identifier = load_and_filter_predictions(config, classifiers,
+                                                          only_segmentation_images,
+                                                          only_positive_images)
+
     image_labels_collection, image_index_collection, raw_predictions_collection, \
-    bag_labels_collection, bag_predictions_collection, identifier = get_analysis_data_subset(config,
-                                                                                             classifiers,
-                                                                                             only_segmentation_images,
-                                                                                             only_positive_images)
+        bag_labels_collection, bag_predictions_collection = predictions
 
     dataset_identifier += identifier
-    jacc_coll, corr_jacc_coll, _, _, _, corr_iou = get_binary_scores_forthreshold_v2(0.5, raw_predictions_collection)
 
-    pearson_corr_collection, spearman_rank_corr_collection = compute_correlation_scores_v2(raw_predictions_collection)
+    jacc_coll, corr_jacc_coll, _, _, _, corr_iou = compute_binary_stability_scores(0.5, raw_predictions_collection)
+    pearson_corr_collection, spearman_rank_corr_collection = compute_continuous_stability_scores(raw_predictions_collection)
 
     reshaped_jacc_coll = np.asarray(jacc_coll).reshape(5, 5, len(image_index_collection[0]))
     reshaped_corr_jacc_coll = np.asarray(corr_jacc_coll).reshape(5, 5, len(image_index_collection[0]))
@@ -232,23 +234,23 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     xyaxis_short = ['Cl.1', 'Cl. 2', 'Cl. 3', 'Cl. 4', 'Cl. 5']
     if visualize_per_image:
         # the for loop shows stability per image - which may be interesting only in specific cases
-        for idx in range(0, len(image_index_collection[0])):
-            img_ind = get_image_index(xray_dataset, image_index_collection[0], idx)
-
-            print("index " + str(idx))
-            if not np.isnan(reshaped_corr_jacc_coll[:, :, idx]).all():
-                visualize_correlation_heatmap(reshaped_corr_jacc_coll[:, :, idx], stability_res_path,
-                                              '_classifiers_jaccard_' + str(img_ind),
-                                              xyaxis, dropDuplicates=True)
-
-                combine_correlation_heatmaps_next_to_each_other(reshaped_corr_jacc_coll[:, :, idx],
-                                                                reshaped_spearman_coll[:, :, idx],
-                                                                "Corrected Jaccard", "Spearman rank",
-                                                                xyaxis_short, stability_res_path, str(img_ind),
-                                                                drop_duplicates=True)
-            visualize_correlation_heatmap(reshaped_spearman_coll[:, :, idx], stability_res_path,
-                                          '_classifiers_spearman_' + str(img_ind),
-                                          xyaxis, dropDuplicates=True)
+        # for idx in range(0, len(image_index_collection[0])):
+        #     img_ind = get_image_index(xray_dataset, image_index_collection[0], idx)
+        #
+        #     print("index " + str(idx))
+        #     if not np.isnan(reshaped_corr_jacc_coll[:, :, idx]).all():
+        #         visualize_correlation_heatmap(reshaped_corr_jacc_coll[:, :, idx], stability_res_path,
+        #                                       '_classifiers_jaccard_' + str(img_ind),
+        #                                       xyaxis, dropDuplicates=True)
+        #
+        #         combine_correlation_heatmaps_next_to_each_other(reshaped_corr_jacc_coll[:, :, idx],
+        #                                                         reshaped_spearman_coll[:, :, idx],
+        #                                                         "Corrected Jaccard", "Spearman rank",
+        #                                                         xyaxis_short, stability_res_path, str(img_ind),
+        #                                                         drop_duplicates=True)
+        #     visualize_correlation_heatmap(reshaped_spearman_coll[:, :, idx], stability_res_path,
+        #                                   '_classifiers_spearman_' + str(img_ind),
+        #                                   xyaxis, dropDuplicates=True)
         visualize_5_classifiers(xray_dataset, use_pascal_dataset, image_index_collection, image_labels_collection,
                                 raw_predictions_collection, image_path, stability_res_path, class_name, '_test_5_class')
     ## ADD inst AUC vs score
@@ -309,11 +311,10 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
                                   '_mean_stability_' + str("spearman") + '_' + identifier,
                                   xyaxis, dropDuplicates=True)
 
-
     #### AVERAGE ACROSS ALL CLASSIFIERS - PER IMAGE #######
     mask_repetition = np.ones((ma_corr_jaccard_images.shape), dtype=bool)
     for i in range(0, 4):
-        for j in range(i+1, 5):
+        for j in range(i + 1, 5):
             mask_repetition[i, j, :] = False
     mean_all_classifiers_corr_jacc = np.mean(np.ma.masked_array(ma_corr_jaccard_images,
                                                                 mask=mask_repetition), axis=(0, 1))
@@ -323,10 +324,10 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     mean_all_classifiers_spearman = np.mean(np.ma.masked_array(ma_spearman, mask=mask_repetition), axis=(0, 1))
 
     save_mean_stability(image_index_collection[0], mean_all_classifiers_jacc, mean_all_classifiers_corr_jacc,
-                        mean_all_classifiers_iou,mean_all_classifiers_spearman, stability_res_path, dataset_identifier)
+                        mean_all_classifiers_iou, mean_all_classifiers_spearman, stability_res_path, dataset_identifier)
 
 
-def get_analysis_data_subset(config, classifiers, only_segmentation_images, only_positive_images):
+def load_and_filter_predictions(config, classifiers, only_segmentation_images, only_positive_images):
     '''
 
     :param config: config file
@@ -341,40 +342,34 @@ def get_analysis_data_subset(config, classifiers, only_segmentation_images, only
 
     prediction_results_path = config['prediction_results_path']
 
-    all_img_labels, all_img_image_ind, all_img_raw_predictions, all_bag_labels, all_bag_predictions = \
-        load_predictions_v2(classifiers, prediction_results_path)
+    image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, bag_predictions_collection = \
+        load_predictions(classifiers, prediction_results_path)
 
     if only_segmentation_images:
-        bbox_ind_collection = indices_segmentation_images_v2(all_img_labels)
-        image_labels_collection, image_index_collection, raw_predictions_collection, \
-        bag_labels_collection, bag_predictions_collection = \
-            filter_predictions_files_on_indeces(all_img_labels, all_img_image_ind,
-                                                all_img_raw_predictions,
-                                                all_bag_predictions, all_bag_labels, bbox_ind_collection)
+        filtered_idx_collection = indices_segmentation_images_v2(image_labels_collection)
         identifier = "_bbox"
-    else:
-        if only_positive_images:
-            positive_ind_collection = indices_positive_images(all_bag_labels)
-            image_labels_collection, image_index_collection, raw_predictions_collection, \
-            bag_labels_collection, bag_predictions_collection = \
-                filter_predictions_files_on_indeces(all_img_labels, all_img_image_ind,
-                                                    all_img_raw_predictions,
-                                                    all_bag_predictions, all_bag_labels, positive_ind_collection)
-            identifier = "_pos_img"
-            print("finished")
-        else:
-            image_labels_collection, image_index_collection, raw_predictions_collection, \
-            bag_labels_collection, bag_predictions_collection = \
-                all_img_labels, all_img_image_ind, all_img_raw_predictions, all_bag_labels, all_bag_predictions
-            identifier = "_all_img"
+        return filter_predictions_files_on_indeces(image_labels_collection, image_index_collection,
+                                                   raw_predictions_collection,
+                                                   bag_predictions_collection, bag_labels_collection,
+                                                   filtered_idx_collection), \
+               identifier
 
-    return image_labels_collection, image_index_collection, raw_predictions_collection, \
-           bag_labels_collection, bag_predictions_collection, identifier
+    elif only_positive_images:
+        filtered_idx_collection = indices_positive_images(bag_labels_collection)
+        identifier = "_pos_img"
+        return filter_predictions_files_on_indeces(image_labels_collection, image_index_collection,
+                                                   raw_predictions_collection,
+                                                   bag_predictions_collection, bag_labels_collection,
+                                                   filtered_idx_collection), \
+               identifier
+    else:
+        identifier = "_all_img"
+        return image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+               bag_predictions_collection, identifier
 
 
 def stability_all_classifiers_instance_level(config, classifiers, only_segmentation_images, only_positive_images):
-    '''
-
+    """
     :param config:
     :param classifiers: list of results names
     :param only_segmentation_images: True: only images with available segmentation to consider. This should be True
@@ -382,19 +377,19 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
     :return: saves .csv files of stability for each image across classifiers,
             visualizations for each stability score across classifiers and per image,
              visualizations of nan values of the stability scores
-    '''
+    """
     image_path = config['image_path']
     stability_res_path = config['stability_results']
-
+    predictions, identifier = load_and_filter_predictions(config,
+                                                          classifiers,
+                                                          only_segmentation_images,
+                                                          only_positive_images)
     image_labels_collection, image_index_collection, raw_predictions_collection, \
-    bag_labels_collection, bag_predictions_collection, identifier = get_analysis_data_subset(config,
-                                                                                             classifiers,
-                                                                                             only_segmentation_images,
-                                                                                             only_positive_images)
+    bag_labels_collection, bag_predictions_collection = predictions
 
-    jacc_coll, corr_jacc_coll, _, _, _, corr_iou = get_binary_scores_forthreshold_v2(0.5, raw_predictions_collection)
+    jacc_coll, corr_jacc_coll, _, _, _, corr_iou = compute_binary_stability_scores(0.5, raw_predictions_collection)
 
-    pearson_corr_collection, spearman_rank_corr_collection = compute_correlation_scores_v2(raw_predictions_collection)
+    pearson_corr_collection, spearman_rank_corr_collection = compute_continuous_stability_scores(raw_predictions_collection)
 
     reshaped_jacc_coll = np.asarray(jacc_coll).reshape(5, 5, len(image_index_collection[0]))
     reshaped_corr_jacc_coll = np.asarray(corr_jacc_coll).reshape(5, 5, len(image_index_collection[0]))
@@ -405,7 +400,7 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
                                                                                         raw_predictions_collection,
                                                                                         reshaped_corr_jacc_coll)
 
-    ap_res =  compute_ap(image_labels_collection,  raw_predictions_collection)
+    ap_res = compute_ap(image_labels_collection, raw_predictions_collection)
 
     avg_auc = np.mean(auc_res, axis=1)
     stand_dev_auc = np.std(auc_res, axis=1)
@@ -422,7 +417,8 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
                                    stability_res_path, fitting_curve=True, y_errors=stand_dev_auc, x_errors=None,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_jacc, 'mean Aajusted Positive1 Jaccard',
-                                   stability_res_path, fitting_curve=False, y_errors=None, x_errors=stand_dev_stability_jacc,
+                                   stability_res_path, fitting_curve=False, y_errors=None,
+                                   x_errors=stand_dev_stability_jacc,
                                    error_bar=True, bin_threshold_prefix=0)
 
     _, stability_res_spear = get_instance_auc_stability_score_all_classifiers(image_labels_collection,
@@ -440,7 +436,8 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
                                    stability_res_path, fitting_curve=True, y_errors=stand_dev_auc, x_errors=None,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_spear, 'mean Spearman1 correlation',
-                                   stability_res_path, fitting_curve=False, y_errors=None, x_errors=stand_dev_stability_spear,
+                                   stability_res_path, fitting_curve=False, y_errors=None,
+                                   x_errors=stand_dev_stability_spear,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar_v2(avg_stability_jacc, avg_stability_spear, 'stability_score', avg_auc,
                                       "auc", stability_res_path, y_errors=stand_dev_stability_jacc,
@@ -449,17 +446,17 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
 
     mask_repetition = np.ones((reshaped_corr_jacc_coll.shape), dtype=bool)
     for i in range(0, 4):
-        for j in range(i+1, 5):
+        for j in range(i + 1, 5):
             mask_repetition[i, j, :] = False
     diag_classifiers_corr_jacc = np.ma.masked_array(reshaped_corr_jacc_coll, mask=mask_repetition)
     diag_masked_corr_jacc = np.ma.masked_array(diag_classifiers_corr_jacc, mask=np.isnan(diag_classifiers_corr_jacc))
-    mean_corr_jacc = np.mean(diag_masked_corr_jacc, axis=(0,1))
+    mean_corr_jacc = np.mean(diag_masked_corr_jacc, axis=(0, 1))
 
     diag_classifiers_spearman = np.ma.masked_array(reshaped_spearman_coll, mask=mask_repetition)
     diag_masked_spearman = np.ma.masked_array(diag_classifiers_spearman, mask=np.isnan(diag_classifiers_spearman))
-    mean_spearman = np.mean(diag_masked_spearman, axis=(0,1))
-    assert mean_corr_jacc.all()==avg_stability_jacc.all(), "error"
-    assert mean_spearman.all() ==avg_stability_spear.all(), "error"
+    mean_spearman = np.mean(diag_masked_spearman, axis=(0, 1))
+    assert mean_corr_jacc.all() == avg_stability_jacc.all(), "error"
+    assert mean_spearman.all() == avg_stability_spear.all(), "error"
     save_mean_stability_auc(image_index_collection[0], auc_res, avg_stability_jacc,
                             avg_stability_spear, stability_res_path, 'bbox', ap_res)
 
@@ -489,21 +486,21 @@ def do_transformation_masks_pascal(image_dir):
 
 
 def get_analysis_data_masks_pascal(config, classifiers, indices_to_keep):
-        prediction_results_path = config['prediction_results_path']
+    prediction_results_path = config['prediction_results_path']
 
-        all_img_labels, all_img_image_ind, all_img_raw_predictions, all_bag_labels, all_bag_predictions = \
-            load_predictions_v2(classifiers, prediction_results_path)
+    all_img_labels, all_img_image_ind, all_img_raw_predictions, all_bag_labels, all_bag_predictions = \
+        load_predictions(classifiers, prediction_results_path)
 
-        indices_to_keep_coll = [indices_to_keep, indices_to_keep, indices_to_keep, indices_to_keep, indices_to_keep]
-        # bbox_ind_collection = indices_segmentation_images_v2(all_img_labels)
-        image_labels_collection, image_index_collection, raw_predictions_collection, \
-        bag_labels_collection, bag_predictions_collection = \
-            filter_predictions_files_on_indeces(all_img_labels, all_img_image_ind,
-                                                all_img_raw_predictions,
-                                                all_bag_predictions, all_bag_labels, indices_to_keep_coll)
-        identifier = "_bbox"
-        return image_labels_collection, image_index_collection, raw_predictions_collection, \
-        bag_labels_collection, bag_predictions_collection, identifier
+    indices_to_keep_coll = [indices_to_keep, indices_to_keep, indices_to_keep, indices_to_keep, indices_to_keep]
+    # bbox_ind_collection = indices_segmentation_images_v2(all_img_labels)
+    image_labels_collection, image_index_collection, raw_predictions_collection, \
+    bag_labels_collection, bag_predictions_collection = \
+        filter_predictions_files_on_indeces(all_img_labels, all_img_image_ind,
+                                            all_img_raw_predictions,
+                                            all_bag_predictions, all_bag_labels, indices_to_keep_coll)
+    identifier = "_bbox"
+    return image_labels_collection, image_index_collection, raw_predictions_collection, \
+           bag_labels_collection, bag_predictions_collection, identifier
 
 
 def filter_images_with_masks(mask_path1, mask_path2, image_indices):
@@ -517,19 +514,20 @@ def filter_images_with_masks(mask_path1, mask_path2, image_indices):
         parent_path = image_indices[img_ind].split('/')[-2]
 
         if parent_path == mask_parent_path1 or parent_path == mask_parent_path2:
-            if parent_path  == mask_parent_path1:
+            if parent_path == mask_parent_path1:
                 masks_path = mask_path1
             else:
                 masks_path = mask_path2
             try:
-                image_mask = do_transformation_masks_pascal(str(masks_path+"/"+image_indices[img_ind].split('/')[-1]))
+                image_mask = do_transformation_masks_pascal(
+                    str(masks_path + "/" + image_indices[img_ind].split('/')[-1]))
                 # predictions_with_mask.append(predictions[img_ind])
                 masks.append(image_mask)
                 images_ind.append(image_indices[img_ind].split('/')[-1])
                 indices.append(img_ind)
                 parent_paths.append(parent_path)
             except:
-                print("Image was not found: "+ str(masks_path+"/"+image_indices[img_ind].split('/')[-1]) )
+                print("Image was not found: " + str(masks_path + "/" + image_indices[img_ind].split('/')[-1]))
     return masks, images_ind, indices, parent_paths
 
 
@@ -552,7 +550,7 @@ def convert_mask_image_to_binary_matrix(mask_parent_folder, masks):
         for ind in range(masks.shape[1]):
             if mask_parent_folder[ind].lower() == 'tugraz_cars':
                 ## BLUE CHANNEL is larger than 0
-                red_green_channel = np.add(masks[classifier_ind, ind][:, :, 0],  masks[classifier_ind, ind][:, :, 1])
+                red_green_channel = np.add(masks[classifier_ind, ind][:, :, 0], masks[classifier_ind, ind][:, :, 1])
                 background_masked = np.ma.masked_where(red_green_channel > 0, red_green_channel).mask
 
 
@@ -578,30 +576,31 @@ def stability_all_classifiers_instance_level_pascal(config, classifiers):
     '''
     stability_res_path = config['stability_results']
     pascal_image_path = config['pascal_image_path']
-    pascal_dir  = str(Path(pascal_image_path).parent).replace("\\", "/")
+    pascal_dir = str(Path(pascal_image_path).parent).replace("\\", "/")
     masks_path1 = pascal_dir + "/GTMasks/ETHZ_sideviews_cars"
 
-    masks_path_2 =  pascal_dir + "/GTMasks/TUGraz_cars"
+    masks_path_2 = pascal_dir + "/GTMasks/TUGraz_cars"
 
     prediction_results_path = config['prediction_results_path']
 
-    masks_labels_coll= []
+    masks_labels_coll = []
     image_name_coll = []
-    indices_to_keep_coll= []
+    indices_to_keep_coll = []
     for ind in range(5):
-        img_ind = np.load(prediction_results_path+'image_indices_'+classifiers[ind], allow_pickle=True)
-        gt_masks, image_name_to_keep, indices_to_keep, parents_folder =filter_images_with_masks(masks_path1, masks_path_2, img_ind)
+        img_ind = np.load(prediction_results_path + 'image_indices_' + classifiers[ind], allow_pickle=True)
+        gt_masks, image_name_to_keep, indices_to_keep, parents_folder = filter_images_with_masks(masks_path1,
+                                                                                                 masks_path_2, img_ind)
         masks_labels_coll.append(gt_masks)
         image_name_coll.append(image_name_to_keep)
         indices_to_keep_coll.append(indices_to_keep)
 
-
     image_labels_collection, image_index_collection, raw_predictions_collection, \
-    bag_labels_collection, bag_predictions_collection, identifier = get_analysis_data_masks_pascal(config, classifiers, indices_to_keep)
+    bag_labels_collection, bag_predictions_collection, identifier = get_analysis_data_masks_pascal(config, classifiers,
+                                                                                                   indices_to_keep)
 
-    jacc_coll, corr_jacc_coll, _, _, _, corr_iou = get_binary_scores_forthreshold_v2(0.5, raw_predictions_collection)
+    jacc_coll, corr_jacc_coll, _, _, _, corr_iou = compute_binary_stability_scores(0.5, raw_predictions_collection)
 
-    pearson_corr_collection, spearman_rank_corr_collection = compute_correlation_scores_v2(raw_predictions_collection)
+    pearson_corr_collection, spearman_rank_corr_collection = compute_continuous_stability_scores(raw_predictions_collection)
 
     reshaped_jacc_coll = np.asarray(jacc_coll).reshape(5, 5, len(image_index_collection[0]))
     reshaped_corr_jacc_coll = np.asarray(corr_jacc_coll).reshape(5, 5, len(image_index_collection[0]))
@@ -615,9 +614,9 @@ def stability_all_classifiers_instance_level_pascal(config, classifiers):
                                                                                         raw_predictions_collection,
                                                                                         reshaped_corr_jacc_coll)
 
-    dice, accuracy_iou =  get_dice_and_accuracy_pascal(annotations_coll, raw_predictions_collection)
+    dice, accuracy_iou = get_dice_and_accuracy_pascal(annotations_coll, raw_predictions_collection)
 
-    ap_res =  compute_ap(annotations_coll,  raw_predictions_collection)
+    ap_res = compute_ap(annotations_coll, raw_predictions_collection)
 
     avg_auc = np.mean(auc_res, axis=1)
     stand_dev_auc = np.std(auc_res, axis=1)
@@ -626,7 +625,8 @@ def stability_all_classifiers_instance_level_pascal(config, classifiers):
     stand_dev_stability_jacc = np.std(np.ma.masked_array(stability_res_corr_jacc, np.isnan(stability_res_corr_jacc)),
                                       axis=1)
 
-    make_scatterplot_with_errorbar(np.mean(dice, axis=1), 'mean DICE', avg_stability_jacc, 'DICE_mean adjusted Positive0 Jaccard',
+    make_scatterplot_with_errorbar(np.mean(dice, axis=1), 'mean DICE', avg_stability_jacc,
+                                   'DICE_mean adjusted Positive0 Jaccard',
                                    stability_res_path, fitting_curve=False, y_errors=np.std(dice, axis=1),
                                    x_errors=None, error_bar=True, bin_threshold_prefix=0)
 
@@ -641,7 +641,8 @@ def stability_all_classifiers_instance_level_pascal(config, classifiers):
     avg_stability_spear = np.mean(stability_res_spear, axis=1)
     stand_dev_stability_spear = np.std(stability_res_spear, axis=1)
 
-    make_scatterplot_with_errorbar(np.mean(dice, axis=1), 'mean instance AUC', avg_stability_spear, 'dice_mean Spearman0 correlation',
+    make_scatterplot_with_errorbar(np.mean(dice, axis=1), 'mean instance AUC', avg_stability_spear,
+                                   'dice_mean Spearman0 correlation',
                                    stability_res_path, fitting_curve=False,
                                    y_errors=stand_dev_auc, x_errors=stand_dev_stability_spear,
                                    error_bar=True, bin_threshold_prefix=0)
@@ -658,18 +659,18 @@ def stability_all_classifiers_instance_level_pascal(config, classifiers):
                                    x_errors=None, error_bar=True, bin_threshold_prefix=0)
     mask_repetition = np.ones(reshaped_corr_jacc_coll.shape, dtype=bool)
     for i in range(0, 4):
-        for j in range(i+1, 5):
+        for j in range(i + 1, 5):
             mask_repetition[i, j, :] = False
     diag_classifiers_corr_jacc = np.ma.masked_array(reshaped_corr_jacc_coll, mask=mask_repetition)
     diag_masked_corr_jacc = np.ma.masked_array(diag_classifiers_corr_jacc, mask=np.isnan(diag_classifiers_corr_jacc))
-    mean_corr_jacc = np.mean(diag_masked_corr_jacc, axis=(0,1))
+    mean_corr_jacc = np.mean(diag_masked_corr_jacc, axis=(0, 1))
 
     diag_classifiers_spearman = np.ma.masked_array(reshaped_spearman_coll, mask=mask_repetition)
     diag_masked_spearman = np.ma.masked_array(diag_classifiers_spearman, mask=np.isnan(diag_classifiers_spearman))
-    mean_spearman = np.mean(diag_masked_spearman, axis=(0,1))
-    assert mean_corr_jacc.all()==avg_stability_jacc.all(), "error"
-    assert mean_spearman.all() ==avg_stability_spear.all(), "error"
+    mean_spearman = np.mean(diag_masked_spearman, axis=(0, 1))
+    assert mean_corr_jacc.all() == avg_stability_jacc.all(), "error"
+    assert mean_spearman.all() == avg_stability_spear.all(), "error"
     save_mean_stability_auc(image_index_collection[0], auc_res, avg_stability_jacc,
                             avg_stability_spear, stability_res_path, 'bbox', ap_res)
 
-    save_mean_dice(image_index_collection[0],dice, accuracy_iou, stability_res_path, 'bbox')
+    save_mean_dice(image_index_collection[0], dice, accuracy_iou, stability_res_path, 'bbox')

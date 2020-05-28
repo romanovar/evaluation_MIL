@@ -15,9 +15,9 @@ import matplotlib.cm as cm
 import seaborn as sns
 
 from stability.preprocessor.preprocessing import binarize_predictions
-from stability.stability_2classifiers.scores_2classifiers import positive_Jaccard_index_batch, \
-    corrected_Jaccard_pigeonhole, corrected_positive_Jaccard, overlap_coefficient, corrected_overlap_coefficient, \
-    corrected_IOU
+from stability.stability_2classifiers.scores_2classifiers import calculate_positive_Jaccard, \
+    calculate_corrected_Jaccard_heuristic, calculate_corrected_positive_Jaccard, calculate_positive_overlap, \
+    calculate_corrected_positive_overlap, calculate_corrected_IOU
 
 
 def get_image_index_from_pathstring(string_path):
@@ -431,7 +431,7 @@ def visualize_5_classifiers(xray_dataset, pascal_dataset, img_ind_coll, labels_c
         visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll,
                                                    results_path,
                                                    class_name,
-                                                   image_title_suffix, other_img_path=img_path, histogram=False,
+                                                   image_title_suffix, histogram=False,
                                                    threshold_transparency=0.5)
     else:
         visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,
@@ -515,7 +515,7 @@ def exp_fit_func(x, a, b, c):
 def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_collection, x_axis_title, res_path, y_errors,
                                    fitting_curve=False, error_bar=False, bin_threshold_prefix=None, x_errors=None):
     fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
+    ax = fig.add_subplot(1, 1, 1)
 
     if y_errors is None:
         y_errors = np.zeros(y_axis_collection.shape)
@@ -560,7 +560,7 @@ def make_scatterplot_with_errorbar_v2(y_axis_collection, y_axis_collection2, y_a
                                       x_axis_title, res_path, y_errors, y_errors2, error_bar=False,
                                       bin_threshold_prefix=None, x_errors=None):
     fig = plt.figure(figsize=(15, 10))
-    ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
+    ax = fig.add_subplot(1, 1, 1)
     plt.grid("True")
     colors = cm.rainbow(np.linspace(0, 1, len(y_axis_collection)))
     if y_errors is None:
@@ -637,28 +637,28 @@ def plot_change_stability_varying_threshold(raw_predictions1, raw_predictions2, 
         binary_predictions1 = binarize_predictions(raw_predictions1, threshold=threshold_bin)
         binary_predictions2 = binarize_predictions(raw_predictions2, threshold=threshold_bin)
 
-        jaccard_indices = positive_Jaccard_index_batch(binary_predictions1, binary_predictions2, 16)
+        jaccard_indices = calculate_positive_Jaccard(binary_predictions1, binary_predictions2, 16)
         jaccard_indices_mask = np.ma.masked_array(jaccard_indices, np.isnan(jaccard_indices))
         jacc_collection.append(jaccard_indices_mask)
 
         ############################################ Corrected Jaccard - PIGEONHOLE coefficient  #########################
-        corrected_jacc_pigeonhole = corrected_Jaccard_pigeonhole(binary_predictions1, binary_predictions2)
+        corrected_jacc_pigeonhole = calculate_corrected_Jaccard_heuristic(binary_predictions1, binary_predictions2)
         jacc_pgn_collection.append(corrected_jacc_pigeonhole)
 
         ############################################ Corrected Jaccard coefficient  #########################
-        corrected_pos_jacc = corrected_positive_Jaccard(binary_predictions1, binary_predictions2)
+        corrected_pos_jacc = calculate_corrected_positive_Jaccard(binary_predictions1, binary_predictions2)
         corr_jacc_collection.append(corrected_pos_jacc)
 
         ############################################  Overlap coefficient #########################
-        overlap_coeff = overlap_coefficient(binary_predictions1, binary_predictions2, 16)
+        overlap_coeff = calculate_positive_overlap(binary_predictions1, binary_predictions2, 16)
         overlap_collection.append(overlap_coeff)
 
         ############################################ Corrected overlap coefficient  #########################
-        corrected_overlap = corrected_overlap_coefficient(binary_predictions1, binary_predictions2)
+        corrected_overlap = calculate_corrected_positive_overlap(binary_predictions1, binary_predictions2)
         corr_overlap_collection.append(corrected_overlap)
 
         ############################################  corrected IOU score   #########################
-        corrected_iou = corrected_IOU(binary_predictions1, binary_predictions2)
+        corrected_iou = calculate_corrected_IOU(binary_predictions1, binary_predictions2)
         corr_iou_collection.append(corrected_iou)
 
     st_dev_collection = []

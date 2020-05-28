@@ -2,15 +2,26 @@ import numpy as np
 import pandas as pd
 
 
-def load_prediction_files(inst_lab_prefix, ind_prefix, inst_pred_prefix, bag_lab_prefix, bag_pred_prefix,
-                          dataset_name, predictions_path):
+def load_model_prediction_from_file(inst_lab_prefix, ind_prefix, inst_pred_prefix, bag_lab_prefix, bag_pred_prefix,
+                                    dataset_name, predictions_path):
+    """
+    Loads all prediction files associated WITH SPECIFIC MODEL
+    :param inst_lab_prefix: file prefix for instance labels file
+    :param ind_prefix: file prefix for image index
+    :param inst_pred_prefix: file prefix for instance predictions
+    :param bag_lab_prefix: file prefix for bag labels
+    :param bag_pred_prefix: file prefix for bag predictions
+    :param dataset_name: dataset identifier
+    :param predictions_path: directory of the prediction files
+    :return: Instance labels, unique sample names, instance predictions, bag labels and bag predictions for each sample
+    """
     labels = np.load(predictions_path + inst_lab_prefix + dataset_name, allow_pickle=True)
     image_indices = np.load(predictions_path+ind_prefix+dataset_name, allow_pickle=True)
     predictions = np.load(predictions_path+inst_pred_prefix+dataset_name, allow_pickle=True)
 
-    bag_labels = np.load(predictions_path+bag_lab_prefix+(dataset_name[:-4])+ '.npy' ,
+    bag_labels = np.load(predictions_path+bag_lab_prefix+(dataset_name[:-4]) + '.npy',
                          allow_pickle=True)
-    bag_predictions = np.load(predictions_path+bag_pred_prefix+dataset_name[:-4]+ '.npy' ,
+    bag_predictions = np.load(predictions_path+bag_pred_prefix+dataset_name[:-4] + '.npy',
                               allow_pickle=True)
 
     return labels, image_indices, predictions, bag_labels, bag_predictions
@@ -53,38 +64,16 @@ def calculate_subsets_between_two_classifiers(bin_pred1, bin_pred2, P=16):
     return n00, n10, n01, n11
 
 
+def load_predictions(classifier_name_list, predict_res_path):
+    '''
+    Loads the predictions from a list of models of the same architecture.
+    The predictions are used to compare stability between these models.
+    :param classifier_name_list: list of several models trained on slightly different subsets
+    :param predict_res_path:
+    :return: all_labels, all_image_ind, all_raw_predictions, all_bag_labels, all_bag_predictions as lists with each
+    element in the list correspond to a list of classifier predictions
+    '''
 
-def load_predictions(set_name1, set_name2, predict_res_path):
-    patch_labels_prefix = 'patch_labels_'
-    img_ind_prefix = 'image_indices_'
-    raw_pred_prefix = 'predictions_'
-    bag_lab_prefix = 'image_labels_'
-    bag_pred_prefix = 'image_predictions_'
-
-    df_stability = pd.DataFrame()
-    df_auc = pd.DataFrame()
-
-    all_labels_1, all_image_ind_1, all_raw_predictions_1,  \
-    all_bag_labels, all_bag_predictions = load_prediction_files(patch_labels_prefix, img_ind_prefix,
-                                                                                 raw_pred_prefix,
-                                                                                 bag_lab_prefix, bag_pred_prefix,
-                                                                                 set_name1, predict_res_path)
-    all_labels_95, all_image_ind_95, all_raw_predictions_95, \
-    all_bag_labels_95, all_bag_predictions_95 = load_prediction_files(patch_labels_prefix, img_ind_prefix,
-                                                                                    raw_pred_prefix,
-                                                                                    bag_lab_prefix, bag_pred_prefix,
-                                                                                    set_name2, predict_res_path)
-    return  all_labels_1, all_image_ind_1, all_raw_predictions_1, all_bag_labels, all_bag_predictions,\
-            all_labels_95, all_image_ind_95, all_raw_predictions_95, all_bag_labels_95, all_bag_predictions_95
-
-
-
-def load_predictions_v2(classifier_name_list, predict_res_path):
-    patch_labels_prefix = 'patch_labels_'
-    img_ind_prefix = 'image_indices_'
-    raw_pred_prefix = 'predictions_'
-    bag_predictions = 'image_predictions_'
-    bag_labels = 'image_labels_'
     all_labels = []
     all_image_ind = []
     all_raw_predictions = []
@@ -93,13 +82,10 @@ def load_predictions_v2(classifier_name_list, predict_res_path):
     for classifier in classifier_name_list:
         all_labels_classifier, all_image_ind_classifier, \
         all_raw_predictions_classifier, all_bag_labels_class, all_bag_predictions_class = \
-            load_prediction_files(patch_labels_prefix, img_ind_prefix, raw_pred_prefix, bag_labels,
-                                  bag_predictions, classifier, predict_res_path)
-        # all_labels_classifier, all_image_ind_classifier, \
-        # all_raw_predictions_classifier = load_prediction_files(patch_labels_prefix, img_ind_prefix,
-        #                                                        raw_pred_prefix, bag_labels,
-        #                                                        bag_predictions,
-        #                                                        classifier, predict_res_path)
+            load_model_prediction_from_file(dataset_name=classifier, predictions_path=predict_res_path,
+                                            inst_lab_prefix= 'patch_labels_',
+                                            ind_prefix='image_indices_', inst_pred_prefix= 'predictions_',
+                                            bag_lab_prefix= 'image_labels_', bag_pred_prefix='image_predictions_')
 
         all_labels.append(all_labels_classifier)
         all_image_ind.append(all_image_ind_classifier)
@@ -193,43 +179,3 @@ def filter_predictions_files_on_indeces(all_labels_coll, all_image_ind_coll, all
         assert (bbox_img_ind_coll[0] == image_ind).all(), "bbox image index are different or in different order"
     return bbox_img_labels_coll, bbox_img_ind_coll, bbox_img_raw_predictions,\
            bbox_img_bag_labels, bbox_img_bag_predictions
-
-#
-# def filter_predictions_files_positive_images(all_labels_coll, all_image_ind_coll, all_raw_predictions_coll,
-#                                             all_bag_predictions_coll, all_bag_labels_coll, positive_img_ind_coll):
-#     '''
-#
-#     :param all_labels_coll:
-#     :param all_image_ind_coll:
-#     :param all_raw_predictions_coll:
-#     :param bbox_ind_coll:
-#     :return: Returns only the images, labels and raw predictions of images with bounding boxes
-#     '''
-#     bbox_img_labels_coll = []
-#     bbox_img_ind_coll = []
-#     bbox_img_raw_predictions = []
-#     bbox_img_bag_predictions = []
-#     bbox_img_bag_labels = []
-#     assert len(positive_img_ind_coll) == len(all_labels_coll) == \
-#            len(all_image_ind_coll) == len(all_raw_predictions_coll), \
-#         "The lists do not have the same length"
-#
-#     for el_ind in range(0, len(all_labels_coll)):
-#         pos_ind = positive_img_ind_coll[el_ind]
-#         labels, image_ind, raw_predictions, bag_predictions, bag_labels = (all_labels_coll[el_ind])[pos_ind], \
-#                                                                           (all_image_ind_coll[el_ind])[pos_ind], \
-#                                                                           (all_raw_predictions_coll[el_ind])[pos_ind],\
-#                                                                           (all_bag_predictions_coll[el_ind])[pos_ind], \
-#                                                                           (all_bag_labels_coll[el_ind])[pos_ind]
-#
-#         bbox_img_labels_coll.append(labels)
-#         bbox_img_ind_coll.append(image_ind)
-#         bbox_img_raw_predictions.append(raw_predictions)
-#         bbox_img_bag_predictions.append(bag_predictions)
-#         bbox_img_bag_labels.append(bag_labels)
-#         print("""""""""""""""""""")
-#         print(el_ind)
-#         print(image_ind)
-#         assert bbox_img_ind_coll[0].all() == image_ind.all(), "bbox image index are different or in different order"
-#     return bbox_img_labels_coll, bbox_img_ind_coll, bbox_img_raw_predictions,\
-#            bbox_img_bag_labels, bbox_img_bag_predictions
