@@ -214,7 +214,7 @@ def get_process_annotated_png(ann_list, path_to_png="C:/Users/s161590/Desktop/Da
     for src_path in Path(path_to_png).glob('**/*.png'):
         image_ind = os.path.basename(src_path)
         for img in ann_list:
-            #tODO: should NOT only load these files --> currently is a test purpose
+            #TODO: should NOT only load these files --> currently is a test purpose
             if img == image_ind:
                 png_files.append(process_image(src_path))
     print("Annotated images found: " + str(np.array(png_files).shape))
@@ -232,7 +232,7 @@ def get_process_annotated_png(ann_list, path_to_png="C:/Users/s161590/Desktop/Da
 
 # shuffle split ensuring that same patient ID is only in test or train
 
-
+## TODO: refactor
 def split_test_train_v2(df, test_ratio=0.2, random_state=None):
     train_inds, test_inds = next(
         GroupShuffleSplit(test_size=test_ratio, random_state=random_state).split(df, groups=df['Patient ID']))
@@ -312,6 +312,10 @@ def keep_observations_of_positive_patients(Y, res_path, class_name):
         return Y2
 
 
+def keep_observations_with_label(Y, class_name):
+    return Y.loc[Y['Finding Labels'].str.contains(class_name)]
+
+
 def get_rows_from_indices(df, train_inds, test_inds):
     return df.iloc[train_inds], df.iloc[test_inds]
 
@@ -332,6 +336,7 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None, label_c
     train_idx = np.concatenate((train_clas_idx, train_bbox_idx), axis=None)
     df_train = pd.concat([df_class_train, df_bbox_train])
     df_val = df_class_val
+    df_test = pd.concat([df_class_test, df_bbox_test])
 
     if do_stats and res_path is not None:
         visualize_population(Y, 'whole_df_group', res_path, FINDINGS)
@@ -342,14 +347,30 @@ def get_train_test(Y, random_state=None, do_stats=False, res_path =None, label_c
         visualize_population(pd.concat([df_bbox_test, df_class_test]), 'test_group', res_path, FINDINGS)
 
     label_patches = label_col + '_loc'
-    if label_col is not None:
-        train_set, val_set = keep_index_and_1diagnose_columns(df_train, label_patches),\
-                             keep_index_and_1diagnose_columns(df_val,  label_patches)
-        bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test,  label_patches),\
-                                keep_index_and_1diagnose_columns(df_class_test,  label_patches)
-        bbox_train = keep_index_and_1diagnose_columns(df_bbox_train, label_patches)
+    print("Population: ")
+    print("Train dataset ")
+    print("No Finding: "+ str(df_train.loc[df_train['Finding Labels'].str.contains('No Finding')].shape[0]))
+    print(label_col+ ": " + str(df_train.loc[df_train['Finding Labels'].str.contains(label_col)].shape[0]))
+    print("Validation dataset ")
+    print("No Finding: " + str(df_val.loc[df_val['Finding Labels'].str.contains('No Finding')].shape[0]))
+    print(label_col + ": " + str(df_val.loc[df_val['Finding Labels'].str.contains(label_col)].shape[0]))
+    print("Test without bounding boxes dataset ")
+    print("No Finding: " + str(df_class_test.loc[df_class_test['Finding Labels'].str.contains('No Finding')].shape[0]))
+    print(label_col + ": " + str(df_class_test.loc[df_class_test['Finding Labels'].str.contains(label_col)].shape[0]))
+    # if label_col is not None:
+    #     train_set, val_set = keep_index_and_1diagnose_columns(df_train, label_patches),\
+    #                          keep_index_and_1diagnose_columns(df_val,  label_patches)
+    #     bbox_test, class_test = keep_index_and_1diagnose_columns(df_bbox_test,  label_patches),\
+    #                             keep_index_and_1diagnose_columns(df_class_test,  label_patches)
+    #     bbox_train = keep_index_and_1diagnose_columns(df_bbox_train, label_patches)
 
-    return train_idx, train_set, val_set, bbox_test, class_test, bbox_train
+
+    print('Training set: '+ str(df_train.shape))
+    print('Validation set: '+ str(df_val.shape))
+    print('Localization testing set: '+ str(df_bbox_test.shape))
+    print('Classification testing set: '+ str(df_class_test.shape))
+
+    return df_train, df_val, df_test
 
 
 def get_train_test_v2(Y, random_state=None, do_stats=False, res_path =None, label_col=None):
@@ -490,19 +511,25 @@ def get_train_subset_xray(orig_train_set, train_bbox_nr, random_seed, ratio_to_k
         return orig_train_set
 
 
+def filter_observations(df, positive_obs, negative_obs):
+    no_findings_samples = keep_observations_with_label(df, negative_obs)[:10000]
+    class_positive_samples = keep_observations_with_label(df, positive_obs)
+    filtered_patients_df = pd.concat([no_findings_samples, class_positive_samples])
+    print(filtered_patients_df[positive_obs].value_counts())
+    return filtered_patients_df
+
+
 def load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path, localization_labels_path,
-              results_path, class_name):
+              results_path):
     if skip_processing:
-        filtered_patients_df = load_csv(processed_labels_path)
+        xray_df = load_csv(processed_labels_path)
         print('Cardiomegaly label division')
-        print(filtered_patients_df['Cardiomegaly'].value_counts())
+
     else:
         label_df = get_classification_labels(classication_labels_path, False)
         processed_df = preprocess_labels(label_df, image_path)
         xray_df = couple_location_labels(localization_labels_path, processed_df, PATCH_SIZE, results_path)
-        filtered_patients_df = keep_observations_of_positive_patients(xray_df, results_path, class_name)
-
-    return filtered_patients_df
+    return xray_df
 
 
 def split_xray_cv(xray_df, cv_splits, split, class_name):

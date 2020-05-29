@@ -50,6 +50,7 @@ def plot_train_validation(train_curve, val_curve, train_label, val_label,
     #     plt.legend([train_label, val_label, third_label], loc='upper left')
     # else:
     plt.legend([train_label, val_label ], loc='upper left')
+    plt.ylim([0, 1])
     xint = range(0, len(train_curve))
 
     plt.xticks(xint)

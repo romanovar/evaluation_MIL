@@ -6,9 +6,11 @@ from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, 
 
 
 def predict_patch_and_save_results(saved_model, file_unique_name, data_set, processed_y,
-                                   test_batch_size, box_size, image_size, res_path, mura_interpolation):
+                                   test_batch_size, box_size, image_size, res_path, mura_interpolation,
+                                   resized_images_before_training):
     test_generator = gen.BatchGenerator(
         instances=data_set.values,
+        resized_image = resized_images_before_training,
         batch_size=test_batch_size,
         net_h=image_size,
         net_w=image_size,
@@ -173,7 +175,8 @@ def process_prediction(file_unique_name, res_path, pool_method, img_pred_method,
                            -1)
     inst_auc_coll = []
     image_indices_bbox = np.where(dice_scores>-1)[0]
-    save_dice(image_indices[image_indices_bbox],dice_scores[image_indices_bbox], res_path, file_unique_name)
+    if len(image_indices_bbox) > 0:
+        save_dice(image_indices[image_indices_bbox],dice_scores[image_indices_bbox], res_path, file_unique_name)
     index_segmentaion_images = np.where(has_bbox == True)[0]
     for ind in range(index_segmentaion_images.shape[0]):
 

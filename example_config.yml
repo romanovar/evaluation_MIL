@@ -1,3 +1,4 @@
+resized_images_before_training: true/false - specifying if images should be resized and saved before training
 skip_processing_labels: true/false - using a preprossed csv file to  start loading data
 train_mode: true/false - whether to train models or to load a saved model and predict
 use_xray_dataset: true/false - if true Xray used

@@ -1,7 +1,7 @@
-from keras import regularizers
+from keras import regularizers, Sequential
 from keras.applications import ResNet50
 from keras.backend import binary_crossentropy
-from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU, Dropout
+from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU, Dropout, Dense, Flatten
 from keras.models import Model
 from keras.optimizers import Adam
 
@@ -18,24 +18,41 @@ def build_model(reg_weight):
     # base_model.trainable = False
     #for layer in base_model.layers:
     #    layer.trainable = False
-    # count = 0
-    # for layer in base_model.layers:
-    #     if 'res5' in layer.name: # or 'res4' in layer.name:
-    #         layer.trainable = True
-    #         count +=1
-    #         print('trainable layer')
-    #         print(count)
-    #         print(layer.name)
+    count = 0
+    for layer in base_model.layers:
+        if 'res5' in layer.name: # or 'res4' in layer.name:
+            layer.trainable = True
+            count +=1
+            print('trainable layer')
+            print(count)
+            print(layer.name)
 
     last = base_model.output
+    #last = Dropout(0.2)(last)
 
     downsamp = MaxPooling2D(pool_size=1, strides=1, padding='Valid')(last)
 
-    recg_net = Conv2D(512, kernel_size=(3,3), padding='same', activity_regularizer=regularizers.l2(reg_weight))(downsamp)
+    recg_net = Conv2D(512, kernel_size=(3,3), padding='same', activation='relu', activity_regularizer=regularizers.l2(reg_weight))(downsamp)
     recg_net = BatchNormalization()(recg_net)
-    recg_net = ReLU()(recg_net)
+    #recg_net = Dropout(0.2)(recg_net)
     recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
     model = Model(base_model.input, recg_net)
+    
+    return model
+
+
+def build_model_new():
+    model = Sequential([
+        Conv2D(128, kernel_size=(3,3), padding='same', activation='relu', input_shape=(512, 512, 3)),
+        MaxPooling2D((4,4), padding='valid'),
+        Conv2D(64, kernel_size=(3,3), padding='same', activation='relu'),
+
+        MaxPooling2D((4,4), padding='valid'),
+        Conv2D(32, kernel_size=(3, 3), padding='same', activation='relu'),
+        MaxPooling2D((2, 2) , padding='valid'),
+        # Dense(256, activation='relu'),
+        Conv2D(1, kernel_size=(1, 1), padding='same', activation='sigmoid')])
+
     return model
 
 
@@ -52,6 +69,12 @@ def step_decay(epoch, lr, decay=None):
         if(epoch%10==0) and (epoch > 0):
             lrate = lr * decay
         return lrate
+
+
+def dynamic_lr(epoch):
+    return 1e-5 * 10 **(epoch/20)
+
+
 
 
 def compile_model_adamw(model, weight_dec, batch_size, samples_epoch, epochs):

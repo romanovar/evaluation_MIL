@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from keras.callbacks import LearningRateScheduler
 from keras.callbacks import ModelCheckpoint
 from keras.engine.saving import load_model
@@ -13,8 +14,10 @@ import cnn.preprocessor.load_data as ld
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, keras_binary_accuracy
 from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_v3, keras_loss_v3_nor
 from cnn.keras_preds import predict_patch_and_save_results
+from cnn.preprocessor.load_data_datasets import load_process_xray14
 from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, filter_rows_and_columns
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
+from cnn.preprocessor.process_input import fetch_preprocessed_images_csv
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -46,16 +49,18 @@ def cross_validation(config):
     mura_interpolation = config['mura_interpolation']
     use_pascal_dataset = config['use_pascal_dataset']
     pascal_image_path = config['pascal_image_path']
+    resized_images_before_training=config['resized_images_before_training']
 
     nr_epochs = config['nr_epochs']
     lr = config['lr']
-    lrate_decay = config['lrate_decay']
     reg_weight = config['reg_weight']
     pooling_operator = config['pooling_operator']
 
     if use_xray_dataset:
-        xray_df = ld.load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
-                               localization_labels_path, results_path, class_name)
+        if resized_images_before_training:
+            xray_df = fetch_preprocessed_images_csv(image_path, 'processed_imgs')
+        else:
+            xray_df = load_process_xray14(config)
     elif use_pascal_dataset:
         pascal_df = load_pascal(pascal_image_path)
 
@@ -67,10 +72,10 @@ def cross_validation(config):
     CV_SPLITS = 5
     for split in range(0, CV_SPLITS):
 
-
         if use_xray_dataset:
             df_train, df_val, df_test, _, _,_ = ld.split_xray_cv(xray_df, CV_SPLITS,
                                                                  split, class_name)
+
         elif use_pascal_dataset:
             df_train, df_val, df_test = construct_train_test_cv(pascal_df, CV_SPLITS, split)
 
@@ -84,6 +89,7 @@ def cross_validation(config):
             ############################################ TRAIN ###########################################################
             train_generator = gen.BatchGenerator(
                 instances=df_train.values,
+                resized_image=resized_images_before_training,
                 batch_size=BATCH_SIZE,
                 net_h=IMAGE_SIZE,
                 net_w=IMAGE_SIZE,
@@ -95,6 +101,7 @@ def cross_validation(config):
 
             valid_generator = gen.BatchGenerator(
                 instances=df_val.values,
+                resized_image=resized_images_before_training,
                 batch_size=BATCH_SIZE,
                 net_h=IMAGE_SIZE,
                 net_w=IMAGE_SIZE,
@@ -126,11 +133,10 @@ def cross_validation(config):
                 epochs=nr_epochs,
                 validation_data=valid_generator,
                 validation_steps=valid_generator.__len__(),
-                verbose=1,
-                callbacks=[checkpoint_on_epoch_end, lrate]
+                verbose=1
             )
-            filepath = trained_models_path + class_name +"CV_"+str(split)+"_nov.hdf5"
-            model.save(filepath)
+            # filepath = trained_models_path + class_name +"CV_"+str(split)+"_nov.hdf5"
+            # model.save(filepath)
             print("history")
             print(history.history)
             print(history.history['keras_accuracy'])
@@ -153,15 +159,15 @@ def cross_validation(config):
             ########################################### TESTING SET########################################################
             predict_patch_and_save_results(model, 'test_set_'+ class_name+'_CV'+str(split), df_test, skip_processing,
                                            BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                           mura_interpolation)
+                                           mura_interpolation, resized_images_before_training)
             predict_patch_and_save_results(model, 'train_set_' + class_name + '_CV' + str(split), df_train,
                                            skip_processing,
                                            BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                           mura_interpolation)
+                                           mura_interpolation, resized_images_before_training)
             predict_patch_and_save_results(model, 'val_set_' + class_name + '_CV' + str(split), df_val,
                                            skip_processing,
                                            BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                           mura_interpolation)
+                                           mura_interpolation, resized_images_before_training)
             ##### EVALUATE function
 
             print("evaluate validation")
@@ -176,6 +182,7 @@ def cross_validation(config):
                 verbose=1)
             test_generator = gen.BatchGenerator(
                 instances=df_test.values,
+                resized_image=resized_images_before_training,
                 batch_size=BATCH_SIZE,
                 net_h=IMAGE_SIZE,
                 net_w=IMAGE_SIZE,
