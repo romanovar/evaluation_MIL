@@ -7,7 +7,8 @@ from cnn.keras_utils import image_larger_input, calculate_scale_ratio
 from cnn.preprocessor.load_data_mura import padding_needed, pad_image
 from stability.utils import get_image_index
 
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
+# matplotlib.use('TKAgg',warn=False, force=True)
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
@@ -15,7 +16,7 @@ import matplotlib.cm as cm
 import seaborn as sns
 
 from stability.preprocessor.preprocessing import binarize_predictions
-from stability.stability_2classifiers.scores_2classifiers import calculate_positive_Jaccard, \
+from stability.stability_2classifiers.stability_scores import calculate_positive_Jaccard, \
     calculate_corrected_Jaccard_heuristic, calculate_corrected_positive_Jaccard, calculate_positive_overlap, \
     calculate_corrected_positive_overlap, calculate_corrected_IOU
 
@@ -168,7 +169,7 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
       threshold = 0 shows how it looks for Spearman rank,
       threshold = 0.5 shows how it looks for corrected Jaccard
 
-    :return: return graph per image with a heatmap for each classifier prediction and histogram/heatmap for overlapping
+    :return: return a graph per image with a heatmap for each classifier prediction and histogram/heatmap for overlapping
     '''
     if threshold_transparency >= 0.5:
         image_title_suffix += '_jacc'
@@ -416,7 +417,7 @@ def visualize_5_classifiers(xray_dataset, pascal_dataset, img_ind_coll, labels_c
                             img_path, results_path,
                             class_name, image_title_suffix):
     '''
-    Visualizes instance predictions from several classifers on a list of images
+    Visualizes predictions of all models on each image
     :param xray_dataset: dataset used
     :param img_ind_coll:
     :param labels_coll:
@@ -425,7 +426,7 @@ def visualize_5_classifiers(xray_dataset, pascal_dataset, img_ind_coll, labels_c
     :param results_path:
     :param class_name:
     :param image_title_suffix:
-    :return:
+    :return: For each image
     '''
     if xray_dataset:
         visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll,
@@ -460,7 +461,6 @@ def visualize_correlation_heatmap(df, res_path, img_ind, labels, dropDuplicates=
     sns.set_style(style='white')
     f, ax = plt.subplots(figsize=(7, 5))
     htmp = draw_heatmap(df, labels, ax, 15, dropDuplicates)
-    plt.show()
     htmp.figure.savefig(res_path + 'correlation_' + img_ind + '.jpg', bbox_inches='tight')
     plt.close()
     return htmp
@@ -533,8 +533,7 @@ def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_colle
 
         z2 = np.polyfit(x_axis_collection, y_axis_collection, 2)
         f2 = np.poly1d(z2)
-        # plt.plot(x_axis_collection, f(x), 'g-.', label="linear fit")
-        # plt.plot(x_axis_collection, f2(x), 'b.', label="quadratic fit")
+
         print("I am the fitting curve: ")
         print(popt)
         plt.plot(np.sort(x_axis_collection), exp_fit_func(np.sort(x_axis_collection), *popt), 'r--',
@@ -544,7 +543,7 @@ def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_colle
     plt.ylabel(y_axis_title)
     plt.title('Matplot scatter plot')
     plt.legend(loc=(0.45, 0))
-    plt.show()
+    # plt.legend()
 
     if bin_threshold_prefix is not None:
         fig.savefig(
@@ -585,7 +584,7 @@ def make_scatterplot_with_errorbar_v2(y_axis_collection, y_axis_collection2, y_a
     plt.ylabel(y_axis_title)
     plt.title('Matplot scatter plot')
     plt.legend(loc=2)
-    plt.show()
+    # plt.show()
 
     if bin_threshold_prefix is not None:
         fig.savefig(

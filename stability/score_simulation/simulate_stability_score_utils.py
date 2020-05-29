@@ -4,10 +4,30 @@ import matplotlib.pyplot as plt
 
 def plot_line_graph(line1, label1, line2, label2, line3, label3, line4, label4, line5, label5,  line6, label6,
                     x_axis_data, x_label, results_path, fig_name, text_string):
-
+    """
+    Visualization of several stability scores.
+    :param line1:
+    :param label1:
+    :param line2:
+    :param label2:
+    :param line3:
+    :param label3:
+    :param line4:
+    :param label4:
+    :param line5:
+    :param label5:
+    :param line6:
+    :param label6:
+    :param x_axis_data:
+    :param x_label:
+    :param results_path:
+    :param fig_name:
+    :param text_string:
+    :return:
+    """
     fig = plt.figure()
     fig.text(0.5, 1, text_string, horizontalalignment='center', verticalalignment='center', fontsize=9)
-    ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
+    # ax = fig.add_subplot(1, 1, 1, axisbg="1.0")
     plt.plot(x_axis_data, line1, 'g', label = label1)
     plt.plot(x_axis_data, line2, 'b', label=label2)
     if line3 is not None:
@@ -18,7 +38,6 @@ def plot_line_graph(line1, label1, line2, label2, line3, label3, line4, label4, 
                 plt.plot(x_axis_data, line5, ':b', label=label5)
                 if line6 is not None:
                     plt.plot(x_axis_data, line6, 'r--', label=label6)
-    # plt.tick_params(labelsize=2)
     plt.rc('legend', fontsize=7)
     plt.ylabel('score')
     plt.xlabel(x_label)
@@ -32,17 +51,17 @@ def plot_line_graph(line1, label1, line2, label2, line3, label3, line4, label4, 
 
 
 
-def overlap_coefficient(n00, n10, n01, n11 ):
+def positive_overlap(n00, n10, n01, n11):
     min_n01_n10 = np.minimum(n10, n01)
     return n11/(min_n01_n10 + n11)
 
 
-def positive_Jaccard_index_batch(n00, n10, n01, n11 ):
+def positive_Jaccard(n00, n10, n01, n11):
     pos_jaccard_dist = n11/(n11+n10+n01)
     return pos_jaccard_dist
 
 
-def corrected_overlap_coefficient(n00, n10, n01, n11):
+def corrected_positive_overlap(n00, n10, n01, n11):
     min_n01_n10 = np.minimum(n10, n01)
 
     N = n00 + n11 + n10 + n01
@@ -50,22 +69,13 @@ def corrected_overlap_coefficient(n00, n10, n01, n11):
 
     corrected_score = ((n11 - expected_overlap)/(np.minimum((n11+n01), (n11+n10)) - expected_overlap))
     corrected_score2 = ((n00*n11 - n10*n01)/((min_n01_n10+n11)*(min_n01_n10 + n00)))
-    # corrected_score = {:0.2f}(corrected_score)
-    # corrected_score2 = round(corrected_score2, 3)
-    # assert corrected_score == corrected_score2, "Error in computing some of the index! "
     return np.ma.masked_array(corrected_score, np.isnan(corrected_score))
 
 
 def corrected_positive_Jaccard(n00, n10, n01, n11):
     N = n00 + n11 + n10 + n01
     expected_positive_overlap = (n11+n01)*(n11+n10)/N
-
     corrected_score = ((n11 - expected_positive_overlap)/(n10 + n11 +n01 - expected_positive_overlap))
-    corrected_score2 = (n00*n11 - n10*n01)/((n00*n11) - (n01*n10) + ((n10+n01)*N))
-    # corrected_score = round(corrected_score, 3)
-    # corrected_score2 = round(corrected_score2, 3)
-
-    # assert corrected_score == corrected_score2, "Error in computing some of the index! "
     return np.ma.masked_array(corrected_score, np.isnan(corrected_score))
 
 
@@ -76,15 +86,10 @@ def corrected_IOU(n00, n10, n01, n11):
 
     corrected_score = ((n11 + n00 - expected_positive_overlap - expected_negative_overlap) /
                        (n10 + n11 + n01 + n00 - expected_positive_overlap - expected_negative_overlap))
-    corrected_score2 = (2*n00 * n11 - 2*n10 * n01) / (2*(n00 * n11) - 2*(n01 * n10) + ((n10 + n01) * N))
-
-    # assert ((np.ma.masked_array(corrected_score, np.isnan(corrected_score)) ==
-    #          np.ma.masked_array(corrected_score2,
-    #                             np.isnan(corrected_score2)))).all(), "Error in computing some of the index! "
     return np.ma.masked_array(corrected_score, np.isnan(corrected_score))
 
 
-def corrected_Jaccard_pigeonhole(n00, n10, n01, n11):
+def corrected_Jaccard_heuristic(n00, n10, n01, n11):
     N = n00 + n11 + n10 + n01
     pigeonhole_positive_correction = (2*n11 + n01 + n10) - N
     max_overlap = np.maximum(pigeonhole_positive_correction, 0)
@@ -92,52 +97,17 @@ def corrected_Jaccard_pigeonhole(n00, n10, n01, n11):
     corrected_score = ((n11 - max_overlap) /
                        (n10 + n11 + n01 - max_overlap))
     return np.ma.masked_array(corrected_score, np.isnan(corrected_score))
-#
-
-# N = 200
-# n11=50
-# n00 = 1
-#
-# for step in range(1, 17):
-#     n10 = N - n11
-#     n01 = N  - n11
-#     if n01 < 0:
-#         print("Negative instances")
-#     overlap_coeff = overlap_coefficient(n00, n10, n01, n11)
-#     pos_jacc = positive_Jaccard_index_batch(n00, n10, n01, n11)
-#     corrected_overlap =  corrected_overlap_coefficient(n00, n10, n01, n11)
-#     corrected_jaccard = corrected_positive_Jaccard(n00, n10, n01, n11)
-#
-#     overlap_coll.append(overlap_coeff)
-#     jacc_coll.append(pos_jacc)
-#     corr_overlap_col.append(corrected_overlap)
-#     corr_jaccard_coll.append(corrected_jaccard)
-#     if step >= 8:
-#         # print(corrected_jaccard)
-#         print(corrected_overlap)
-#         print(n11)
-#         print(n00)
-#     set1_size_col.append(n11)
-#
-#     n11 += 10
-#     # set2_size -= 10
-#
-# print(len(jacc_coll))
-# print(len(overlap_coll))
-# print(len(set1_size_col))
-# # plot_line_graph(overlap_coll, 'Overlap coefficient' ,jacc_coll, 'Positive Jaccard distance', None, None, None, None,
-# #                 set1_size_col)
-# # plot_line_graph(corr_overlap_col, 'Corrected Overlap coefficient' ,corr_jaccard_coll, 'Corrected Positive Jaccard distance',
-# #                 None, None, None, None, set1_size_col)
-# plot_line_graph(overlap_coll, 'Overlap coefficient' ,jacc_coll, 'Positive Jaccard distance',
-#                 corr_overlap_col, 'Corrected Overlap coefficient' ,corr_jaccard_coll,
-#                 'Corrected Positive Jaccard distance', set1_size_col)
-
 
 ################################################### fixing agreement ration n00 and n11 ########################
 import math
 
 def simulate_distributions_n01_n10_extreme(res_path):
+    """
+    Simulates the behaviour of all binary stability scores in equal conditions.
+
+    :param res_path:
+    :return:
+    """
     overlap_coll = []
     jacc_coll = []
     corr_overlap_col = []
@@ -158,12 +128,12 @@ def simulate_distributions_n01_n10_extreme(res_path):
         assert n01 >= 0, "instance number should be bigger than 0"
         assert n10 >= 0, "instance number should be bigger than 0"
         assert n11 >= 0, "instance number should be bigger than 0"
-        overlap_coeff = overlap_coefficient(n00, n10, n01, n11)
-        pos_jacc = positive_Jaccard_index_batch(n00, n10, n01, n11)
-        corrected_overlap =  corrected_overlap_coefficient(n00, n10, n01, n11)
+        overlap_coeff = positive_overlap(n00, n10, n01, n11)
+        pos_jacc = positive_Jaccard(n00, n10, n01, n11)
+        corrected_overlap =  corrected_positive_overlap(n00, n10, n01, n11)
         corrected_jaccard = corrected_positive_Jaccard(n00, n10, n01, n11)
         corrected_iou = corrected_IOU(n00, n10, n01, n11)
-        corrected_pigeonhole = corrected_Jaccard_pigeonhole(n00, n10, n01, n11)
+        corrected_pigeonhole = corrected_Jaccard_heuristic(n00, n10, n01, n11)
 
 
         overlap_coll.append(overlap_coeff)
@@ -174,7 +144,6 @@ def simulate_distributions_n01_n10_extreme(res_path):
         corr_jaccard_pgn_coll.append(corrected_pigeonhole)
 
         if corrected_overlap <= -2:
-            # print(corrected_jaccard)
             print("printing extreme")
             print(corrected_overlap)
             print(n01)
@@ -213,12 +182,12 @@ def simulate_distributions_n01_n10_equal_distribution(res_path):
         assert n01 >= 0, "instance number should be bigger than 0"
         assert n10 >= 0, "instance number should be bigger than 0"
         assert n11 >= 0, "instance number should be bigger than 0"
-        overlap_coeff = overlap_coefficient(n00, n10, n01, n11)
-        pos_jacc = positive_Jaccard_index_batch(n00, n10, n01, n11)
-        corrected_overlap =  corrected_overlap_coefficient(n00, n10, n01, n11)
+        overlap_coeff = positive_overlap(n00, n10, n01, n11)
+        pos_jacc = positive_Jaccard(n00, n10, n01, n11)
+        corrected_overlap =  corrected_positive_overlap(n00, n10, n01, n11)
         corrected_jaccard = corrected_positive_Jaccard(n00, n10, n01, n11)
         corrected_iou =  corrected_IOU(n00, n10, n01, n11)
-        corrected_pigeonhole = corrected_Jaccard_pigeonhole(n00, n10, n01, n11)
+        corrected_pigeonhole = corrected_Jaccard_heuristic(n00, n10, n01, n11)
 
 
         overlap_coll.append(overlap_coeff)
@@ -245,10 +214,6 @@ def simulate_distributions_n01_n10_equal_distribution(res_path):
                     corr_jaccard_pgn_coll, "Corrected Positive Jaccard using Pigeonhole",
                     set1_size_col, 'n01', res_path, 'distribution_Ns_equal_distribution',
                 fig_text)
-    # plot_line_graph(overlap_coll, 'Overlap coefficient', jacc_coll, 'Positive Jaccard distance',
-    #                 corr_overlap_col, 'Corrected Overlap coefficient',None, None, None, None, None,None,
-    #                 set1_size_col, 'n01', results_path, 'distribution_Ns_equal_distribution',
-    #                 fig_text)
 
 
 def simulate_distributions_n01_n10(res_path):
@@ -281,20 +246,20 @@ def simulate_distributions_n01_n10(res_path):
             assert n01 >= 0, "instance number should be bigger than 0"
             assert n10 >= 0, "instance number should be bigger than 0"
             assert n11 >= 0, "instance number should be bigger than 0"
-            # overlap_coeff = overlap_coefficient(n00, n10, n01, n11)
-            # pos_jacc = positive_Jaccard_index_batch(n00, n10, n01, n11)
-            # corrected_overlap =  corrected_overlap_coefficient(n00, n10, n01, n11)
+            overlap_coeff = positive_overlap(n00, n10, n01, n11)
+            pos_jacc = positive_Jaccard(n00, n10, n01, n11)
+            corrected_overlap =  corrected_positive_overlap(n00, n10, n01, n11)
             corrected_jaccard = corrected_positive_Jaccard(n00, n10, n01, n11)
-            # corrected_iou = corrected_IOU(n00, n10, n01, n11)
-            # corrected_pigeonhole = corrected_Jaccard_pigeonhole(n00, n10, n01, n11)
+            corrected_iou = corrected_IOU(n00, n10, n01, n11)
+            corrected_pigeonhole = corrected_Jaccard_heuristic(n00, n10, n01, n11)
 
 
-            # overlap_coll.append(overlap_coeff)
-            # jacc_coll.append(pos_jacc)
-            # corr_overlap_col.append(corrected_overlap)
+            overlap_coll.append(overlap_coeff)
+            jacc_coll.append(pos_jacc)
+            corr_overlap_col.append(corrected_overlap)
             corr_jaccard_coll.append(corrected_jaccard)
-            # corr_iou_coll.append(corrected_iou)
-            # corr_jaccard_pgn_coll.append(corrected_pigeonhole)
+            corr_iou_coll.append(corrected_iou)
+            corr_jaccard_pgn_coll.append(corrected_pigeonhole)
 
             set1_size_col.append(n01)
             n01 += step_size
@@ -340,12 +305,12 @@ def simulate_distributions_n11_n00(res_path):
             assert new_n11 >= 0, "instance number should be bigger than 0"
             assert new_n00 >= 0, "instance number should be bigger than 0"
             assert new_n01 >= 0, "instance number should be bigger than 0"
-            overlap_coeff = overlap_coefficient(new_n00, new_n10, new_n01, new_n11)
-            pos_jacc = positive_Jaccard_index_batch(new_n00, new_n10, new_n01, new_n11)
-            corrected_overlap =  corrected_overlap_coefficient(new_n00, new_n10, new_n01, new_n11)
+            overlap_coeff = positive_overlap(new_n00, new_n10, new_n01, new_n11)
+            pos_jacc = positive_Jaccard(new_n00, new_n10, new_n01, new_n11)
+            corrected_overlap =  corrected_positive_overlap(new_n00, new_n10, new_n01, new_n11)
             corrected_jaccard = corrected_positive_Jaccard(new_n00, new_n10, new_n01, new_n11)
             corrected_iou = corrected_IOU(new_n00, new_n10, new_n01, new_n11)
-            corrected_pigeonhole = corrected_Jaccard_pigeonhole(new_n00, new_n10, new_n01, new_n11)
+            corrected_pigeonhole = corrected_Jaccard_heuristic(new_n00, new_n10, new_n01, new_n11)
 
 
             overlap_coll.append(overlap_coeff)
@@ -491,24 +456,13 @@ def simulate_distributions_monotonic(res_path):
                     fig_name='step' + str(step_agreement), text_string=fig_text)
 
 
-def corrected_positive_Jaccard_v2(n00, n10, n01, n11):
-    N = n00 + n11 + n10 + n01
-    expected_positive_overlap = (n11 + n01) * (n11 + n10) / N
-
-    corrected_score = ((n11 - expected_positive_overlap) / (n10 + n11 + n01 - expected_positive_overlap))
-    corrected_score2 = (n00 * n11 - n10 * n01) / ((n00 * n11) - (n01 * n10) + ((n10 + n01) * N))
-    # assert ((np.ma.masked_array(corrected_score, np.isnan(corrected_score)) ==
-    #          np.ma.masked_array(corrected_score2, np.isnan(corrected_score2)))).all(), "Error in computing some of the index! "
-    return np.ma.masked_array(corrected_score, np.isnan(corrected_score))
-
-
 def simulate_score_v1():
     a = 5
     b = 25
     c = 1
     d = 5
     for step in range(0, 50):
-        print(corrected_positive_Jaccard_v2(d, c, b, a))
+        print(corrected_positive_Jaccard(d, c, b, a))
         a += 1
 
 
@@ -518,12 +472,13 @@ def simulate_score_v1():
     c = 1
     d = 5
     for step in range(0, 25):
-        print(corrected_positive_Jaccard_v2(d, c, b, a))
+        print(corrected_positive_Jaccard(d, c, b, a))
         a += 1
         b -=1
 
 
-def simulate_jaccard_increasing_subpopulation(increasing_group, decreasing_group, N, step_size, n00, n01, n10, n11 ):
+def simulate_increasing_subpopulation(stability_score_to_simulate, increasing_group, decreasing_group, N, step_size, n00, n01, n10, n11):
+
     corr_jaccard_coll_n11 = []
     step_coll=[]
     if increasing_group.lower() == 'n00':
@@ -559,16 +514,6 @@ def simulate_jaccard_increasing_subpopulation(increasing_group, decreasing_group
 
     fixed_group1 = math.ceil((N - init_increasing - init_decreasing) / 2)
     fixed_group2 =  N - fixed_group1 - init_increasing- init_decreasing
-    # updated_increasing
-    # updated_decreasing
-    # # init_increasing_gr
-    # # init_decreasing_gr =
-    # new_n11 = math.ceil((N - new_n01 - new_n10) / 2)
-    # new_n00 = N - new_n11 - new_n01 - new_n10
-    # init_n00 = new_n00
-    # init_n11 = new_n11
-
-
 
     ####### EXPERIMENT 2 ######################
     for step in range(0, int(init_decreasing / step_size) + 1):
@@ -619,8 +564,17 @@ def simulate_jaccard_increasing_subpopulation(increasing_group, decreasing_group
         elif new_n11 < 0:
             new_n11 = fixed_group2
 
-        corrected_jaccard = corrected_positive_Jaccard(new_n00, new_n10, new_n01, new_n11)
-        corr_jaccard_coll_n11.append(corrected_jaccard)
+        stability_score_fn = {'corrected_positive_jaccard': corrected_positive_Jaccard(new_n00, new_n10, new_n01, new_n11),
+                              'corrected_jaccard_heuristics': corrected_Jaccard_heuristic(new_n00, new_n10, new_n01, new_n11),
+                              'positive_jaccard': positive_Jaccard(new_n00, new_n10, new_n01, new_n11),
+                              'corrected_iou': corrected_IOU(new_n00, new_n10, new_n01, new_n11),
+                              'positive_overlap': positive_overlap(new_n00, new_n10, new_n01, new_n11),
+                              'corrected_positive_overlap': corrected_positive_Jaccard(new_n00, new_n10, new_n01, new_n11)
+                              }
+        stability_score = stability_score_fn[stability_score_to_simulate.lower()]
+
+        # corrected_jaccard = corrected_positive_Jaccard(new_n00, new_n10, new_n01, new_n11)
+        corr_jaccard_coll_n11.append(stability_score)
 
         step_coll.append(updated_increasing)
         updated_increasing += step_size
@@ -691,30 +645,34 @@ def simulate_distributions_jacc_n11_n00(res_path):
 def simulate_distributions_jacc_v2(res_path):
     N = 200
     step_size = 5
-
-    jacc_scores1, steps_col1 =  simulate_jaccard_increasing_subpopulation(increasing_group='n11',
-                                                                          decreasing_group='n00',
-                                                                          N=200, step_size=5,
-                                                                          n00=50, n01=50, n10=50, n11=50)
+    stability_score_name = 'corrected_positive_jaccard'
+    jacc_scores1, steps_col1 =  simulate_increasing_subpopulation(stability_score_to_simulate=stability_score_name,
+                                                                  increasing_group='n11',
+                                                                  decreasing_group='n00',
+                                                                  N=200, step_size=5,
+                                                                  n00=50, n01=50, n10=50, n11=50)
     label1 = 'n01 = n10; Increasing n11 w.r.t. n00'
-    jacc_scores6, steps_col6 = simulate_jaccard_increasing_subpopulation(increasing_group='n10',
-                                                                         decreasing_group='n01',
-                                                                         N=200, step_size=5,
-                                                                         n00=50, n01=50, n10=50, n11=50)
+    jacc_scores6, steps_col6 = simulate_increasing_subpopulation(stability_score_to_simulate=stability_score_name,
+                                                                 increasing_group='n10',
+                                                                 decreasing_group='n01',
+                                                                 N=200, step_size=5,
+                                                                 n00=50, n01=50, n10=50, n11=50)
     label6 ='n11 = n00; Increasing n10 w.r.t. n01'
-    jacc_scores3, steps_col3 = simulate_jaccard_increasing_subpopulation(increasing_group='n10',
-                                                                         decreasing_group='n00',
-                                                                         N=200, step_size=5,
-                                                                         n00=50, n01=50, n10=50, n11=50)
+    jacc_scores3, steps_col3 = simulate_increasing_subpopulation(stability_score_to_simulate=stability_score_name,
+                                                                 increasing_group='n10',
+                                                                 decreasing_group='n00',
+                                                                 N=200, step_size=5,
+                                                                 n00=50, n01=50, n10=50, n11=50)
     label3 = 'n11=n01; Increasing n10 w.r.t. n00'
     # jacc_scores4, steps_col4 = simulate_jaccard_increasing_subpopulation(increasing_group='n00',
     #                                                                      decreasing_group='n11',
     #                                                                      N=200, step_size=5,
     #                                                                      n00=50, n01=50, n10=50, n11=50)
-    jacc_scores2, steps_col2 = simulate_jaccard_increasing_subpopulation(increasing_group='n11',
-                                                                         decreasing_group='n10',
-                                                                         N=200, step_size=5,
-                                                                         n00=50, n01=50, n10=50, n11=50)
+    jacc_scores2, steps_col2 = simulate_increasing_subpopulation(stability_score_to_simulate=stability_score_name,
+                                                                 increasing_group='n11',
+                                                                 decreasing_group='n10',
+                                                                 N=200, step_size=5,
+                                                                 n00=50, n01=50, n10=50, n11=50)
     label2 = 'n01=n00, increasing n11 w.r.t. n10'
     # jacc_scores3, steps_col2 = simulate_jaccard_increasing_subpopulation(increasing_group='n11',
     #                                                                      decreasing_group='n01',
@@ -722,9 +680,62 @@ def simulate_distributions_jacc_v2(res_path):
     #                                                                      n00=50, n01=50, n10=50, n11=50)
     # label3 = 'n10=n00; Increasing n11 w.r.t. n01'
     assert (steps_col1==steps_col2), "steps are different in the  measurements "
-    fig_text = 'Total N: ' + str(N) + '\n Initial values of subgroups: ' + str(50)
+    fig_text = stability_score_name + '\n' + 'Total N: ' + str(N) + '\n Initial values of subgroups: ' + str(50)
     plot_line_graph(jacc_scores1, label1, jacc_scores2, label2 ,
                     line3=jacc_scores6, label3=label6, line4=jacc_scores3, label4=label3,
                     line5=None, label5=None, line6=None, label6=None,
                     x_axis_data=steps_col1, x_label='Increasing group size', results_path= res_path,
-                    fig_name= 'increasing n11' + str('only_jacc'), text_string=fig_text)
+                    fig_name= 'diff_groups_' + stability_score_name, text_string=fig_text)
+
+#
+# def simulate_stability_for_different_conditions(res_path, stability_score, ):
+#     N = 200
+#     step_size = 5
+#
+#     jacc_scores1, steps_col1 = simulate_increasing_subpopulation(increasing_group='n11',
+#                                                                  decreasing_group='n00',
+#                                                                  N=200, step_size=5,
+#                                                                  n00=50, n01=50, n10=50, n11=50)
+#     label1 = 'n01 = n10; Increasing n11 w.r.t. n00'
+#     jacc_scores6, steps_col6 = simulate_increasing_subpopulation(increasing_group='n10',
+#                                                                  decreasing_group='n01',
+#                                                                  N=200, step_size=5,
+#                                                                  n00=50, n01=50, n10=50, n11=50)
+#     label6 = 'n11 = n00; Increasing n10 w.r.t. n01'
+#     jacc_scores3, steps_col3 = simulate_increasing_subpopulation(increasing_group='n10',
+#                                                                  decreasing_group='n00',
+#                                                                  N=200, step_size=5,
+#                                                                  n00=50, n01=50, n10=50, n11=50)
+#     label3 = 'n11=n01; Increasing n10 w.r.t. n00'
+#     # jacc_scores4, steps_col4 = simulate_jaccard_increasing_subpopulation(increasing_group='n00',
+#     #                                                                      decreasing_group='n11',
+#     #                                                                      N=200, step_size=5,
+#     #                                                                      n00=50, n01=50, n10=50, n11=50)
+#     jacc_scores2, steps_col2 = simulate_increasing_subpopulation(increasing_group='n11',
+#                                                                  decreasing_group='n10',
+#                                                                  N=200, step_size=5,
+#                                                                  n00=50, n01=50, n10=50, n11=50)
+#     label2 = 'n01=n00, increasing n11 w.r.t. n10'
+#     # jacc_scores3, steps_col2 = simulate_jaccard_increasing_subpopulation(increasing_group='n11',
+#     #                                                                      decreasing_group='n01',
+#     #                                                                      N=200, step_size=5,
+#     #                                                                      n00=50, n01=50, n10=50, n11=50)
+#     # label3 = 'n10=n00; Increasing n11 w.r.t. n01'
+#     assert (steps_col1 == steps_col2), "steps are different in the  measurements "
+#     fig_text = 'Total N: ' + str(N) + '\n Initial values of subgroups: ' + str(50)
+#     plot_line_graph(jacc_scores1, label1, jacc_scores2, label2,
+#                     line3=jacc_scores6, label3=label6, line4=jacc_scores3, label4=label3,
+#                     line5=None, label5=None, line6=None, label6=None,
+#                     x_axis_data=steps_col1, x_label='Increasing group size', results_path=res_path,
+#                     fig_name='increasing n11' + str('only_jacc'), text_string=fig_text)
+#
+#
+#     loss_f ={'nor': keras_loss_v3_nor,
+#             'mean': keras_loss_v3_mean,
+#              'lse': keras_loss_v3_lse,
+#              'lse01': keras_loss_v3_lse01,
+#              'max': keras_loss_v3_max
+#      }
+#     optimizer = Adam(lr=lr)
+#     model.compile(optimizer=optimizer,
+#                   loss=loss_f[pool_op],

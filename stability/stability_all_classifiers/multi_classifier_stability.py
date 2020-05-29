@@ -7,8 +7,8 @@ from cnn.keras_utils import calculate_scale_ratio, image_larger_input
 from cnn.preprocessor.load_data_mura import pad_image, padding_needed
 from stability.preprocessor.preprocessing import load_predictions, indices_segmentation_images_v2, \
     filter_predictions_files_on_indeces, indices_positive_images
-from stability.stability_2classifiers.stability_2classifiers import compute_continuous_stability_scores, \
-    compute_binary_stability_scores
+from stability.stability_2classifiers.stability_scores import compute_binary_stability_scores, \
+    compute_continuous_stability_scores
 from stability.utils import get_image_index, save_additional_kappa_scores_forthreshold, save_mean_stability, \
     save_mean_stability_auc, save_mean_dice
 from stability.visualizations.visualization_utils import visualize_single_image_1class_5classifiers, \
@@ -185,10 +185,9 @@ def compute_ap(inst_labels, inst_pred):
     return ap_res
 
 
-def stability_all_classifiers(config, classifiers, only_segmentation_images,
-                              only_positive_images, visualize_per_image):
+def compute_stability_scores(raw_predictions_collection):
     '''
-
+    Computes the stability scores between models
     :param config:
     :param classifiers: list of the unique names of all classifiers
     :param only_segmentation_images: True: only images with available segmentation to consider
@@ -200,6 +199,51 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
             visualizations for each stability score across classifiers and per image,
              visualizations of nan values of the stability scores
     '''
+
+    pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou = \
+        compute_binary_stability_scores(0.5, raw_predictions_collection)
+    pearson_correlation, spearman_rank_correlation = compute_continuous_stability_scores(
+        raw_predictions_collection)
+    return pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou, \
+           pearson_correlation, spearman_rank_correlation
+
+
+def generate_visualizations_stability(config, visualize_per_image,pos_jacc, corr_pos_jacc, corr_pos_jacc_heur,
+                                      pos_overlap, corr_pos_overlap, corr_iou, pearson_correlation,
+                                      spearman_rank_correlation, image_labels_collection,
+                                      image_index_collection, raw_predictions_collection,
+                                      samples_identifier):
+    """
+    Generates following visualizations:
+                1. Optionally a visualization where predictions of each model are shown next to each other for each image.
+                2. Heatmaps showing the number/relative quantity of NaN stability score between 2 models.
+                    This may be interesting to compute, as NAN values are skipped from the aggregations (e.g. mean values)
+                     of stability scores.
+                3. Heatmaps showing the average stability for all images. The heatmaps are between any 2 pair of models
+                and the average score of each stability index (possitive Jaccard, corrected positive Jaccard, etc) is on
+                 a separate heatmap.
+                 4. Lastly, computation of average stability score across all models per image.
+                 This information is saved in a file, allowing further analysis. This information reveal differences in
+                  values of the stability scores for the same image.
+
+
+    :param config: configuration file
+    :param visualize_per_image: If True: Predictions of each model are shown next to each other for each image.
+    :param pos_jacc: a list of positive jaccard scores
+    :param corr_pos_jacc: a list of corrected positive jaccard scores
+    :param corr_pos_jacc_heur: a list of positive jaccard with heuristic correction
+    :param pos_overlap: a list of positive overlap scores
+    :param corr_pos_overlap: a list ofcorrected positive overlap scores
+    :param corr_iou: a list of corrected iou scores
+    :param pearson_correlation: a list of pearson correlation coefficient
+    :param spearman_rank_correlation: a list of  spearman_rank_correlation coefficient
+    :param image_labels_collection: a collection of the image labels per model.
+    :param image_index_collection: a collection of image index per model
+    :param raw_predictions_collection: colleciton of raw predictions per model
+    :param samples_identifier: an identifier used when saving graphs. Used to denote which samples are used for the
+                                analysis - all images, only positive images, only segmented images
+    :return:
+    """
     image_path = config['image_path']
     stability_res_path = config['stability_results']
     xray_dataset = config['use_xray_dataset']
@@ -213,44 +257,24 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     else:
         dataset_identifier = 'mura'
 
-    predictions, identifier = load_and_filter_predictions(config, classifiers,
-                                                          only_segmentation_images,
-                                                          only_positive_images)
+    dataset_identifier += samples_identifier
 
-    image_labels_collection, image_index_collection, raw_predictions_collection, \
-        bag_labels_collection, bag_predictions_collection = predictions
-
-    dataset_identifier += identifier
-
-    jacc_coll, corr_jacc_coll, _, _, _, corr_iou = compute_binary_stability_scores(0.5, raw_predictions_collection)
-    pearson_corr_collection, spearman_rank_corr_collection = compute_continuous_stability_scores(raw_predictions_collection)
-
-    reshaped_jacc_coll = np.asarray(jacc_coll).reshape(5, 5, len(image_index_collection[0]))
-    reshaped_corr_jacc_coll = np.asarray(corr_jacc_coll).reshape(5, 5, len(image_index_collection[0]))
-    reshaped_spearman_coll = np.asarray(spearman_rank_corr_collection).reshape(5, 5, len(image_index_collection[0]))
+    # Reshaping the stability scores by (# models compared, # models compared, # samples compared).
+    # Taking an index of the array in the 3rd dimension results in a 2 dimensional array
+    # with size of (#models compared, # model compared).
+    # Each element of the 2D array keeps the stability score between 2 specific models.
+    # Consider the following example of the array for specific image (indexing on the 3rd dimension)
+    # E.g.  Mod1 Mod2 Mod3    The example assumes a comparison between the predictions of 3 different models.
+    #  Mod1 | a  | b  | c |
+    #  Mod2 | b  | d  | e |
+    #  Mod3 | c  | e  | f |
+    reshaped_jacc_coll = np.asarray(pos_jacc).reshape(5, 5, len(image_index_collection[0]))
+    reshaped_corr_jacc_coll = np.asarray(corr_pos_jacc).reshape(5, 5, len(image_index_collection[0]))
+    reshaped_spearman_coll = np.asarray(spearman_rank_correlation).reshape(5, 5, len(image_index_collection[0]))
     reshaped_corr_iou = np.asarray(corr_iou).reshape(5, 5, len(image_index_collection[0]))
 
     xyaxis = ['classifier1', 'classifier2', 'classifier3', 'classifier4', 'classifier5']
-    xyaxis_short = ['Cl.1', 'Cl. 2', 'Cl. 3', 'Cl. 4', 'Cl. 5']
     if visualize_per_image:
-        # the for loop shows stability per image - which may be interesting only in specific cases
-        # for idx in range(0, len(image_index_collection[0])):
-        #     img_ind = get_image_index(xray_dataset, image_index_collection[0], idx)
-        #
-        #     print("index " + str(idx))
-        #     if not np.isnan(reshaped_corr_jacc_coll[:, :, idx]).all():
-        #         visualize_correlation_heatmap(reshaped_corr_jacc_coll[:, :, idx], stability_res_path,
-        #                                       '_classifiers_jaccard_' + str(img_ind),
-        #                                       xyaxis, dropDuplicates=True)
-        #
-        #         combine_correlation_heatmaps_next_to_each_other(reshaped_corr_jacc_coll[:, :, idx],
-        #                                                         reshaped_spearman_coll[:, :, idx],
-        #                                                         "Corrected Jaccard", "Spearman rank",
-        #                                                         xyaxis_short, stability_res_path, str(img_ind),
-        #                                                         drop_duplicates=True)
-        #     visualize_correlation_heatmap(reshaped_spearman_coll[:, :, idx], stability_res_path,
-        #                                   '_classifiers_spearman_' + str(img_ind),
-        #                                   xyaxis, dropDuplicates=True)
         visualize_5_classifiers(xray_dataset, use_pascal_dataset, image_index_collection, image_labels_collection,
                                 raw_predictions_collection, image_path, stability_res_path, class_name, '_test_5_class')
     ## ADD inst AUC vs score
@@ -260,42 +284,42 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
     ma_spearman = np.ma.masked_array(reshaped_spearman_coll, np.isnan(reshaped_spearman_coll))
 
     ############ visualizing NANs of corrected jaccard ###################
-    nan_matrix_norm = get_matrix_total_nans_stability_score(corr_jacc_coll, image_index_collection, normalize=True)
-    visualize_correlation_heatmap(nan_matrix_norm, stability_res_path, '_corr_jacc_nan_norm' + identifier, xyaxis,
+    nan_matrix_norm = get_matrix_total_nans_stability_score(corr_pos_jacc, image_index_collection, normalize=True)
+    visualize_correlation_heatmap(nan_matrix_norm, stability_res_path, '_corr_pos_jacc_nan_norm' + samples_identifier, xyaxis,
                                   dropDuplicates=True)
-    nan_matrix = get_matrix_total_nans_stability_score(corr_jacc_coll, image_index_collection, normalize=False)
-    visualize_correlation_heatmap(nan_matrix, stability_res_path, '_corr_jacc_nan' + identifier, xyaxis,
+    nan_matrix = get_matrix_total_nans_stability_score(corr_pos_jacc, image_index_collection, normalize=False)
+    visualize_correlation_heatmap(nan_matrix, stability_res_path, '_corr_pos_jacc_nan' + samples_identifier, xyaxis,
                                   dropDuplicates=True)
 
-    nan_matrix_jacc_norm = get_matrix_total_nans_stability_score(jacc_coll, image_index_collection, normalize=True)
-    visualize_correlation_heatmap(nan_matrix_jacc_norm, stability_res_path, '_jacc_nan_norm' + identifier, xyaxis,
+    nan_matrix_jacc_norm = get_matrix_total_nans_stability_score(pos_jacc, image_index_collection, normalize=True)
+    visualize_correlation_heatmap(nan_matrix_jacc_norm, stability_res_path, '_pos_jacc_nan_norm' + samples_identifier, xyaxis,
                                   dropDuplicates=True)
-    nan_matrix_jacc = get_matrix_total_nans_stability_score(jacc_coll, image_index_collection, normalize=False)
-    visualize_correlation_heatmap(nan_matrix_jacc, stability_res_path, '_jacc_nan' + identifier, xyaxis,
+    nan_matrix_jacc = get_matrix_total_nans_stability_score(pos_jacc, image_index_collection, normalize=False)
+    visualize_correlation_heatmap(nan_matrix_jacc, stability_res_path, '_pos_jacc_nan' + samples_identifier, xyaxis,
                                   dropDuplicates=True)
-    nan_matrix_spearman = get_matrix_total_nans_stability_score(spearman_rank_corr_collection,
+    nan_matrix_spearman = get_matrix_total_nans_stability_score(spearman_rank_correlation,
                                                                 image_index_collection, normalize=False)
-    visualize_correlation_heatmap(nan_matrix_spearman, stability_res_path, '_spearman_nan' + identifier, xyaxis,
+    visualize_correlation_heatmap(nan_matrix_spearman, stability_res_path, '_spearman_nan' + samples_identifier, xyaxis,
                                   dropDuplicates=True)
-    nan_matrix_spearman_norm = get_matrix_total_nans_stability_score(spearman_rank_corr_collection,
+    nan_matrix_spearman_norm = get_matrix_total_nans_stability_score(spearman_rank_correlation,
                                                                      image_index_collection, normalize=True)
-    visualize_correlation_heatmap(nan_matrix_spearman_norm, stability_res_path, '_spearman_nan_norm' + identifier,
+    visualize_correlation_heatmap(nan_matrix_spearman_norm, stability_res_path, '_spearman_nan_norm' + samples_identifier,
                                   xyaxis,
                                   dropDuplicates=True)
 
     ##### AVERAGE STABILITY ACROSS ALL IMAGES ##############
     average_corr_jacc_index_inst = np.average(ma_corr_jaccard_images, axis=-1)
     visualize_correlation_heatmap(average_corr_jacc_index_inst, stability_res_path,
-                                  '_mean_stability_' + str("corr_jaccard") + '_' + identifier,
+                                  '_mean_stability_' + str("corr_jaccard") + '_' + samples_identifier,
                                   xyaxis, dropDuplicates=True)
     average_jacc_inst = np.average(ma_jaccard_images, axis=-1)
     visualize_correlation_heatmap(average_jacc_inst, stability_res_path,
-                                  '_mean_stability_' + str("jaccard") + '_' + identifier,
+                                  '_mean_stability_' + str("jaccard") + '_' + samples_identifier,
                                   xyaxis, dropDuplicates=True)
 
     average_iou_inst = np.average(ma_corr_iou, axis=-1)
     visualize_correlation_heatmap(average_iou_inst, stability_res_path,
-                                  '_mean_stability_' + str("iou") + '_' + identifier,
+                                  '_mean_stability_' + str("iou") + '_' + samples_identifier,
                                   xyaxis, dropDuplicates=True)
 
     save_additional_kappa_scores_forthreshold(0.5, raw_predictions_collection, image_index_collection,
@@ -304,11 +328,11 @@ def stability_all_classifiers(config, classifiers, only_segmentation_images,
 
     avg_abs_sprearman = np.average(abs(ma_spearman), axis=-1)
     visualize_correlation_heatmap(avg_abs_sprearman, stability_res_path,
-                                  '_mean_stability_' + str("abs_spearman") + '_' + identifier,
+                                  '_mean_stability_' + str("abs_spearman") + '_' + samples_identifier,
                                   xyaxis, dropDuplicates=True)
     avg_spearman = np.average(ma_spearman, axis=-1)
     visualize_correlation_heatmap(avg_spearman, stability_res_path,
-                                  '_mean_stability_' + str("spearman") + '_' + identifier,
+                                  '_mean_stability_' + str("spearman") + '_' + samples_identifier,
                                   xyaxis, dropDuplicates=True)
 
     #### AVERAGE ACROSS ALL CLASSIFIERS - PER IMAGE #######
@@ -347,21 +371,25 @@ def load_and_filter_predictions(config, classifiers, only_segmentation_images, o
 
     if only_segmentation_images:
         filtered_idx_collection = indices_segmentation_images_v2(image_labels_collection)
-        identifier = "_bbox"
-        return filter_predictions_files_on_indeces(image_labels_collection, image_index_collection,
-                                                   raw_predictions_collection,
-                                                   bag_predictions_collection, bag_labels_collection,
-                                                   filtered_idx_collection), \
-               identifier
+        identifier = "_segmented_img"
+        image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+        bag_predictions_collection = filter_predictions_files_on_indeces(image_labels_collection, image_index_collection,
+                                                                         raw_predictions_collection,
+                                                                         bag_predictions_collection, bag_labels_collection,
+                                                                         filtered_idx_collection)
+        return image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+               bag_predictions_collection, identifier
 
     elif only_positive_images:
         filtered_idx_collection = indices_positive_images(bag_labels_collection)
         identifier = "_pos_img"
-        return filter_predictions_files_on_indeces(image_labels_collection, image_index_collection,
-                                                   raw_predictions_collection,
-                                                   bag_predictions_collection, bag_labels_collection,
-                                                   filtered_idx_collection), \
-               identifier
+        image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+        bag_predictions_collection = filter_predictions_files_on_indeces(image_labels_collection, image_index_collection,
+                                                                         raw_predictions_collection,
+                                                                         bag_predictions_collection, bag_labels_collection,
+                                                                         filtered_idx_collection)
+        return image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+               bag_predictions_collection, identifier
     else:
         identifier = "_all_img"
         return image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
@@ -380,16 +408,16 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
     """
     image_path = config['image_path']
     stability_res_path = config['stability_results']
-    predictions, identifier = load_and_filter_predictions(config,
-                                                          classifiers,
-                                                          only_segmentation_images,
-                                                          only_positive_images)
     image_labels_collection, image_index_collection, raw_predictions_collection, \
-    bag_labels_collection, bag_predictions_collection = predictions
+    bag_labels_collection, bag_predictions_collection, identifier = load_and_filter_predictions(config,   classifiers,
+                                                                                                only_segmentation_images,
+                                                                                                only_positive_images)
+
 
     jacc_coll, corr_jacc_coll, _, _, _, corr_iou = compute_binary_stability_scores(0.5, raw_predictions_collection)
 
-    pearson_corr_collection, spearman_rank_corr_collection = compute_continuous_stability_scores(raw_predictions_collection)
+    pearson_corr_collection, spearman_rank_corr_collection = compute_continuous_stability_scores(
+        raw_predictions_collection)
 
     reshaped_jacc_coll = np.asarray(jacc_coll).reshape(5, 5, len(image_index_collection[0]))
     reshaped_corr_jacc_coll = np.asarray(corr_jacc_coll).reshape(5, 5, len(image_index_collection[0]))
@@ -433,7 +461,7 @@ def stability_all_classifiers_instance_level(config, classifiers, only_segmentat
                                    y_errors=stand_dev_auc, x_errors=stand_dev_stability_spear,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_spear, 'mean Spearman correlation',
-                                   stability_res_path, fitting_curve=True, y_errors=stand_dev_auc, x_errors=None,
+                                   stability_res_path, fitting_curve=False, y_errors=stand_dev_auc, x_errors=None,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar(avg_auc, 'mean instance AUC', avg_stability_spear, 'mean Spearman1 correlation',
                                    stability_res_path, fitting_curve=False, y_errors=None,
@@ -600,7 +628,8 @@ def stability_all_classifiers_instance_level_pascal(config, classifiers):
 
     jacc_coll, corr_jacc_coll, _, _, _, corr_iou = compute_binary_stability_scores(0.5, raw_predictions_collection)
 
-    pearson_corr_collection, spearman_rank_corr_collection = compute_continuous_stability_scores(raw_predictions_collection)
+    pearson_corr_collection, spearman_rank_corr_collection = compute_continuous_stability_scores(
+        raw_predictions_collection)
 
     reshaped_jacc_coll = np.asarray(jacc_coll).reshape(5, 5, len(image_index_collection[0]))
     reshaped_corr_jacc_coll = np.asarray(corr_jacc_coll).reshape(5, 5, len(image_index_collection[0]))

@@ -7,54 +7,11 @@ from sklearn.metrics import roc_auc_score
 from stability.preprocessor.preprocessing import binarize_predictions
 from stability.visualizations.visualization_utils import scatterplot_AUC_stabscore, make_scatterplot, \
     visualize_instAUC_vs_stability_index
-from stability.stability_2classifiers.scores_2classifiers import calculate_positive_Jaccard, \
-    calculate_corrected_Jaccard_heuristic, calculate_corrected_positive_Jaccard, calculate_positive_overlap, calculate_corrected_IOU, \
-    calculate_corrected_positive_overlap, calculate_spearman_rank_coefficient, calculate_pearson_coefficient
-
-
-def compute_binary_stability_scores(threshold, raw_pred_coll):
-    """
-    Computes the stability scores that use binary (0/1) predictions after converting the raw predictions to binary.
-    A stability is always a score derived from pairwise comparison of two predictions on the same image.
-
-    Here we just compute the stability of all possible prediction pairs. The results contain to duplicates
-        (e.g. predictions of Model #1 with predictions of Model #2
-        and predictions of Model #2 with predictions of Model #1)
-    Results contain comparisons with itself (e.g. prediction of Model#1 with predictions of Model #1)
-
-    :param threshold: threshold for binarization
-    :param raw_pred_coll: raw predictions
-    :return: List of positive Jaccard, corrected positive Jaccard, heuristic correction of positive jaccard , overlap,
-     positive overlap  and corrected IOU(Jaccard) from each pairwise comparison
-    """
-    binary_predictions_coll = []
-    jaccard_coll, corr_jacc_coll, heur_corr_jacc_coll, overlap_coll, \
-        corr_overlap_coll, corr_iou_coll = [], [], [], [], [], []
-
-    for raw_pred in raw_pred_coll:
-        binary_predictions = binarize_predictions(raw_pred, threshold=threshold)
-        binary_predictions_coll.append(binary_predictions)
-
-    for bin_pred_outer in binary_predictions_coll:
-        for bin_pred_inner in binary_predictions_coll:
-            jaccard_indices = calculate_positive_Jaccard(bin_pred_outer, bin_pred_inner, 16)
-            jaccard_coll.append(jaccard_indices)
-
-            heur_corrected_jacc = calculate_corrected_Jaccard_heuristic(bin_pred_outer, bin_pred_inner)
-            heur_corr_jacc_coll.append(heur_corrected_jacc)
-
-            corrected_pos_jacc = calculate_corrected_positive_Jaccard(bin_pred_outer, bin_pred_inner)
-            corr_jacc_coll.append(corrected_pos_jacc)
-
-            overlap_coeff = calculate_positive_overlap(bin_pred_outer, bin_pred_inner, 16)
-            overlap_coll.append(overlap_coeff)
-
-            corrected_overlap = calculate_corrected_positive_overlap(bin_pred_outer, bin_pred_inner)
-            corr_overlap_coll.append(corrected_overlap)
-
-            corrected_iou = calculate_corrected_IOU(bin_pred_outer, bin_pred_inner)
-            corr_iou_coll.append(corrected_iou)
-    return jaccard_coll, corr_jacc_coll, heur_corr_jacc_coll, overlap_coll, corr_overlap_coll, corr_iou_coll
+from stability.stability_2classifiers.stability_scores import calculate_positive_Jaccard, \
+    calculate_corrected_Jaccard_heuristic, calculate_corrected_positive_Jaccard, calculate_positive_overlap, \
+    calculate_corrected_IOU, \
+    calculate_corrected_positive_overlap, calculate_spearman_rank_coefficient, calculate_pearson_coefficient, \
+    calculate_kendallstau_coefficient_batch
 
 
 # def calculate_AUC_batch(pred, labels):
@@ -246,24 +203,4 @@ def compute_save_correlation_scores(raw_predictions1, raw_predictions2, df_stab,
     return pearson_corr_col, spearman_corr_col, tau_coll
 
 
-def compute_continuous_stability_scores(raw_predictions):
-    """
-    Computes the stability scores that use continuous [0, 1] predictions.
-    A stability is always a score derived from pairwise comparison of two predictions on the same image.
 
-    Here we just compute the stability of all possible prediction pairs. The results contain to duplicates
-        (e.g. predictions of Model #1 with predictions of Model #2
-        and predictions of Model #2 with predictions of Model #1)
-    Results contain comparisons with itself (e.g. prediction of Model#1 with predictions of Model #1)
-    :param raw_predictions: Raw predictions which are NOT binary (0/1)
-    :return: List of Peason's rank correlation coefficient and Spearman's rho correlation between all prediction pairs
-    """
-    pearson_corr_col = []
-    spearman_corr_col = []
-    for pred_inner in raw_predictions:
-        for pred_outer in raw_predictions:
-            pearson_corr = calculate_pearson_coefficient(pred_inner, pred_outer)
-            spearman_corr = calculate_spearman_rank_coefficient(pred_inner, pred_outer)
-            pearson_corr_col.append(pearson_corr)
-            spearman_corr_col.append(spearman_corr)
-    return pearson_corr_col, spearman_corr_col

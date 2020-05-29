@@ -1,22 +1,21 @@
-from stability.behavior_stability_score_visualizations import simulate_distributions_n01_n10_extreme, \
+from stability.score_simulation.simulate_stability_score_utils import simulate_distributions_n01_n10_extreme, \
     simulate_distributions_n01_n10_equal_distribution, simulate_distributions_n01_n10, simulate_distributions_n11_n00, \
-    simulate_distributions_corollary5, simulate_distributions_monotonic, simulate_distributions_jacc_n11_n00, \
-    simulate_distributions_jacc_v2, corrected_positive_Jaccard
+    simulate_distributions_corollary5, simulate_distributions_monotonic, simulate_distributions_jacc_v2, corrected_positive_Jaccard
 
-results_path = 'C:/Users/s161590/Documents/Project_li/stability/'
+results_path = "C:/Users/mrtnr/Documents/results/test2/"
 # C:\Users\s161590\Documents\Project_li\stability
 
-# simulate_distributions_n01_n10_extreme(results_path)
-#
-# simulate_distributions_n01_n10_equal_distribution(results_path)
-#
-# simulate_distributions_n01_n10(results_path)
-# simulate_distributions_n11_n00(results_path)
-#
-# simulate_distributions_corollary5(results_path)
-# simulate_distributions_monotonic(results_path)
+simulate_distributions_n01_n10_extreme(results_path)
 
-# simulate_distributions_jacc_v2(results_path)
+simulate_distributions_n01_n10_equal_distribution(results_path)
+
+simulate_distributions_n01_n10(results_path)
+simulate_distributions_n11_n00(results_path)
+
+simulate_distributions_corollary5(results_path)
+simulate_distributions_monotonic(results_path)
+
+simulate_distributions_jacc_v2(results_path)
 
 #### SOURCE: "High agreement but low kappa: II. Resolving the paradoxes" Cicchetti, Feinstein
 def compute_positive_agreement_ratio(positive_overlap, observer1_positive, observer2_positive):
