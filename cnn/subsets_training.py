@@ -17,6 +17,8 @@ from cnn.preprocessor.load_data import load_xray, split_xray_cv
 from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, get_train_subset_mura, \
     filter_rows_and_columns
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
+import tensorflow as tf
+
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -111,6 +113,8 @@ def train_on_subsets(config):
                                                             ratio_to_keep=overlap_ratio)
 
             if train_mode and split == 1:
+                tf.keras.backend.clear_session()
+
                 ##O##O##_##O#O##_################################ TRAIN ###########################################################
                 train_generator = gen.BatchGenerator(
                     instances=df_train_subset.values,

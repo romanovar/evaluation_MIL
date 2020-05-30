@@ -18,6 +18,7 @@ from cnn.preprocessor.load_data_datasets import load_process_xray14
 from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, filter_rows_and_columns
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
 from cnn.preprocessor.process_input import fetch_preprocessed_images_csv
+import tensorflow as tf
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -86,6 +87,7 @@ def cross_validation(config):
             df_test = filter_rows_and_columns(test_df_all_classes, class_name)
 
         if train_mode:
+            tf.keras.backend.clear_session()
             ############################################ TRAIN ###########################################################
             train_generator = gen.BatchGenerator(
                 instances=df_train.values,
@@ -114,9 +116,6 @@ def cross_validation(config):
             model = keras_model.build_model(reg_weight)
 
             model = keras_model.compile_model_accuracy(model, lr, pool_op=pooling_operator)
-            # model = keras_model.compile_model_regularization(model)
-            # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
-            #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
 
             #   checkpoint on every epoch is not really needed here, CALLBACK REMOVED from the generator
             filepath = trained_models_path + "CV_patient_split_"+str(split)+"_-{epoch:02d}-{val_loss:.2f}.hdf5"

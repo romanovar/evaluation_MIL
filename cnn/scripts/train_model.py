@@ -15,7 +15,7 @@ from cnn import keras_utils
 from cnn.keras_preds import predict_patch_and_save_results, get_patch_labels_from_batches
 from cnn.keras_utils import process_loaded_labels
 from cnn.nn_architecture import keras_model
-from cnn.nn_architecture.custom_loss import keras_loss_v2, keras_loss_v3
+from cnn.nn_architecture.custom_loss import keras_loss_v2, keras_loss_v3, keras_loss_v3_nor
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, \
     keras_binary_accuracy, combine_predictions_each_batch
 from cnn.preprocessor.process_input import preprocess_images_from_dataframe, fetch_preprocessed_images_csv
@@ -72,15 +72,6 @@ else:
     df_train, df_val, df_test = ldd.load_preprocess_mura(config)
 
 
-# ## currently only working for Xray dataset
-#
-#     df_train = fetch_preprocessed_images_csv(image_path, 'train_folder')
-#     df_val = fetch_preprocessed_images_csv(image_path, 'val_folder')
-#
-#     np.save(results_path+"df_train", df_train.to_numpy())
-#     np.save(results_path + "df_test", df_test.to_numpy())
-#     np.save(results_path + "df_val", df_val.to_numpy())
-
 if train_mode:
     tf.keras.backend.clear_session()
     train_generator = gen.BatchGenerator(
@@ -110,9 +101,6 @@ if train_mode:
     model = keras_model.build_model(reg_weight)
     model.summary()
 
-    # model = keras_model.compile_model_adamw(model, weight_dec=0.0001, batch_size=BATCH_SIZE,
-    #                                         samples_epoch=train_generator.__len__()*BATCH_SIZE, epochs=60 )
-    # model = keras_model.compile_model_regularization(model)
     model = keras_model.compile_model_accuracy(model, lr, pooling_operator)
 
     early_stop = EarlyStopping(monitor='val_loss',
@@ -121,6 +109,9 @@ if train_mode:
                                mode='min',
                                verbose=1)
     model_identifier = "_shoulder_001"
+
+    # checkpoint - saving a model for minimal validation loss reached
+    # check if it is active in the callbacks of the fit() method
     checkpoint = ModelCheckpoint(
         filepath=trained_models_path + 'best_model' + model_identifier + "-{epoch:02d}-{val_loss:.2f}.hdf5",
         monitor='val_loss',
@@ -129,7 +120,7 @@ if train_mode:
         mode='min',
         period=1
     )
-
+    # checkpoint - saving a model at the end of the epoch
     filepath = trained_models_path + model_identifier + "-{epoch:02d}-{val_loss:.2f}.hdf5"
     checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
 
@@ -160,13 +151,7 @@ if train_mode:
                                       'loss' + model_identifier, results_path)
     
     import numpy as np
-    import matplotlib.pyplot as plt
 
-    #plt.semilogx(history.history["lr"], history.history["loss"])
-    #plt.axis([1e-6, 1, 0, 30])
-    #plt.savefig(results_path + '/' +'lr.png')
-    #plt.clf()
-    
     settings = np.array({'lr: ': lr, 'reg_weight: ': reg_weight, 'pooling_operator: ':pooling_operator})
     np.save(results_path + 'train_settings.npy', settings)
 
@@ -204,7 +189,7 @@ if train_mode:
     print(evaluate)
     print("Evaluate test")
     print(evaluate_test)
-    ###################### old generator
+
     predict_patch_and_save_results(model, 'val_set', df_val, skip_processing,
                                    BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                    mura_interpolation=mura_interpolation,
@@ -219,31 +204,18 @@ if train_mode:
                                    resized_images_before_training=resized_images_before_training)
 
 else:
-    # model = load_model(trained_models_path+'best_model_single_100.h5', custom_objects={
-    #     'keras_loss': keras_loss, 'keras_accuracy':keras_accuracy})
-    # model = keras_model.compile_model(model)
-    # opt = AdamW(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0., weight_decay=0.075,
-    #       batch_size=BATCH_SIZE, samples_per_epoch=8000, epochs=46)
-
     ######################################################################################
-    # model = keras_model.compile_model_adamw(model, 0.075, 8000, 46)
-
-    ######################################################################################
-    # model = load_model(trained_models_path + '_shoulder_001_lrd-20-10.25.hdf5', custom_objects={
-    #     'keras_loss_v2': keras_loss_v2, 'keras_accuracy': keras_accuracy,
-    #     'keras_binary_accuracy': keras_binary_accuracy,
-    #     'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
-
-    ######################################################################################
+    # deserealize a model and do predictions with it
     model = load_model(trained_models_path + '_xray_0003-30-0.38.hdf5', custom_objects={
-        'keras_loss_v3': keras_loss_v3,  'keras_accuracy': keras_accuracy,
+        'keras_loss_v3_nor': keras_loss_v3_nor,  'keras_accuracy': keras_accuracy,
         'keras_binary_accuracy': keras_binary_accuracy,
         'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
 
     ########################################### TRAINING SET########################################################
 
-    #predict_patch_and_save_results(model, 'train_set', df_train, skip_processing,
-    #                               BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation)
+    predict_patch_and_save_results(model, 'train_set', df_train, skip_processing,
+                                   BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path, mura_interpolation,
+                                   resized_images_before_training)
 
     # ########################################### VALIDATION SET######################################################
 

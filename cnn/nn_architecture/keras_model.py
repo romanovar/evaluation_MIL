@@ -15,27 +15,26 @@ from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, keras
 
 def build_model(reg_weight):
     base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
-    # base_model.trainable = False
+    ## freezing layers
     #for layer in base_model.layers:
     #    layer.trainable = False
-    count = 0
-    for layer in base_model.layers:
-        if 'res5' in layer.name: # or 'res4' in layer.name:
-            layer.trainable = True
-            count +=1
-            print('trainable layer')
-            print(count)
-            print(layer.name)
+    # Unfeeezing only last ones
+    # count = 0
+    # for layer in base_model.layers:
+    #     if 'res5' in layer.name:
+    #         layer.trainable = True
+    #         count +=1
+    #         print('trainable layer')
+    #         print(count)
+    #         print(layer.name)
 
     last = base_model.output
-    #last = Dropout(0.2)(last)
 
     downsamp = MaxPooling2D(pool_size=1, strides=1, padding='Valid')(last)
 
     recg_net = Conv2D(512, kernel_size=(3,3), padding='same', activation='relu', activity_regularizer=regularizers.l2(reg_weight))(downsamp)
     recg_net = BatchNormalization()(recg_net)
-    #recg_net = Dropout(0.2)(recg_net)
-    recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net) #, activity_regularizer=l2(0.001)
+    recg_net = Conv2D(1, (1,1), padding='same', activation='sigmoid')(recg_net)
     model = Model(base_model.input, recg_net)
     
     return model
@@ -73,8 +72,6 @@ def step_decay(epoch, lr, decay=None):
 
 def dynamic_lr(epoch):
     return 1e-5 * 10 **(epoch/20)
-
-
 
 
 def compile_model_adamw(model, weight_dec, batch_size, samples_epoch, epochs):
