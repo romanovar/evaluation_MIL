@@ -25,16 +25,17 @@ args = parser.parse_args()
 config = load_config(args.config_path)
 
 predict_res_path = config['prediction_results_path']
-use_xray = config['use_xray_dataset']
 class_name = config['class_name']
+use_xray = config['use_xray_dataset']
 
 image_prediction_method = 'as_production'
-dataset_name = 'test_set'
+predictions_unique_name = 'car_test_set_CV1_4car_0.95'
 pool_method = 'nor'
 r = 0.1
 
 image_labels, image_predictions, \
-has_bbox, accurate_localizations, dice_scores, inst_auc = keras_preds.process_prediction(dataset_name,
+has_bbox, accurate_localizations, dice_scores, inst_auc = keras_preds.process_prediction(config,
+                                                                                         predictions_unique_name,
                                                                                          predict_res_path,
                                                                                          r=r,
                                                                                          pool_method=pool_method,
@@ -42,15 +43,15 @@ has_bbox, accurate_localizations, dice_scores, inst_auc = keras_preds.process_pr
                                                                                          threshold_binarization=0.5,
                                                                                          iou_threshold=0.1)
 
-keras_preds.save_generated_files(predict_res_path, dataset_name, image_labels, image_predictions,
+
+keras_preds.save_generated_files(predict_res_path, predictions_unique_name, image_labels, image_predictions,
                                  has_bbox, accurate_localizations, dice_scores)
 
 if use_xray:
-    keras_preds.compute_save_accuracy_results(dataset_name, predict_res_path, has_bbox, accurate_localizations)
-    keras_preds.compute_save_dice_results(dataset_name, predict_res_path, has_bbox, dice_scores)
-    keras_preds.compute_save_auc(dataset_name, image_prediction_method, predict_res_path,
+    keras_preds.compute_save_accuracy_results(predictions_unique_name, predict_res_path, has_bbox, accurate_localizations)
+    keras_preds.compute_save_dice_results(predictions_unique_name, predict_res_path, has_bbox, dice_scores)
+    keras_preds.compute_save_auc(predictions_unique_name, image_prediction_method, predict_res_path,
                                  image_labels, image_predictions, class_name)
-    # keras_preds.compute_save_inst_auc_results(dataset_name, predict_res_path, inst_auc)
 else:
-    keras_preds.compute_save_auc(dataset_name, image_prediction_method, predict_res_path,
+    keras_preds.compute_save_auc(predictions_unique_name, image_prediction_method, predict_res_path,
                                  image_labels, image_predictions, class_name)
