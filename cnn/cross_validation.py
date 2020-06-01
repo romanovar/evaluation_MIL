@@ -219,12 +219,12 @@ def cross_validation(config):
 
             predict_patch_and_save_results(model, "train_set_CV" + (str(split)), df_train, skip_processing,
                                            BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                           mura_interpolation)
+                                           mura_interpolation, resized_images_before_training)
             predict_patch_and_save_results(model, "val_set_CV" + (str(split)), df_val, skip_processing,
                                            BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                           mura_interpolation)
+                                           mura_interpolation, resized_images_before_training)
             predict_patch_and_save_results(model, "test_set_CV" + (str(split)), df_test, skip_processing,
                                            BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                           mura_interpolation)
+                                           mura_interpolation, resized_images_before_training)
 
 

@@ -2,7 +2,12 @@ import numpy as np
 from sklearn.metrics import confusion_matrix, roc_auc_score
 from cnn.nn_architecture.custom_performance_metrics import combine_predictions_each_batch, compute_auc_1class
 import cnn.nn_architecture.keras_generators as gen
-from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, plot_confusion_matrix
+from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, plot_confusion_matrix, \
+    image_larger_input, calculate_scale_ratio
+from pathlib import Path
+from keras_preprocessing.image import load_img, img_to_array
+
+from cnn.preprocessor.load_data_mura import padding_needed, pad_image
 
 
 def predict_patch_and_save_results(saved_model, file_unique_name, data_set, processed_y,
@@ -145,7 +150,7 @@ def save_dice(img_ind,dice, res_path, file_identifier):
     df.to_csv(res_path + 'dice_inst_' + file_identifier + '.csv')
 
 
-def process_prediction(file_unique_name, res_path, pool_method, img_pred_method, r,
+def process_prediction(config, file_unique_name, res_path, pool_method, img_pred_method, r,
                        threshold_binarization=0.5, iou_threshold=0.1):
     '''
        Processes prediction on bag and instance level. For bag level - bag prediction is computed, for instance level:
@@ -160,6 +165,10 @@ def process_prediction(file_unique_name, res_path, pool_method, img_pred_method,
     :param iou_threshold: iou threshold for accurate predictions on image level
     :return:
     '''
+
+    use_pascal = config['use_pascal_dataset']
+    pascal_img_path = config['pascal_image_path']
+
     predictions, image_indices, patch_labels = get_index_label_prediction(file_unique_name, res_path)
     patch_labels_sum = patch_labels.sum(axis=(1, 2))
     has_bbox = np.greater(patch_labels_sum, 0) & np.less(patch_labels_sum, 256)
@@ -174,10 +183,16 @@ def process_prediction(file_unique_name, res_path, pool_method, img_pred_method,
     dice_scores = np.where(has_bbox, compute_dice(predictions, patch_labels, th_binarization=threshold_binarization),
                            -1)
     inst_auc_coll = []
-    image_indices_bbox = np.where(dice_scores>-1)[0]
+
+    if use_pascal:
+        has_bbox, accurate_localizations, dice_scores = \
+        evaluate_instance_performance_pascal(pascal_img_path, file_unique_name, res_path, has_bbox)
+    image_indices_bbox = np.where(dice_scores > -1)[0]
+
     if len(image_indices_bbox) > 0:
         save_dice(image_indices[image_indices_bbox],dice_scores[image_indices_bbox], res_path, file_unique_name)
     index_segmentaion_images = np.where(has_bbox == True)[0]
+
     for ind in range(index_segmentaion_images.shape[0]):
 
         inst_auc = roc_auc_score(patch_labels[index_segmentaion_images[ind]].reshape(-1),
@@ -358,3 +373,155 @@ def compute_bag_prediction(predictions, has_bbox, patch_labels, pool_method, r, 
         return compute_bag_prediction_as_production(predictions, pool_method, r)
     elif image_prediction_method.lower() == 'as_training':
         return compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool_method, r)
+
+
+def do_transformation_masks_pascal(image_dir):
+    """
+    Transforms an image mask to size of 512x512. The resizing of the mask corresponds to the input size of the images to
+     the NN network.
+    :param image_dir: image path
+    :return: returns resized image mask
+    """
+    img_width, img_height = load_img(image_dir, target_size=None, color_mode='rgb').size
+    decrease_needed = image_larger_input(img_width, img_height, 512, 512)
+
+    # IF one or both sides have bigger size than the input, then decrease is needed
+    if decrease_needed:
+        ratio = calculate_scale_ratio(img_width, img_height, 512, 512)
+        assert ratio >= 1.00, "wrong ratio - it will increase image size"
+        assert int(img_height / ratio) == 512 or int(img_width / ratio) == 512, \
+            "error in computation"
+        image = img_to_array(load_img(image_dir, target_size=(int(img_height / ratio), int(img_width / ratio)),
+                                      color_mode='rgb'))
+    else:
+        # ELSE just open image in its original form
+        image = img_to_array(load_img(image_dir, target_size=None, color_mode='rgb'))
+    ### PADDING
+    pad_needed = padding_needed(image)
+
+    if pad_needed:
+        image = pad_image(image, final_size_x=512, final_size_y=512)
+
+    return image
+
+
+def get_mask_img_ind(mask_path1, mask_path2, image_indices):
+    """
+    Gets a mask for a desired image index.
+    Checking if a mask of the image is found in one two mask paths. If a mask is found, the masks
+     is read and resized to the input image size.
+    :param mask_path1: allowed mask path
+    :param mask_path2: alternative mask path
+    :param image_indices: the image index of the searched mask
+    :return: Returns the image indeces of segmented images, together with their ground-truth masks, index of the image and
+    parent directory.
+    """
+    masks = []
+    images_ind = []
+    mask_parent_path1 = mask_path1.split('/')[-1]
+    mask_parent_path2 = mask_path2.split('/')[-1]
+    indices = []
+    parent_paths = []
+    for img_ind in range(0, image_indices.shape[0]):
+        parent_path = image_indices[img_ind].split('/')[-2]
+
+        if parent_path == mask_parent_path1 or parent_path == mask_parent_path2:
+            if parent_path == mask_parent_path1:
+                masks_path = mask_path1
+            else:
+                masks_path = mask_path2
+            try:
+                image_mask = do_transformation_masks_pascal(
+                    str(masks_path + "/" + image_indices[img_ind].split('/')[-1]))
+                masks.append(image_mask)
+                images_ind.append(image_indices[img_ind].split('/')[-1])
+                indices.append(img_ind)
+                parent_paths.append(parent_path)
+            except:
+                print("Image was not found: " + str(masks_path + "/" + image_indices[img_ind].split('/')[-1]))
+    return masks, images_ind, indices, parent_paths
+
+
+
+def transform_pixels_to_patches(binary_masked, patch_pixels):
+    annotation = np.zeros((16, 16))
+    for height in range(0, 16):
+        for width in range(0, 16):
+            max_pixel = binary_masked[height * patch_pixels:(height + 1) * patch_pixels,
+                        width * patch_pixels:(width + 1) * patch_pixels].max()
+
+            annotation[height, width] = max_pixel
+    return annotation
+
+
+def convert_mask_image_to_binary_matrix(mask_parent_folder, masks):
+    patch_pixels = 32
+    annotations_coll = []
+    for ind in range(masks.shape[0]):
+        if mask_parent_folder[ind].lower() == 'tugraz_cars':
+            ## BLUE CHANNEL is larger than 0
+            red_green_channel = np.add(masks[ind][:, :, 0], masks[ind][:, :, 1])
+            background_masked = np.ma.masked_where(red_green_channel > 0, red_green_channel).mask
+
+
+        elif mask_parent_folder[ind].lower() == 'ethz_sideviews_cars':
+            ## BLUE CHANNEL is 0
+            white_color = masks[ind][:, :, 0]
+            background_masked = np.ma.masked_where(white_color > 0, white_color).mask
+        annotation_image = transform_pixels_to_patches(background_masked, patch_pixels)
+        annotations_coll.append(annotation_image)
+    return np.expand_dims(annotations_coll, axis=3)
+
+
+def get_dice_and_accuracy_pascal(inst_labels, inst_pred):
+    binary_instance_labels = np.array(inst_pred >= 0.5, dtype=bool)
+    dice = compute_dice(binary_instance_labels, inst_labels, th_binarization=0.5)
+    acc = compute_accuracy_on_segmentation(binary_instance_labels, inst_labels, 0.5, 0.1)
+    return dice, acc
+
+
+def process_mask_images_pascal(pascal_image_path, classifiers, res_path, predictions):
+    '''
+    This functions measures the instance performance only on the Pascal dataset
+    :param config: configurations
+    :param classifiers: list of classifier names
+    :return: evaluation of the stability score against the instance performance.
+             instance performance is measured with the dice score betweeen predictions and available segmentations.
+             Saves .csv files for dice score across classifiers for each image and visualizations of stability
+             against instance performance.
+    '''
+    pascal_dir = str(Path(pascal_image_path).parent).replace("\\", "/")
+    masks_path1 = pascal_dir + "/GTMasks/ETHZ_sideviews_cars"
+
+    masks_path_2 = pascal_dir + "/GTMasks/TUGraz_cars"
+    img_ind = np.load(res_path + 'image_indices_' + classifiers+'.npy', allow_pickle=True)
+    gt_masks, image_name_to_keep, indices_to_keep, parents_folder = get_mask_img_ind(masks_path1,
+                                                                                     masks_path_2, img_ind)
+
+    masks_labels_coll = np.asarray(gt_masks)
+    annotations_coll = convert_mask_image_to_binary_matrix(parents_folder, masks_labels_coll)
+    annotations_coll = np.array(annotations_coll)
+
+    dice, accuracy_iou = get_dice_and_accuracy_pascal(annotations_coll, predictions[indices_to_keep])
+    return gt_masks, image_name_to_keep, indices_to_keep, parents_folder, dice, accuracy_iou
+
+
+def evaluate_instance_performance_pascal(pascal_img_path, file_name, res_path, has_bbox):
+    """
+    Evaluates the instance performance of pascal dataset. This dataset is different with respect to the others,
+    as the training does not consider the instance labels. The training is only on bag label. That requires different
+    approach to calculate instance performance because we have no instance labels. The instance labels are all 0s or 1s
+     depending on the bag label.
+    :param pascal_img_path: path to the pascal images
+    :param file_name: unique name of the prediction files
+    :param res_path: results path
+    :param predictions: raw predictions
+    :return: Returns updated list of images that have available segmentation, dice score and accuracy from IOU
+    based on IOU threshold of 0.1
+    """
+    predictions, image_indices, patch_labels = get_index_label_prediction(file_name, res_path)
+
+    gt_masks, image_name_to_keep, indices_to_keep, parents_folder, dice_scores, accurate_localizations = \
+        process_mask_images_pascal(pascal_img_path, file_name, res_path, predictions)
+
+    return has_bbox[indices_to_keep], accurate_localizations, dice_scores

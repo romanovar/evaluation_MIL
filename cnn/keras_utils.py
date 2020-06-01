@@ -125,7 +125,6 @@ def plot_roc_curve(fpr, tpr, roc_auc, file_name, out_dir):
     plt.ylabel('True Positive Rate')
     plt.title('ROC Curve')
     plt.legend(loc="lower right")
-    plt.show()
     plt.savefig(out_dir + 'roc_curve_' + file_name + '.jpg', bbox_inches='tight')
     plt.clf()
 
