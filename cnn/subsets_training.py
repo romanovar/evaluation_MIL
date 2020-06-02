@@ -120,6 +120,7 @@ def train_on_subsets(config):
                 ##O##O##_##O#O##_################################ TRAIN ###########################################################
                 train_generator = gen.BatchGenerator(
                     instances=df_train_subset.values,
+                    resized_image=resized_images_before_training,
                     batch_size=BATCH_SIZE,
                     net_h=IMAGE_SIZE,
                     net_w=IMAGE_SIZE,
@@ -131,6 +132,7 @@ def train_on_subsets(config):
 
                 valid_generator = gen.BatchGenerator(
                     instances=df_val.values,
+                    resized_image=resized_images_before_training,
                     batch_size=BATCH_SIZE,
                     net_h=IMAGE_SIZE,
                     net_w=IMAGE_SIZE,
@@ -154,6 +156,7 @@ def train_on_subsets(config):
 
                 history = model.fit_generator(
                     generator=train_generator,
+                    resized_image=resized_images_before_training,
                     steps_per_epoch=train_generator.__len__(),
                     epochs=nr_epochs,
                     validation_data=valid_generator,
