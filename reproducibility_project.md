@@ -14,11 +14,15 @@ Introduction structure -->
 
 We will look into each one of them in details.
 
-## Getting started - virtual environment
-The project uses virtual environment, where requirements.txt lists all the necessary packages needed for the project.
+## Getting started - Requirements
+Requirements for this projects are:
+* Python version 3.6.x
+* Requirements.txt lists all the necessary libraries needed for the project and their versions. 
 [More about virtual environments and how to install packages from requirements.txt](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/).
-
- Once all the required packages are installed, the project can be ran.
+* CUDA version 10.2.89
+* Ubuntu 18.04.4
+* Nvidia driver version 440.82
+* GPU GeForce GTX 1080 Ti
 
 ## Script parameters
  In order to run any script, the settings are taken from a global configuration file. `examples_config.yml` shows the

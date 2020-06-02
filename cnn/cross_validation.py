@@ -19,6 +19,7 @@ from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_row
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
 from cnn.preprocessor.process_input import fetch_preprocessed_images_csv
 import tensorflow as tf
+from keras import backend as K
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -88,6 +89,8 @@ def cross_validation(config):
 
         if train_mode:
             tf.keras.backend.clear_session()
+            K.clear_session()
+
             ############################################ TRAIN ###########################################################
             train_generator = gen.BatchGenerator(
                 instances=df_train.values,

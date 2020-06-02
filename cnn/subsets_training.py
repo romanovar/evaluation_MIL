@@ -18,6 +18,7 @@ from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, get_train_
     filter_rows_and_columns
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
 import tensorflow as tf
+from keras import backend as K
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -114,6 +115,7 @@ def train_on_subsets(config):
 
             if train_mode and split == 1:
                 tf.keras.backend.clear_session()
+                K.clear_session()
 
                 ##O##O##_##O#O##_################################ TRAIN ###########################################################
                 train_generator = gen.BatchGenerator(
@@ -224,10 +226,10 @@ def train_on_subsets(config):
 
                 predict_patch_and_save_results(model, "train_set_CV" + (str(split)), df_train, skip_processing,
                                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                               mura_interpolation)
+                                               mura_interpolation, resized_images_before_training)
                 predict_patch_and_save_results(model, "val_set_CV" + (str(split)), df_val, skip_processing,
                                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                               mura_interpolation)
+                                               mura_interpolation, resized_images_before_training)
                 predict_patch_and_save_results(model, "test_set_CV" + (str(split)), df_test, skip_processing,
                                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                               mura_interpolation)
+                                               mura_interpolation,resized_images_before_training)
