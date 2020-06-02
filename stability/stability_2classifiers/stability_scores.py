@@ -67,7 +67,7 @@ def calculate_spearman_rank_coefficient(raw_pred1, raw_pred2):
         spearman_corr_coll.append(rho)
     return spearman_corr_coll
 
-
+# todo: delete because it is not used
 # def calculate_IoU(bin_pred1, bin_pred2):
 #     sum_preds = bin_pred1 + bin_pred2
 #     n11_mask = np.array(sum_preds > 1, dtype=int)
@@ -413,3 +413,22 @@ def compute_binary_stability_scores(threshold, raw_pred_coll):
             corrected_iou = calculate_corrected_IOU(bin_pred_outer, bin_pred_inner)
             corr_iou_coll.append(corrected_iou)
     return jaccard_coll, corr_jacc_coll, heur_corr_jacc_coll, overlap_coll, corr_overlap_coll, corr_iou_coll
+
+
+def compute_stability_scores(raw_predictions_collection, bin_threshold=0.5):
+    '''
+    Computes the stability scores between models. For models considering binary predictions (0/1 predictions),
+    a threshold of 0.5 is used for the binarization of the raw predictions
+    :param raw_predictions_collection: a collection where each element is a list with the raw predictions of a models
+    :param bin_threshold: a threshold used for the binarization of raw predictions to binary ones.
+                            Binary predictions are needed for some of the  stability scores.
+    :return: Computes all stability scores - positive Jaccard, Corrected positive Jaccard, positive Jaccard with
+    heuristic correction, positive overlap, corrected positive overlap, corrected IOU
+    '''
+
+    pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou = \
+        compute_binary_stability_scores(bin_threshold, raw_predictions_collection)
+    pearson_correlation, spearman_rank_correlation = compute_continuous_stability_scores(
+        raw_predictions_collection)
+    return pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou, \
+           pearson_correlation, spearman_rank_correlation

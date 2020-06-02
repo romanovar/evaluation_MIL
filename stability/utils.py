@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, average_precision_score
 
 from stability.preprocessor.preprocessing import binarize_predictions
 from stability.stability_2classifiers.stability_scores import compute_additional_scores_kappa
@@ -76,60 +76,69 @@ def save_additional_kappa_scores_forthreshold(thres, raw_pred_coll, img_ind, cor
                                   diff_f1_f2, diff_g1_g2, str(bin_pred_ind) + '_'+str(bin_pred_ind2), res_path)
 
 
-def save_mean_stability(img_ind, jacc, corr_jacc, iou, spearman, res_path, file_identifier):
+def save_mean_stability(img_ind, jacc, corr_jacc, iou, spearman, res_path, file_identifier, dice=None):
     df = pd.DataFrame()
     df['Image_ind'] = 0
-    df['Mean Jaccard'] = -100
-    df['Mean corrected jaccard'] = -100
-    df['mean IoU'] = -100
+    df['Mean positive Jaccard'] = -100
+    df['Mean corrected positive Jaccard'] = -100
+    df['Mean corrected IoU'] = -100
     df['Mean Spearman'] = -100
 
     df['Image_ind'] = img_ind
-    df['Mean Jaccard'] = jacc
-    df['Mean corrected jaccard'] = corr_jacc
-    df['mean IoU'] = iou
+    df['Mean positive Jaccard'] = jacc
+    df['Mean corrected positive Jaccard'] = corr_jacc
+    df['Mean corrected IoU'] = iou
     df['Mean Spearman'] = spearman
 
+    if dice is not None:
+        df['Mean dice'] = dice
     df.to_csv(res_path+'mean_stability_'+file_identifier+'.csv')
 
 
-def save_mean_stability_auc(img_ind, auc, corr_jacc, spearman, res_path, file_identifier, ap):
-    df = pd.DataFrame()
-    df['Image_ind'] = 0
-    df['Mean Instance AUC'] = -100
-    df['Standard deviation AUC'] = -100
-    df['Mean corrected jaccard'] = -100
-    df['Mean Spearman'] = -100
-
-    df['Image_ind'] = img_ind
-    df['Mean Instance AUC'] = np.mean(auc, axis=1)
-    df['Standard deviation AUC'] = np.std(auc, axis=1)
-    df['Mean corrected jaccard'] = corr_jacc
-    df['Mean Spearman'] = spearman
-    df['Mean AP'] = np.mean(ap, axis=1)
-    df.to_csv(res_path + 'mean_stability_inst_auc_' + file_identifier + '.csv')
+def get_matrix_total_nans_stability_score(stab_index_collection, total_images_collection, normalize):
+    nan_matrix = np.count_nonzero(np.isnan(np.array(stab_index_collection).
+                                           reshape(5, 5, len(total_images_collection[0]))), axis=-1)
+    if normalize:
+        return nan_matrix / len(total_images_collection[0])
+    else:
+        return nan_matrix
 
 
-def save_mean_dice(img_ind,dice, accuracy, res_path, file_identifier):
-    '''
+def get_nonduplicate_scores(total_images, models_nr, stability_score_coll):
+    pairwise_stability_all_images = []
+    # total_images = inst_labels[0].shape[0]
+    # FOR EACH IMAGE, THE PREDICTIONS OF EACH CLASSIFIERS ARE COMPARED WITH THE WHOLE BAG AND AUC IS COMPUTED
+    for image_ind in range(0, total_images):
+        image_stab_scores = []
+        for classifier_ind in range(0, models_nr):
+            stab_scores = stability_score_coll[classifier_ind, classifier_ind + 1:, image_ind]
+            image_stab_scores = np.concatenate((image_stab_scores, stab_scores))
+        pairwise_stability_all_images.append(image_stab_scores)
+    # TOTAL_IMAGES x 10 combinations of stability
+    stability_res = np.array(pairwise_stability_all_images)
 
-    :param img_ind: list with image names/ indeces
-    :param dice: list with dice scores for each image
-    :param accuracy: list with accuracy for each image
-    :param res_path: path to save generated file
-    :param file_identifier: unique name to save the file
-    :return: save s a .csv file with the dice score and accuracy from all classifiers for each image
-    '''
-    df = pd.DataFrame()
-    df['Image_ind'] = 0
-    df['Mean DICE'] = -100
-    df['STD DICE'] = -100
-    df['Mean Accuracy'] = -100
-
-    df['Image_ind'] = img_ind
-    df['Mean DICE'] = np.mean(dice, axis=1)
-    df['STD DICE'] = np.std(dice, axis=1)
-    df['Mean Accuracy'] = np.mean(accuracy, axis=1)
-    df.to_csv(res_path + 'mean_dice_inst_' + file_identifier + '.csv')
+    return stability_res
 
 
+# todo: delete if not used
+def compute_ap(inst_labels, inst_pred):
+    image_ap_collection_all_classifiers = []
+    # pairwise_stability_all_images = []
+    total_images = inst_labels[0].shape[0]
+    # instance auc
+    # FOR EACH IMAGE, THE PREDICTIONS OF EACH CLASSIFIERS ARE COMPARED WITH THE WHOLE BAG AND AUC IS COMPUTED
+    for image_ind in range(0, total_images):
+        all_instances_labels = inst_labels[0].reshape(total_images, -1)
+        ap_collection = []
+
+        for classifier_ind in range(0, 5):
+            inst_predictions_classifier = inst_pred[classifier_ind].reshape(total_images, -1)
+            ap_classifiers = average_precision_score(all_instances_labels[image_ind],
+                                                     inst_predictions_classifier[image_ind])
+            ap_collection.append(ap_classifiers)
+
+        image_ap_collection_all_classifiers.append(ap_collection)
+
+    # TOTAL_IMAGES x TOTAL_CLASSIFIERS
+    ap_res = np.array(image_ap_collection_all_classifiers)
+    return ap_res

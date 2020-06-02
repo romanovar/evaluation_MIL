@@ -171,3 +171,63 @@ def filter_predictions_files_on_indices(all_labels_coll, all_image_ind_coll, all
         assert (bbox_img_ind_coll[0] == image_ind).all(), "bbox image index are different or in different order"
     return bbox_img_labels_coll, bbox_img_ind_coll, bbox_img_raw_predictions,\
            bbox_img_bag_labels, bbox_img_bag_predictions
+
+
+def load_and_filter_predictions(config, classifiers, only_segmentation_images, only_positive_images):
+    '''
+    Loads prediction files and filters on specific samples, which are used to compute stability
+    :param config: config file
+    :param classifiers: list with all classifier names
+    :param only_segmentation_images: True: analysis is done only on images with segmentation,
+                                    False: analysis is done on all images
+    :param only_positive_images: this parameter is considered only if only_segmentation_images is FALSE
+                True: analysis done on image with positive label
+                False: analysis is done on all images
+    :return: Returns the suitable rows of the subset desired
+    '''
+
+    prediction_results_path = config['prediction_results_path']
+
+    image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+    bag_predictions_collection, _ = load_predictions(classifiers, prediction_results_path)
+
+    if only_segmentation_images:
+        filtered_idx_collection = indices_segmentation_images(image_labels_collection)
+        identifier = "_segmented_img"
+        image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+        bag_predictions_collection = filter_predictions_files_on_indices(image_labels_collection, image_index_collection,
+                                                                         raw_predictions_collection,
+                                                                         bag_predictions_collection, bag_labels_collection,
+                                                                         filtered_idx_collection)
+        return image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+               bag_predictions_collection, identifier
+
+    elif only_positive_images:
+        filtered_idx_collection = indices_positive_images(bag_labels_collection)
+        identifier = "_pos_img"
+        image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+        bag_predictions_collection = filter_predictions_files_on_indices(image_labels_collection, image_index_collection,
+                                                                         raw_predictions_collection,
+                                                                         bag_predictions_collection, bag_labels_collection,
+                                                                         filtered_idx_collection)
+        return image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+               bag_predictions_collection, identifier
+    else:
+        identifier = "_all_img"
+        return image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+               bag_predictions_collection, identifier
+
+
+def filter_segmentation_images_bbox_file(config, classifiers):
+    prediction_results_path = config['prediction_results_path']
+
+    image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+    bag_predictions_collection, bbox_collection = load_predictions(classifiers, prediction_results_path)
+
+    for model_idx in range(1, len(bbox_collection)):
+        assert (bbox_collection[model_idx] == bbox_collection[model_idx-1]).all(), "bbox files are not equal!"
+    idx_to_filter_coll = []
+    for model_idx in range(len(bbox_collection)):
+        idx_to_filter_coll.append(np.where(bbox_collection[model_idx]==True)[0])
+
+    return idx_to_filter_coll
