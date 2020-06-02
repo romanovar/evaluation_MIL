@@ -1,9 +1,8 @@
 import numpy as np
-import pandas as pd
 
 
 def load_model_prediction_from_file(inst_lab_prefix, ind_prefix, inst_pred_prefix, bag_lab_prefix, bag_pred_prefix,
-                                    dataset_name, predictions_path):
+                                    bbox_prefix, dataset_name, predictions_path):
     """
     Loads all prediction files associated WITH SPECIFIC MODEL
     :param inst_lab_prefix: file prefix for instance labels file
@@ -15,16 +14,16 @@ def load_model_prediction_from_file(inst_lab_prefix, ind_prefix, inst_pred_prefi
     :param predictions_path: directory of the prediction files
     :return: Instance labels, unique sample names, instance predictions, bag labels and bag predictions for each sample
     """
-    labels = np.load(predictions_path + inst_lab_prefix + dataset_name, allow_pickle=True)
-    image_indices = np.load(predictions_path+ind_prefix+dataset_name, allow_pickle=True)
-    predictions = np.load(predictions_path+inst_pred_prefix+dataset_name, allow_pickle=True)
+    labels = np.load(predictions_path + inst_lab_prefix + dataset_name + '.npy', allow_pickle=True)
+    image_indices = np.load(predictions_path+ind_prefix + dataset_name + '.npy', allow_pickle=True)
+    predictions = np.load(predictions_path+inst_pred_prefix+ dataset_name + '.npy', allow_pickle=True)
 
-    bag_labels = np.load(predictions_path+bag_lab_prefix+(dataset_name[:-4]) + '.npy',
+    bag_labels = np.load(predictions_path+bag_lab_prefix + dataset_name + '.npy',
                          allow_pickle=True)
-    bag_predictions = np.load(predictions_path+bag_pred_prefix+dataset_name[:-4] + '.npy',
+    bag_predictions = np.load(predictions_path+bag_pred_prefix + dataset_name + '.npy',
                               allow_pickle=True)
-
-    return labels, image_indices, predictions, bag_labels, bag_predictions
+    bbox_available = np.load(predictions_path+bbox_prefix + dataset_name + '.npy', allow_pickle=True)
+    return labels, image_indices, predictions, bag_labels, bag_predictions, bbox_available
 
 
 def filter_bbox_image_ind(labels):
@@ -64,6 +63,14 @@ def calculate_subsets_between_two_classifiers(bin_pred1, bin_pred2, P=16):
     return n00, n10, n01, n11
 
 
+def load_filter_dice_scores(classifiers_list, segm_img_index, predict_res_path):
+    dice_scores_coll = []
+    for classifier in classifiers_list:
+        dice = np.load(predict_res_path + 'dice_' + classifier+'.npy', allow_pickle=True)
+        dice_scores_coll.append(dice[segm_img_index[0]])
+    return dice_scores_coll
+
+
 def load_predictions(classifier_name_list, predict_res_path):
     '''
     Loads the predictions from a list of models of the same architecture.
@@ -79,32 +86,26 @@ def load_predictions(classifier_name_list, predict_res_path):
     all_raw_predictions = []
     all_bag_predictions = []
     all_bag_labels = []
+    all_bbox = []
     for classifier in classifier_name_list:
         all_labels_classifier, all_image_ind_classifier, \
-        all_raw_predictions_classifier, all_bag_labels_class, all_bag_predictions_class = \
+        all_raw_predictions_classifier, all_bag_labels_class, all_bag_predictions_class, all_bbox_classifier = \
             load_model_prediction_from_file(dataset_name=classifier, predictions_path=predict_res_path,
                                             inst_lab_prefix= 'patch_labels_',
                                             ind_prefix='image_indices_', inst_pred_prefix= 'predictions_',
-                                            bag_lab_prefix= 'image_labels_', bag_pred_prefix='image_predictions_')
+                                            bag_lab_prefix= 'image_labels_', bag_pred_prefix='image_predictions_',
+                                            bbox_prefix='bbox_present_')
 
         all_labels.append(all_labels_classifier)
         all_image_ind.append(all_image_ind_classifier)
         all_raw_predictions.append(all_raw_predictions_classifier)
         all_bag_predictions.append(all_bag_predictions_class)
         all_bag_labels.append(all_bag_labels_class)
-    return all_labels, all_image_ind, all_raw_predictions, all_bag_labels, all_bag_predictions
+        all_bbox.append(all_bbox_classifier)
+    return all_labels, all_image_ind, all_raw_predictions, all_bag_labels, all_bag_predictions, all_bbox
 
 
-def indices_segmentation_images(all_labels_1, all_labels_2):
-    bbox_indices1 = filter_bbox_image_ind(all_labels_1)
-    bbox_indices2 = filter_bbox_image_ind(all_labels_2)
-    assert bbox_indices1 == bbox_indices2, "Error, bbox images should be equal " \
-                                            "in both cases"
-    print("Total images found with segmenation is: " + str(len(bbox_indices2)))
-    return bbox_indices1, bbox_indices2
-
-
-def indices_segmentation_images_v2(all_labels_collection):
+def indices_segmentation_images(all_labels_collection):
     bbox_ind_collection =[]
     for all_labels in all_labels_collection:
         bbox_indices = filter_bbox_image_ind(all_labels)
@@ -133,16 +134,7 @@ def indices_positive_images(bag_labels_collection):
     return positive_img_ind_collection
 
 
-def filter_predictions_files_segmentation_images(all_labels_1, all_image_ind_1, all_raw_predictions_1, bbox_indices1,
-                                                 all_labels_2, all_image_ind_2, all_raw_predictions_2, bbox_indices2):
-    labels_1, image_ind_1, raw_predictions_1 = all_labels_1[bbox_indices1], all_image_ind_1[bbox_indices1], \
-                                               all_raw_predictions_1[bbox_indices1]
-    labels_2, image_ind_2, raw_predictions_2 = all_labels_2[bbox_indices2], all_image_ind_2[bbox_indices2], \
-                                               all_raw_predictions_2[bbox_indices2]
-    return  labels_1, image_ind_1, raw_predictions_1, labels_2, image_ind_2, raw_predictions_2
-
-
-def filter_predictions_files_on_indeces(all_labels_coll, all_image_ind_coll, all_raw_predictions_coll,
+def filter_predictions_files_on_indices(all_labels_coll, all_image_ind_coll, all_raw_predictions_coll,
                                         all_bag_predictions_coll, all_bag_labels_coll, bbox_ind_coll):
     '''
 
