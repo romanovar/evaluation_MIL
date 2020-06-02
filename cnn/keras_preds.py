@@ -182,23 +182,18 @@ def process_prediction(config, file_unique_name, res_path, pool_method, img_pred
                                                                                 th_iou=iou_threshold), 0)
     dice_scores = np.where(has_bbox, compute_dice(predictions, patch_labels, th_binarization=threshold_binarization),
                            -1)
-    inst_auc_coll = []
 
     if use_pascal:
-        has_bbox, accurate_localizations, dice_scores = \
+        has_bbox, accurate_localizations_inst, dice_scores_inst, indices_to_keep = \
         evaluate_instance_performance_pascal(pascal_img_path, file_unique_name, res_path, has_bbox)
+        accurate_localization[indices_to_keep] = accurate_localizations_inst
+        dice_scores[indices_to_keep] = dice_scores_inst
+
     image_indices_bbox = np.where(dice_scores > -1)[0]
 
     if len(image_indices_bbox) > 0:
         save_dice(image_indices[image_indices_bbox],dice_scores[image_indices_bbox], res_path, file_unique_name)
-    index_segmentaion_images = np.where(has_bbox == True)[0]
-
-    for ind in range(index_segmentaion_images.shape[0]):
-
-        inst_auc = roc_auc_score(patch_labels[index_segmentaion_images[ind]].reshape(-1),
-                                 predictions[index_segmentaion_images[ind]].reshape(-1))
-        inst_auc_coll.append([inst_auc])
-    return image_labels, image_predictions, has_bbox, accurate_localization, dice_scores, inst_auc_coll
+    return image_labels, image_predictions, has_bbox, accurate_localization, dice_scores
 
 
 def compute_save_accuracy_results(data_set_name, res_path, has_bbox, acc_localization):
@@ -486,7 +481,7 @@ def process_mask_images_pascal(pascal_image_path, classifiers, res_path, predict
     :param config: configurations
     :param classifiers: list of classifier names
     :return: evaluation of the stability score against the instance performance.
-             instance performance is measured with the dice score betweeen predictions and available segmentations.
+             instance performance is measured with the dice score between predictions and available segmentations.
              Saves .csv files for dice score across classifiers for each image and visualizations of stability
              against instance performance.
     '''
@@ -523,5 +518,5 @@ def evaluate_instance_performance_pascal(pascal_img_path, file_name, res_path, h
 
     gt_masks, image_name_to_keep, indices_to_keep, parents_folder, dice_scores, accurate_localizations = \
         process_mask_images_pascal(pascal_img_path, file_name, res_path, predictions)
-
-    return has_bbox[indices_to_keep], accurate_localizations, dice_scores
+    has_bbox[indices_to_keep] = True
+    return has_bbox, accurate_localizations, dice_scores, indices_to_keep

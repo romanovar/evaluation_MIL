@@ -27,27 +27,28 @@ config = load_config(args.config_path)
 predict_res_path = config['prediction_results_path']
 class_name = config['class_name']
 use_xray = config['use_xray_dataset']
+use_pascal = config['use_pascal_dataset']
 
 image_prediction_method = 'as_production'
-predictions_unique_name = 'car_test_set_CV1_4car_0.95'
+predictions_unique_name = 'car_test_set_CV1_0car_0.95'
 pool_method = 'nor'
 r = 0.1
 
 image_labels, image_predictions, \
-has_bbox, accurate_localizations, dice_scores, inst_auc = keras_preds.process_prediction(config,
-                                                                                         predictions_unique_name,
-                                                                                         predict_res_path,
-                                                                                         r=r,
-                                                                                         pool_method=pool_method,
-                                                                                         img_pred_method=image_prediction_method,
-                                                                                         threshold_binarization=0.5,
-                                                                                         iou_threshold=0.1)
+has_bbox, accurate_localizations, dice_scores = keras_preds.process_prediction(config,
+                                                                               predictions_unique_name,
+                                                                               predict_res_path,
+                                                                               r=r,
+                                                                               pool_method=pool_method,
+                                                                               img_pred_method=image_prediction_method,
+                                                                               threshold_binarization=0.5,
+                                                                               iou_threshold=0.1)
 
 
 keras_preds.save_generated_files(predict_res_path, predictions_unique_name, image_labels, image_predictions,
                                  has_bbox, accurate_localizations, dice_scores)
 
-if use_xray:
+if use_xray or use_pascal:
     keras_preds.compute_save_accuracy_results(predictions_unique_name, predict_res_path, has_bbox, accurate_localizations)
     keras_preds.compute_save_dice_results(predictions_unique_name, predict_res_path, has_bbox, dice_scores)
     keras_preds.compute_save_auc(predictions_unique_name, image_prediction_method, predict_res_path,
