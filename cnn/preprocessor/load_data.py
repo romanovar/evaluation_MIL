@@ -1,3 +1,7 @@
+from numpy.random import seed
+seed(1)
+from tensorflow import set_random_seed
+set_random_seed(2)
 import pandas as pd
 import numpy as np
 from keras.preprocessing import image
@@ -9,7 +13,6 @@ from sklearn.model_selection import GroupShuffleSplit
 import imagesize
 
 from cnn.keras_utils import visualize_population
-np.random.seed(0)
 FINDINGS = ['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 'Emphysema',
             'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 'Nodule', 'Pleural_Thickening',
             'Pneumonia', 'Pneumothorax']
@@ -240,7 +243,7 @@ def split_test_train_v2(df, test_ratio=0.2, random_state=None):
     return train_inds, test_inds, df.iloc[train_inds], df.iloc[test_inds]
 
 
-def split_test_train_v3(df, splits_nr, test_ratio=0.2, random_state=None):
+def split_test_train_v3(df, splits_nr, test_ratio=0.2, random_state=1234):
     '''
         :param df:
         :param splits_nr: the number of fold validation to make

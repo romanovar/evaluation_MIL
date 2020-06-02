@@ -1,3 +1,8 @@
+from numpy.random import seed
+seed(1)
+from tensorflow import set_random_seed
+set_random_seed(2)
+
 import numpy as np
 from sklearn.metrics import confusion_matrix, roc_auc_score
 from cnn.nn_architecture.custom_performance_metrics import combine_predictions_each_batch, compute_auc_1class

@@ -156,7 +156,6 @@ def train_on_subsets(config):
 
                 history = model.fit_generator(
                     generator=train_generator,
-                    resized_image=resized_images_before_training,
                     steps_per_epoch=train_generator.__len__(),
                     epochs=nr_epochs,
                     validation_data=valid_generator,
