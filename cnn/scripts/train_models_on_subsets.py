@@ -4,7 +4,7 @@ import os
 
 from cnn.subsets_training import train_on_subsets
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def load_config(path):

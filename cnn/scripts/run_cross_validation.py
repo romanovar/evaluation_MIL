@@ -5,7 +5,7 @@ import os
 
 from cnn.cross_validation import cross_validation
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def load_config(path):
