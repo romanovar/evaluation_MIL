@@ -11,7 +11,7 @@ from keras.backend import binary_crossentropy
 from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU, Dropout, Dense, Flatten
 from keras.models import Model
 from keras.optimizers import Adam
-
+import tensorflow as tf
 from cnn.nn_architecture.AdamW import AdamW
 # from keras.optimizers_v2 import Adam
 from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_v3, keras_loss_v3_nor, keras_loss_v3_mean, \
@@ -105,7 +105,8 @@ def compile_model_accuracy(model, lr, pool_op):
              'lse01': keras_loss_v3_lse01,
              'max': keras_loss_v3_max
      }
-    optimizer = Adam(lr=lr)
+    # optimizer = Adam(lr=lr)
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.01)
     model.compile(optimizer=optimizer,
                   loss=loss_f[pool_op],
                   metrics=[keras_accuracy, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction])

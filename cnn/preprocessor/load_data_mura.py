@@ -1,3 +1,8 @@
+from numpy.random import seed
+seed(1)
+from tensorflow import set_random_seed
+set_random_seed(2)
+
 import pandas as pd
 import cv2
 from sklearn.model_selection import ShuffleSplit

@@ -1,3 +1,11 @@
+from numpy.random import seed
+seed(1)
+from tensorflow import set_random_seed
+set_random_seed(2)
+import os
+os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
+os.environ['TF_DETERMINISTIC_OPS'] = 'true'
+
 import argparse
 import os
 import numpy as np

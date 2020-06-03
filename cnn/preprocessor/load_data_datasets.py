@@ -1,3 +1,7 @@
+from numpy.random import seed
+seed(1)
+from tensorflow import set_random_seed
+set_random_seed(2)
 import cnn.preprocessor.load_data as ld
 import cnn.preprocessor.load_data_mura as ldm
 import cnn.preprocessor.load_data_pascal as ldp

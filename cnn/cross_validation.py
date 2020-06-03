@@ -8,7 +8,6 @@ os.environ['TF_DETERMINISTIC_OPS'] = 'true'
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 from keras.callbacks import LearningRateScheduler
 from keras.callbacks import ModelCheckpoint
 from keras.engine.saving import load_model
