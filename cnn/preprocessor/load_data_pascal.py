@@ -1,8 +1,3 @@
-from numpy.random import seed
-seed(1)
-from tensorflow import set_random_seed
-set_random_seed(2)
-
 from pathlib import Path
 from sklearn.model_selection import StratifiedShuffleSplit
 from cnn.preprocessor.load_data import keep_index_and_1diagnose_columns, get_rows_from_indices

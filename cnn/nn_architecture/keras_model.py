@@ -1,16 +1,9 @@
-from numpy.random import seed
-seed(1)
-from tensorflow import set_random_seed
-set_random_seed(2)
-import os
-os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
-os.environ['TF_DETERMINISTIC_OPS'] = 'true'
-from keras import regularizers, Sequential
-from keras.applications import ResNet50
-from keras.backend import binary_crossentropy
-from keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU, Dropout, Dense, Flatten
-from keras.models import Model
-from keras.optimizers import Adam
+from tensorflow.keras import regularizers, Sequential
+from tensorflow.keras.applications import ResNet50
+from tensorflow.keras.backend import binary_crossentropy
+from tensorflow.keras.layers import MaxPooling2D, Conv2D, BatchNormalization, ReLU, Dropout, Dense, Flatten
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
 from cnn.nn_architecture.AdamW import AdamW
 # from keras.optimizers_v2 import Adam
@@ -106,7 +99,7 @@ def compile_model_accuracy(model, lr, pool_op):
              'max': keras_loss_v3_max
      }
     # optimizer = Adam(lr=lr)
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.01)
+    optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=0.01)
     model.compile(optimizer=optimizer,
                   loss=loss_f[pool_op],
                   metrics=[keras_accuracy, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction])

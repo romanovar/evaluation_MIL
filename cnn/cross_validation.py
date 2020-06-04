@@ -1,10 +1,3 @@
-from numpy.random import seed
-seed(1)
-from tensorflow import set_random_seed
-set_random_seed(2)
-import os
-os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
-os.environ['TF_DETERMINISTIC_OPS'] = 'true'
 from pathlib import Path
 
 import numpy as np
@@ -24,12 +17,11 @@ from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_row
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
 from cnn.preprocessor.process_input import fetch_preprocessed_images_csv
 import tensorflow as tf
-from keras import backend as K
+from tensorflow.keras import backend as K
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 10
+BATCH_SIZE = 7
 BATCH_SIZE_TEST = 1
 BOX_SIZE = 16
 
@@ -66,6 +58,8 @@ def cross_validation(config):
     if use_xray_dataset:
         if resized_images_before_training:
             xray_df = fetch_preprocessed_images_csv(image_path, 'processed_imgs')
+            #todo: delete after testing
+            xray_df = xray_df[-50:]
         else:
             xray_df = load_process_xray14(config)
     elif use_pascal_dataset:
@@ -107,7 +101,7 @@ def cross_validation(config):
                 box_size=BOX_SIZE,
                 processed_y=skip_processing,
                 interpolation=mura_interpolation,
-                shuffle=True)
+                shuffle=False)  #todo: revert to true after test
 
             valid_generator = gen.BatchGenerator(
                 instances=df_val.values,
@@ -119,7 +113,7 @@ def cross_validation(config):
                 norm=keras_utils.normalize,
                 processed_y=skip_processing,
                 interpolation=mura_interpolation,
-                shuffle=True)
+                shuffle=False) #todo: revert to true after test
 
             model = keras_model.build_model(reg_weight)
 

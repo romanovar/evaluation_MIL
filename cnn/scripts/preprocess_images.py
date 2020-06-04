@@ -1,14 +1,9 @@
 import argparse
-import yaml
 import pandas as pd
+import yaml
+
 import cnn.preprocessor.load_data_datasets as ldd
-import numpy as np
-from keras.utils import Sequence
-from keras.preprocessing.image import load_img, img_to_array
-from cnn.preprocessor.load_data_mura import padding_needed, pad_image
-from cnn.keras_utils import process_loaded_labels, image_larger_input, calculate_scale_ratio
-from cnn.preprocessor.process_input import decrease_image_size, preprocess_images_from_dataframe, \
-    combine_preprocessed_csv
+from cnn.preprocessor.process_input import preprocess_images_from_dataframe
 
 
 def load_config(path):

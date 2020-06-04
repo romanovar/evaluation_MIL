@@ -1,14 +1,17 @@
-from numpy.random import seed
-seed(1)
-from tensorflow import set_random_seed
-set_random_seed(2)
+import numpy as np
+import tensorflow as tf
+import random as rn
 import os
-os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
-os.environ['TF_DETERMINISTIC_OPS'] = 'true'
 import yaml
 import argparse
-
 from cnn.cross_validation import cross_validation
+
+np.random.seed(1)
+tf.random.set_seed(2)
+rn.seed(1)
+os.environ['PYTHONHASHSEED']='1'
+os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
+os.environ['TF_DETERMINISTIC_OPS'] = 'true'
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 

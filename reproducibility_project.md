@@ -39,13 +39,17 @@ We use 3 data sets, two of which are medical, and one non-medical:
 Project is divided into 2 modules - `cnn` and `stability`.
 
 #### CNN
-`cnn` modules contains all scripts, which are in some way related to the neural architecture.
+`cnn` modules contains all scripts, which are in some way related to the neural architecture - this includes training,
+ evaluating performance of a model, preprocessing
+ Scripts module contains the following scripts:
 * `train_model.py` allows explorative training of models.
 
 * `run_cross_validation.py` performs cross validation on a specific architecture. In xray, every split is yields different train/validation/testing set. In Mura, the testing set is fixed, it is equal to the validation set from the author split.
 
-* `train_models_on_subset.py` trains models on training subset, which are later tested for stability. Initially, the script takes a split of training, validation and testing set, and then drops part of the training set.    
+* `train_models_on_subset.py` trains models on training subset, which are later tested for stability. Initially, the script takes a specific cross validation split of training, validation and testing set, and then drops a portion of the samples from the training set.    
 
+* `evaluate_performance.py` evaluates the performance of a trained model. It is always calculated AUC for the set. If segmentation labels are available - it is calculated the dice coefficient and accuracy from IOU (with threshold of 0.1).
+*
 `train_mode` parameter in the settings is applied in these 3 script, the user specify if training should occur or prediction on already trained model. The model name should be specified in the script. 
 
  **Generating supportive files**
@@ -91,7 +95,7 @@ operator - `LSE, NOR, Mean`
    * `stability_all_classifiers_instance_level()` investigates the instance performance against the stability 
 
 
-## Script parameters
+## Configuration
  In order to run any script, the settings are taken from a global configuration file. `examples_config.yml` shows the
   structure of the file, and the values expected.
 

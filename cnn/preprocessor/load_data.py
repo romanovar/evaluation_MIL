@@ -1,7 +1,3 @@
-from numpy.random import seed
-seed(1)
-from tensorflow import set_random_seed
-set_random_seed(2)
 import pandas as pd
 import numpy as np
 from keras.preprocessing import image
