@@ -1,15 +1,6 @@
 import argparse
-import os
-
-import tensorflow as tf
 import yaml
-
 from cnn import keras_preds
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
-sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
 
 def load_config(path):
@@ -30,7 +21,7 @@ use_xray = config['use_xray_dataset']
 use_pascal = config['use_pascal_dataset']
 
 image_prediction_method = 'as_production'
-predictions_unique_name = 'car_test_set_CV1_0car_0.95'
+predictions_unique_name = 'train_set_Cardiomegaly_CV0'
 pool_method = 'nor'
 r = 0.1
 

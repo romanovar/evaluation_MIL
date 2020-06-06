@@ -98,8 +98,7 @@ def compile_model_accuracy(model, lr, pool_op):
              'lse01': keras_loss_v3_lse01,
              'max': keras_loss_v3_max
      }
-    # optimizer = Adam(lr=lr)
-    optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=0.01)
+    optimizer = Adam(lr=lr)
     model.compile(optimizer=optimizer,
                   loss=loss_f[pool_op],
                   metrics=[keras_accuracy, keras_binary_accuracy, accuracy_asloss, accuracy_asproduction])

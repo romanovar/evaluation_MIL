@@ -28,4 +28,4 @@ parser.add_argument('-c', '--config_path', type=str,
 args = parser.parse_args()
 config = load_config(args.config_path)
 
-cross_validation(config)
+cross_validation(config, number_splits=5)

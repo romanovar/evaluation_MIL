@@ -21,13 +21,19 @@ from tensorflow.keras import backend as K
 
 
 IMAGE_SIZE = 512
-BATCH_SIZE = 7
+BATCH_SIZE = 10
 BATCH_SIZE_TEST = 1
 BOX_SIZE = 16
 
 
-def cross_validation(config):
-
+def cross_validation(config, number_splits=5):
+    """
+    performs cross validation on a specific architecture
+    :param config: yaml config file
+    :param number_splits: number of different cross validation splits to test on
+    :return: Returns predictions, image indices and patch labels saved in .npy file for train,test and validation set
+    and for each CV split.
+    """
     skip_processing = config['skip_processing_labels']
     image_path = config['image_path']
     classication_labels_path = config['classication_labels_path']
@@ -58,8 +64,8 @@ def cross_validation(config):
     if use_xray_dataset:
         if resized_images_before_training:
             xray_df = fetch_preprocessed_images_csv(image_path, 'processed_imgs')
-            #todo: delete after testing
-            xray_df = xray_df[-50:]
+            #todo: delete - just for testing
+            # xray_df = xray_df[-50:]
         else:
             xray_df = load_process_xray14(config)
     elif use_pascal_dataset:
@@ -70,18 +76,17 @@ def cross_validation(config):
                                                       mura_processed_test_labels_path, mura_train_img_path,
                                                       mura_train_labels_path, mura_test_labels_path, mura_test_img_path)
 
-    CV_SPLITS = 5
-    for split in range(0, CV_SPLITS):
+    for split in range(0, number_splits):
 
         if use_xray_dataset:
-            df_train, df_val, df_test, _, _,_ = ld.split_xray_cv(xray_df, CV_SPLITS,
+            df_train, df_val, df_test, _, _,_ = ld.split_xray_cv(xray_df, number_splits,
                                                                  split, class_name)
 
         elif use_pascal_dataset:
-            df_train, df_val, df_test = construct_train_test_cv(pascal_df, CV_SPLITS, split)
+            df_train, df_val, df_test = construct_train_test_cv(pascal_df, number_splits, split)
 
         else:
-            df_train, df_val = split_data_cv(df_train_val, CV_SPLITS, split, random_seed=1, diagnose_col=class_name,
+            df_train, df_val = split_data_cv(df_train_val, number_splits, split, random_seed=1, diagnose_col=class_name,
                                              ratio_to_keep=None)
             # df_test = filter_rows_on_class(test_df_all_classes, class_name=class_name)
             df_test = filter_rows_and_columns(test_df_all_classes, class_name)
@@ -101,7 +106,7 @@ def cross_validation(config):
                 box_size=BOX_SIZE,
                 processed_y=skip_processing,
                 interpolation=mura_interpolation,
-                shuffle=False)  #todo: revert to true after test
+                shuffle=True)
 
             valid_generator = gen.BatchGenerator(
                 instances=df_val.values,
@@ -113,13 +118,12 @@ def cross_validation(config):
                 norm=keras_utils.normalize,
                 processed_y=skip_processing,
                 interpolation=mura_interpolation,
-                shuffle=False) #todo: revert to true after test
-
+                shuffle=True)
             model = keras_model.build_model(reg_weight)
 
             model = keras_model.compile_model_accuracy(model, lr, pool_op=pooling_operator)
 
-            #   checkpoint on every epoch is not really needed here, CALLBACK REMOVED from the generator
+            #   checkpoint on every epoch is not really needed here, not used, CALLBACK REMOVED from the generator
             filepath = trained_models_path + "CV_patient_split_"+str(split)+"_-{epoch:02d}-{val_loss:.2f}.hdf5"
             checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
 
@@ -136,8 +140,7 @@ def cross_validation(config):
                 validation_steps=valid_generator.__len__(),
                 verbose=1
             )
-            # filepath = trained_models_path + class_name +"CV_"+str(split)+"_nov.hdf5"
-            # model.save(filepath)
+
             print("history")
             print(history.history)
             print(history.history['keras_accuracy'])
@@ -149,15 +152,6 @@ def cross_validation(config):
                                               'validation loss', 'CV_loss'+str(split), 'loss', results_path)
 
             ############################################    PREDICTIONS      #############################################
-            ########################################### TRAINING SET########################################################
-            # predict_patch_and_save_results(model, 'train_set_CV'+str(split), df_train, skip_processing,
-            #                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
-            #
-            ########################################### VALIDATION SET######################################################
-            # predict_patch_and_save_results(model, 'val_set_CV'+str(split), df_val, skip_processing,
-            #                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path)
-
-            ########################################### TESTING SET########################################################
             predict_patch_and_save_results(model, 'test_set_'+ class_name+'_CV'+str(split), df_test, skip_processing,
                                            BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                            mura_interpolation, resized_images_before_training)

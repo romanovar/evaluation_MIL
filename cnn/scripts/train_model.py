@@ -1,11 +1,10 @@
 from numpy.random import seed
-import tensorflow as tf
-import os
 import argparse
 import os
 import numpy as np
 import yaml
 import tensorflow as tf
+import random as rn
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.callbacks import LearningRateScheduler
 from keras.engine.saving import load_model
@@ -21,11 +20,15 @@ from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accur
     keras_binary_accuracy, combine_predictions_each_batch
 from cnn.preprocessor.process_input import preprocess_images_from_dataframe, fetch_preprocessed_images_csv
 
+np.random.seed(1)
 tf.random.set_seed(2)
+rn.seed(1)
 seed(1)
+os.environ['PYTHONHASHSEED']='1'
 os.environ['TF_CUDNN_DETERMINISTIC'] = 'true'
 os.environ['TF_DETERMINISTIC_OPS'] = 'true'
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 tf.keras.backend.clear_session()
 
 
@@ -60,7 +63,7 @@ class_name = config['class_name']
 
 IMAGE_SIZE = 512
 BATCH_SIZE = 10
-BATCH_SIZE_TEST = 10  
+BATCH_SIZE_TEST = 1
 BOX_SIZE = 16
 
 
@@ -68,7 +71,7 @@ if use_xray_dataset:
     if resized_images_before_training:
         xray_df = fetch_preprocessed_images_csv(image_path, 'processed_imgs')
         #todo: delete after testing
-        xray_df = xray_df[-70:]
+        #xray_df = xray_df[-50:]
     else:
         xray_df = ldd.load_process_xray14(config)
     df_train, df_val, df_test = ldd.split_filter_data(config, xray_df)

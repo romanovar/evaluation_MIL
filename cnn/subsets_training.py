@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -21,11 +20,23 @@ import tensorflow as tf
 from keras import backend as K
 
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
-
-
-def train_on_subsets(config):
+def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers, subset_seeds, overlap_ratio):
+    """
+    Trains several classifiers with similar training set, while preserving test and validation set the same.
+    The aim is to compare the performance of these classifiers later in stability module.
+    The script takes a specific cross validation split of training, validation and testing set, and then drops a
+    portion of the samples from the training set. Validation and test set are not changed - they are as the original
+    split. Then the script trains a classifier with each of the training subsets.
+    :param config: yaml config file
+    :param number_splits: number of cross validation  splits used in cross validation (CV) (run_cross_validation.py)
+    :param CV_split_to_use: specific CV split for defining  train/test/validation set. Value is between [0, number_splits-1]
+    :param number_classifiers: number of classifiers to train
+    :param subset_seeds: seeds used to drop observations from original training set.
+    :param overlap_ratio:  ration of observations which are preserved from the original training set, defined by the
+    specific CV split.
+    :return: Returns saved .npy file for the predictions, image_indices and patch labels for the train/test/valid set for
+    each subset.
+    """
     skip_processing = config['skip_processing_labels']
     image_path = config['image_path']
     classication_labels_path = config['classication_labels_path']
@@ -59,11 +70,6 @@ def train_on_subsets(config):
     BATCH_SIZE_TEST = 1
     BOX_SIZE = 16
 
-    overlap_ratio = 0.95
-    CV_SPLITS = 5
-    number_classifiers = 5
-    # this should have the same length as the number of classifiers
-    subset_seeds = [1234, 5678, 9012, 3456, 7890]
 
     if use_xray_dataset:
         if resized_images_before_training:
@@ -81,20 +87,20 @@ def train_on_subsets(config):
                                                       mura_train_labels_path, mura_test_labels_path, mura_test_img_path)
 
 
-    for split in range(0, CV_SPLITS):
+    for split in range(0, number_splits):
         if use_xray_dataset:
             df_train, df_val, df_test, df_bbox_train, \
-            df_bbox_test, train_only_class = split_xray_cv(xray_df, CV_SPLITS,
+            df_bbox_test, train_only_class = split_xray_cv(xray_df, number_splits,
                                                            split, class_name)
         elif use_pascal_dataset:
-            df_train, df_val, df_test = construct_train_test_cv(pascal_df, CV_SPLITS, split)
+            df_train, df_val, df_test = construct_train_test_cv(pascal_df, number_splits, split)
         else:
-            df_train, df_val = split_data_cv(df_train_val, CV_SPLITS, split, random_seed=1, diagnose_col=class_name,
+            df_train, df_val = split_data_cv(df_train_val, number_splits, split, random_seed=1, diagnose_col=class_name,
                                              ratio_to_keep=None)
             df_test = filter_rows_and_columns(test_df_all_classes, class_name)
 
         for curr_classifier in range(0, number_classifiers):
-            if split == 1:
+            if split == CV_split_to_use:
                 print("#####################################################")
                 print("SPLIT :" + str(split))
                 print("classifier #: " + str(curr_classifier))
@@ -113,7 +119,7 @@ def train_on_subsets(config):
                     df_train_subset = get_train_subset_mura(df_train, random_seed=subset_seeds[curr_classifier],
                                                             ratio_to_keep=overlap_ratio)
 
-            if train_mode and split == 1:
+            if train_mode and split == CV_split_to_use:
                 tf.keras.backend.clear_session()
                 K.clear_session()
 
