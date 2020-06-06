@@ -19,6 +19,8 @@ from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_
 import tensorflow as tf
 from tensorflow.keras import backend as K
 
+from cnn.preprocessor.process_input import fetch_preprocessed_images_csv
+
 
 def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers, subset_seeds, overlap_ratio):
     """
@@ -73,7 +75,9 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
 
     if use_xray_dataset:
         if resized_images_before_training:
-            xray_df = ld.load_csv(image_path+'/processed_imgs.csv')
+            # xray_df = ld.load_csv(image_path+'processed_imgs')
+            xray_df = fetch_preprocessed_images_csv(image_path, 'processed_imgs')
+
         else:
             xray_df = load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
                             localization_labels_path, results_path)
