@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from keras.callbacks import LearningRateScheduler, ModelCheckpoint
+from tensorflow.keras.callbacks import LearningRateScheduler, ModelCheckpoint
 from keras.engine.saving import load_model
 
 from cnn import keras_utils
@@ -17,7 +17,7 @@ from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, get_train_
     filter_rows_and_columns
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
 import tensorflow as tf
-from keras import backend as K
+from tensorflow.keras import backend as K
 
 
 def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers, subset_seeds, overlap_ratio):
@@ -66,14 +66,14 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
     pooling_operator = config['pooling_operator']
 
     IMAGE_SIZE = 512
-    BATCH_SIZE = 1
+    BATCH_SIZE = 10
     BATCH_SIZE_TEST = 1
     BOX_SIZE = 16
 
 
     if use_xray_dataset:
         if resized_images_before_training:
-            xray_df = ld.load_csv(image_path+'/all_processed_images.csv')
+            xray_df = ld.load_csv(image_path+'/processed_imgs.csv')
         else:
             xray_df = load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
                             localization_labels_path, results_path)
