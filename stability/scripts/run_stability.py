@@ -2,10 +2,10 @@ import argparse
 
 import yaml
 
-from stability.preprocessor.preprocessing import load_filter_dice_scores, indices_segmentation_images, \
+from stability.preprocessing import load_filter_dice_scores, indices_segmentation_images, \
     filter_predictions_files_on_indices, load_and_filter_predictions, filter_segmentation_images_bbox_file
-from stability.stability_2classifiers.stability_scores import compute_stability_scores
-from stability.visualizations.visualization_utils import generate_visualizations_stability, \
+from stability.stability_scores import compute_stability_scores
+from stability.visualization_utils import generate_visualizations_stability, \
     generate_visualizations_instance_level
 
 

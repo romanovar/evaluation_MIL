@@ -1,4 +1,4 @@
-from stability.score_simulation.simulate_stability_score_utils import simulate_distributions_n01_n10_extreme, \
+from stability.simulate_stability_score_utils import simulate_distributions_n01_n10_extreme, \
     simulate_distributions_n01_n10_equal_distribution, simulate_distributions_n01_n10, simulate_distributions_n11_n00, \
     simulate_distributions_corollary5, simulate_distributions_monotonic, simulate_distributions_jacc_v2, corrected_positive_Jaccard
 

@@ -1,8 +1,8 @@
 import pandas as pd
 from sklearn.metrics import roc_auc_score, average_precision_score
 
-from stability.preprocessor.preprocessing import binarize_predictions
-from stability.stability_2classifiers.stability_scores import compute_additional_scores_kappa
+from stability.preprocessing import binarize_predictions
+from stability.stability_scores import compute_additional_scores_kappa
 import numpy as np
 
 

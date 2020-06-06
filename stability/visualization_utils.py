@@ -16,8 +16,8 @@ import cv2
 import matplotlib.cm as cm
 import seaborn as sns
 
-from stability.preprocessor.preprocessing import binarize_predictions
-from stability.stability_2classifiers.stability_scores import calculate_positive_Jaccard, \
+from stability.preprocessing import binarize_predictions
+from stability.stability_scores import calculate_positive_Jaccard, \
     calculate_corrected_Jaccard_heuristic, calculate_corrected_positive_Jaccard, calculate_positive_overlap, \
     calculate_corrected_positive_overlap, calculate_corrected_IOU
 

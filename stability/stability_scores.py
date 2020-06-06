@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.stats import rankdata, spearmanr, kendalltau
-from stability.preprocessor.preprocessing import calculate_subsets_between_two_classifiers, binarize_predictions
+from stability.preprocessing import calculate_subsets_between_two_classifiers, binarize_predictions
 
 
 def calculate_positive_Jaccard(bin_pred1, bin_pred2, P):
