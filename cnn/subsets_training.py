@@ -103,7 +103,7 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
             df_test = filter_rows_and_columns(test_df_all_classes, class_name)
 
         for curr_classifier in range(0, number_classifiers):
-            if split == CV_split_to_use:
+            if train_mode and split == CV_split_to_use:
                 print("#####################################################")
                 print("SPLIT :" + str(split))
                 print("classifier #: " + str(curr_classifier))
@@ -122,7 +122,6 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
                     df_train_subset = get_train_subset_mura(df_train, random_seed=subset_seeds[curr_classifier],
                                                             ratio_to_keep=overlap_ratio)
 
-            if train_mode:
                 tf.keras.backend.clear_session()
                 K.clear_session()
 
