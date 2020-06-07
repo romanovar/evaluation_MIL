@@ -9,8 +9,8 @@ import cnn.nn_architecture.keras_generators as gen
 from cnn.nn_architecture import keras_model
 from cnn import keras_utils
 import cnn.preprocessor.load_data as ld
-from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, keras_binary_accuracy
-from cnn.nn_architecture.custom_loss import keras_loss, keras_loss_v3, keras_loss_v3_nor
+from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss
+from cnn.nn_architecture.custom_loss import keras_loss_v3_nor
 from cnn.keras_preds import predict_patch_and_save_results
 from cnn.preprocessor.load_data_datasets import load_process_xray14
 from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, filter_rows_and_columns
@@ -209,8 +209,7 @@ def cross_validation(config, number_splits=5):
             model = load_model(str(file_path),
                                custom_objects={
                                    'keras_loss_v3_nor': keras_loss_v3_nor, 'keras_accuracy': keras_accuracy,
-                                   'keras_binary_accuracy': keras_binary_accuracy,
-                                   'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
+                                   'accuracy_asloss': accuracy_asloss})
             model = keras_model.compile_model_accuracy(model, lr, pooling_operator)
 
             predict_patch_and_save_results(model, "train_set_CV" + (str(split)), df_train, skip_processing,

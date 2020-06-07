@@ -1,24 +1,23 @@
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from tensorflow.keras.callbacks import LearningRateScheduler, ModelCheckpoint
+import tensorflow as tf
 from keras.engine.saving import load_model
+from tensorflow.keras import backend as K
+from tensorflow.keras.callbacks import LearningRateScheduler, ModelCheckpoint
 
 from cnn import keras_utils
 from cnn.keras_preds import predict_patch_and_save_results
 from cnn.nn_architecture import keras_generators as gen
 from cnn.nn_architecture import keras_model
 from cnn.nn_architecture.custom_loss import keras_loss_v3_nor
-from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, keras_binary_accuracy, accuracy_asloss, \
-    accuracy_asproduction
+from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss
 from cnn.preprocessor import load_data as ld
 from cnn.preprocessor.load_data import load_xray, split_xray_cv
 from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, get_train_subset_mura, \
     filter_rows_and_columns
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
-import tensorflow as tf
-from tensorflow.keras import backend as K
-
 from cnn.preprocessor.process_input import fetch_preprocessed_images_csv
 
 
@@ -219,20 +218,12 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
 
                 assert files_found == 1, "No model found/ Multiple models found, not clear which to use "
                 print(str(files_found))
-                ### OLD MODEL loading
-                # model = load_model(str(file_path),
-                #                    custom_objects={
-                #                        'keras_loss_v2': keras_loss_v2, 'keras_accuracy': keras_accuracy,
-                #                        'keras_binary_accuracy': keras_binary_accuracy,
-                #                        'accuracy_asloss': accuracy_asloss,
-                #                        'accuracy_asproduction': accuracy_asproduction})
+
 
                 model = load_model(str(file_path),
                                    custom_objects={
                                        'keras_loss_v3_nor': keras_loss_v3_nor, 'keras_accuracy': keras_accuracy,
-                                       'keras_binary_accuracy': keras_binary_accuracy,
-                                       'accuracy_asloss': accuracy_asloss,
-                                       'accuracy_asproduction': accuracy_asproduction})
+                                       'accuracy_asloss': accuracy_asloss})
 
                 model = keras_model.compile_model_accuracy(model, lr, pooling_operator)
 

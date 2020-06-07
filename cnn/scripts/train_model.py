@@ -1,24 +1,23 @@
-from numpy.random import seed
 import argparse
 import os
-import numpy as np
-import yaml
-import tensorflow as tf
 import random as rn
+
+import numpy as np
+import tensorflow as tf
+import yaml
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.callbacks import LearningRateScheduler
 from keras.engine.saving import load_model
+from numpy.random import seed
 
 import cnn.nn_architecture.keras_generators as gen
 import cnn.preprocessor.load_data_datasets as ldd
 from cnn import keras_utils
-from cnn.keras_preds import predict_patch_and_save_results, get_patch_labels_from_batches
-from cnn.keras_utils import process_loaded_labels
+from cnn.keras_preds import predict_patch_and_save_results
 from cnn.nn_architecture import keras_model
-from cnn.nn_architecture.custom_loss import keras_loss_v2, keras_loss_v3, keras_loss_v3_nor
-from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss, accuracy_asproduction, \
-    keras_binary_accuracy, combine_predictions_each_batch
-from cnn.preprocessor.process_input import preprocess_images_from_dataframe, fetch_preprocessed_images_csv
+from cnn.nn_architecture.custom_loss import keras_loss_v3_nor
+from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss
+from cnn.preprocessor.process_input import fetch_preprocessed_images_csv
 
 np.random.seed(1)
 tf.random.set_seed(2)
@@ -218,8 +217,7 @@ else:
     # deserealize a model and do predictions with it
     model = load_model(trained_models_path + '_xray_0003-30-0.38.hdf5', custom_objects={
         'keras_loss_v3_nor': keras_loss_v3_nor,  'keras_accuracy': keras_accuracy,
-        'keras_binary_accuracy': keras_binary_accuracy,
-        'accuracy_asloss': accuracy_asloss, 'accuracy_asproduction': accuracy_asproduction})
+        'accuracy_asloss': accuracy_asloss})
 
     ########################################### TRAINING SET########################################################
 

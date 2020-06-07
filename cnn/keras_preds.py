@@ -1,11 +1,12 @@
 import numpy as np
 from sklearn.metrics import confusion_matrix, roc_auc_score
-from cnn.nn_architecture.custom_performance_metrics import combine_predictions_each_batch, compute_auc_1class
+from cnn.nn_architecture.custom_performance_metrics import combine_predictions_each_batch
 import cnn.nn_architecture.keras_generators as gen
 from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, plot_confusion_matrix, \
     image_larger_input, calculate_scale_ratio
 from pathlib import Path
 from keras_preprocessing.image import load_img, img_to_array
+from sklearn.metrics import roc_auc_score, roc_curve, auc
 
 from cnn.preprocessor.load_data_mura import padding_needed, pad_image
 
@@ -148,6 +149,28 @@ def save_dice(img_ind,dice, res_path, file_identifier):
     df['Image_ind'] = img_ind
     df['Mean DICE'] = dice
     df.to_csv(res_path + 'dice_inst_' + file_identifier + '.csv')
+
+
+def compute_auc_roc_curve(labels, predictions):
+    auc_score = roc_auc_score(labels, predictions)
+    fpr, tpr, _ = roc_curve(labels, predictions)
+    roc_auc = auc(fpr, tpr)
+    return auc_score, fpr, tpr, roc_auc
+
+
+def compute_auc_1class(labels_all_classes, img_predictions_all_classes):
+    auc_all_classes = []
+    # Compute ROC curve and ROC area for each class
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for ind in range(0, 1):
+        auc_score, fpr1, tpr1, roc_auc1 = compute_auc_roc_curve(labels_all_classes[:, ind],  img_predictions_all_classes[:, ind])
+        auc_all_classes.append(auc_score)
+        fpr[ind], tpr[ind] = fpr1, tpr1
+        roc_auc[ind] = roc_auc1
+
+    return auc_all_classes, fpr, tpr, roc_auc
 
 
 def process_prediction(config, file_unique_name, res_path, pool_method, img_pred_method, r,
