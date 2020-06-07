@@ -122,7 +122,7 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
                     df_train_subset = get_train_subset_mura(df_train, random_seed=subset_seeds[curr_classifier],
                                                             ratio_to_keep=overlap_ratio)
 
-            if train_mode and split == CV_split_to_use:
+            if train_mode:
                 tf.keras.backend.clear_session()
                 K.clear_session()
 
@@ -169,8 +169,7 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
                     epochs=nr_epochs,
                     validation_data=valid_generator,
                     validation_steps=valid_generator.__len__(),
-                    verbose=1,
-                    callbacks=[checkpoint_on_epoch_end, lrate]
+                    verbose=1
                 )
                 filepath = trained_models_path + 'subset_' + class_name + "_CV" + str(split) + '_' + str(
                     curr_classifier) + '_' + \
