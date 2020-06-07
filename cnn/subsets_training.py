@@ -191,13 +191,13 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
                 predict_patch_and_save_results(model, class_name+'_train_set_CV' + str(split)+'_'+ str(curr_classifier),
                                                df_train, skip_processing,
                                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                               mura_interpolation)
+                                               mura_interpolation, resized_images_before_training)
 
                 ########################################## VALIDATION SET######################################################
                 predict_patch_and_save_results(model, class_name+'_val_set_CV' + str(split)+'_'+ str(curr_classifier),
                                                df_val, skip_processing,
                                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
-                                               mura_interpolation)
+                                               mura_interpolation, resized_images_before_training)
 
                 ########################################### TESTING SET########################################################
                 predict_patch_and_save_results(model, class_name+
@@ -205,7 +205,7 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
                                                str(class_name)+'_' +
                                                str(overlap_ratio), df_test,
                                                skip_processing, BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE,
-                                               prediction_results_path, mura_interpolation)
+                                               prediction_results_path, mura_interpolation, resized_images_before_training)
             elif not train_mode:
                 files_found = 0
                 print(trained_models_path)
