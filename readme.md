@@ -69,7 +69,8 @@ The following scripts can be ran:
 
     * `image_indices_<IDENTIFIER>.npy` are the sample unique identifiers in a set. It contains the image index(name) of each bag, in the same order as corresponding to each index.  
      </details>
-     More on data preparation in [data preparation section](#data-preparation).
+  
+  More on data preparation in [Data preparation section](#data-preparation).
 
 * `run_cross_validation.py` performs cross validation (CV) on a specific architecture. In xray, every split is yields different train/validation/testing set. In Mura, the testing set is fixed, it is equal to the validation set from the author split.
 
@@ -158,11 +159,11 @@ The following scripts can be ran:
 
      - `correlation_<STABILITY_SCORE>_nan_norm_<IMG_SUBSET>.jpg` shows a heatmap visualization of the NaN values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models, so the heatmap shows the **ratio of** NaN values from the stability scores between each two pairs of models. Depending on the user's choice, the analysis is done on all images (``<IMG_SUBSET>`` = all_img) or only on images with positive label (``<IMG_SUBSET>`` = pos_img).        
 
-      - `correlation_mean_<STABILITY_SCORE>_<IMG_SUBSET>.jpg` shows a heatmap visualization of the mean values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models, we compare the predictions of all images between two models and aggregate them to a mean value. Depending on the user's choice, the analysis is done on all images (``<IMG_SUBSET>`` = all_img) or only on images with positive label (``<IMG_SUBSET>`` = pos_img).     
+  - `correlation_mean_<STABILITY_SCORE>_<IMG_SUBSET>.jpg` shows a heatmap visualization of the mean values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models, we compare the predictions of all images between two models and aggregate them to a mean value. Depending on the user's choice, the analysis is done on all images (``<IMG_SUBSET>`` = all_img) or only on images with positive label (``<IMG_SUBSET>`` = pos_img).     
 
-      - `scatter_mean_<STABILITY_SCORE>_mean_dice.jpg` These visualizations are generated only for images with available segmentation. It visualizes a scatter plot for each segmentation image - where y-axis is the mean dice score for an image across all models and x-axis is the mean stability score (`<STABILITY_SCORE>`). In this way we can sees some patterns between well segmented images (high avg dice score and low std dev of dice) and the stability score.  
+  - `scatter_mean_<STABILITY_SCORE>_mean_dice.jpg` These visualizations are generated only for images with available segmentation. It visualizes a scatter plot for each segmentation image - where y-axis is the mean dice score for an image across all models and x-axis is the mean stability score (`<STABILITY_SCORE>`). In this way we can sees some patterns between well segmented images (high avg dice score and low std dev of dice) and the stability score.  
 
-     </details>
+ </details>
 
 
 ## Data preparation
@@ -218,6 +219,3 @@ All of the next paths are locations for saving results.
 * `prediction_results_path`: path to save .npy files of the predictions generated
 * `trained_models_path`: path to save trained models
 * `stability_results`: path to results from stability experiments
-
-
-## Contact
