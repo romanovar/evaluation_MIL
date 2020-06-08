@@ -16,7 +16,7 @@ def predict_patch_and_save_results(saved_model, file_unique_name, data_set, proc
                                    resized_images_before_training):
     test_generator = gen.BatchGenerator(
         instances=data_set.values,
-        resized_image = resized_images_before_training,
+        resized_image=resized_images_before_training,
         batch_size=test_batch_size,
         net_h=image_size,
         net_w=image_size,
@@ -134,20 +134,21 @@ def save_generated_files(res_path, file_unique_name, image_labels, image_predict
     np.save(res_path + '/image_labels_' + file_unique_name, image_labels)
     np.save(res_path + '/image_predictions_' + file_unique_name, image_predictions)
     np.save(res_path + '/bbox_present_' + file_unique_name, has_bbox)
-    np.save(res_path + '/accurate_localization_' + file_unique_name, accurate_localizations)
+    # np.save(res_path + '/accurate_localization_' + file_unique_name, accurate_localizations)
     np.save(res_path + '/dice_' + file_unique_name, dice)
+
 
 import pandas as pd
 
 
-def save_dice(img_ind,dice, res_path, file_identifier):
+def save_dice(img_ind, dice, res_path, file_identifier):
     df = pd.DataFrame()
     df['Image_ind'] = 0
 
     df['DICE'] = -100
 
     df['Image_ind'] = img_ind
-    df['Mean DICE'] = dice
+    df['DICE'] = dice
     df.to_csv(res_path + 'dice_inst_' + file_identifier + '.csv')
 
 
@@ -165,7 +166,8 @@ def compute_auc_1class(labels_all_classes, img_predictions_all_classes):
     tpr = dict()
     roc_auc = dict()
     for ind in range(0, 1):
-        auc_score, fpr1, tpr1, roc_auc1 = compute_auc_roc_curve(labels_all_classes[:, ind],  img_predictions_all_classes[:, ind])
+        auc_score, fpr1, tpr1, roc_auc1 = compute_auc_roc_curve(labels_all_classes[:, ind],
+                                                                img_predictions_all_classes[:, ind])
         auc_all_classes.append(auc_score)
         fpr[ind], tpr[ind] = fpr1, tpr1
         roc_auc[ind] = roc_auc1
@@ -183,6 +185,7 @@ def process_prediction(config, file_unique_name, res_path, pool_method, img_pred
     :param pool_method: mean/ nor / lse
     :param img_pred_method: as_production: is the official prediction method. as_training: is the prediction method
     used during training. It has only supportive function, it is meant to give more insight.
+            See differences in compute_image_label_prediction() in custom_loss.py
     :param r: R hyperparameter for LSE pooling method
     :param threshold_binarization: binarization threshold of the predictions for iou
     :param iou_threshold: iou threshold for accurate predictions on image level
@@ -208,18 +211,18 @@ def process_prediction(config, file_unique_name, res_path, pool_method, img_pred
 
     if use_pascal:
         has_bbox, accurate_localizations_inst, dice_scores_inst, indices_to_keep = \
-        evaluate_instance_performance_pascal(pascal_img_path, file_unique_name, res_path, has_bbox)
+            evaluate_instance_performance_pascal(pascal_img_path, file_unique_name, res_path, has_bbox)
         accurate_localization[indices_to_keep] = accurate_localizations_inst
         dice_scores[indices_to_keep] = dice_scores_inst
 
     image_indices_bbox = np.where(dice_scores > -1)[0]
 
     if len(image_indices_bbox) > 0:
-        save_dice(image_indices[image_indices_bbox],dice_scores[image_indices_bbox], res_path, file_unique_name)
+        save_dice(image_indices[image_indices_bbox], dice_scores[image_indices_bbox], res_path, file_unique_name)
     return image_labels, image_predictions, has_bbox, accurate_localization, dice_scores
 
 
-def compute_save_accuracy_results(data_set_name, res_path, has_bbox, acc_localization):
+def compute_save_accuracy_results(eval_df, data_set_name, res_path, has_bbox, acc_localization):
     print("accuracy bbox present vs accurate")
     total_accurate_segmentations = np.sum(acc_localization, axis=0)
     total_segmentation = np.sum(has_bbox, axis=0)
@@ -228,28 +231,25 @@ def compute_save_accuracy_results(data_set_name, res_path, has_bbox, acc_localiz
         acc_class = total_accurate_segmentations / total_segmentation
     print("ACCURACY RESULTS FROM BBOX")
     print(acc_class)
-    save_evaluation_results(["accuracy"], acc_class, "accuracy_" + data_set_name + '.csv', res_path,
-                            add_col=None, add_value=None)
+    # save_evaluation_results(["accuracy"], acc_class, "accuracy_" + data_set_name + '.csv', res_path,
+    #                         add_col=None, add_value=None)
+    return save_evaluation_results(eval_df, ["accuracy"], acc_class, "evaluation_performance_" + data_set_name + '.csv',
+                                   res_path, add_col=None, add_value=None)
 
 
-def compute_save_dice_results(data_set_name, res_path, has_bbox, dice_scores):
+def compute_save_dice_results(eval_df, data_set_name, res_path, dice_scores):
     dice_score_ma = np.ma.masked_array(dice_scores, mask=np.equal(dice_scores, -1))
     mean_dice = np.mean(dice_score_ma, axis=0)
     print("DICE")
     print(mean_dice)
-    save_evaluation_results(["dice"], mean_dice, "dice_" + data_set_name + '.csv', res_path,
-                            add_col=None, add_value=None)
+    # save_evaluation_results(["dice"], mean_dice, "dice_" + data_set_name + '.csv', res_path,
+    #                         add_col=None, add_value=None)
+    return save_evaluation_results(eval_df, ["dice"], mean_dice, "evaluation_performance_" + data_set_name + '.csv',
+                                   res_path,
+                                   add_col=None, add_value=None)
 
 
-def compute_save_inst_auc_results(data_set_name, res_path, inst_auc):
-    mean_auc = np.mean(inst_auc, axis=0)
-    print("Instance AUC")
-    print(mean_auc)
-    save_evaluation_results(["inst_auc"], mean_auc, "inst_auc_" + data_set_name + '.csv', res_path,
-                            add_col=None, add_value=None)
-
-
-def compute_save_auc(data_set_name, image_pred_method, res_path, image_labels, image_predictions, class_name):
+def compute_save_auc(eval_df, data_set_name, image_pred_method, res_path, image_labels, image_predictions, class_name):
     '''
     It computes and saves the results in a file. ROC curve and confusion matrix visualizations are also done here.
     :param data_set_name:
@@ -261,9 +261,8 @@ def compute_save_auc(data_set_name, image_pred_method, res_path, image_labels, i
     :return:
     '''
     auc_all_classes_v1, fpr, tpr, roc_auc = compute_auc_1class(image_labels, image_predictions)
-    save_evaluation_results([class_name], auc_all_classes_v1, 'auc_prob_' + data_set_name + '_'
-                            + image_pred_method + '.csv',
-                            res_path)
+    save_evaluation_results(eval_df, ['AUC_' + class_name], auc_all_classes_v1, 'evaluation_performance_' +
+                            data_set_name + '.csv', res_path)
 
     plot_roc_curve(fpr, tpr, roc_auc, data_set_name, res_path)
     conf_matrix = confusion_matrix(image_labels, np.array(image_predictions > 0.5, dtype=np.float32))
@@ -349,7 +348,7 @@ def compute_bag_prediction_as_production(patch_pred, pool_method, lse_r):
         return compute_bag_prediction_max(patch_pred)
 
 
-def compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool_method,r):
+def compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool_method, r):
     '''
     Calculates the image prediction the way it is computed during training.
     That means that predictions on images with annotations are computed with supervised pooling method
@@ -369,11 +368,13 @@ def compute_bag_prediction_as_training(has_bbox, predictions, patch_labels, pool
                         compute_bag_prediction_mean(predictions))
     elif pool_method.lower() == 'lse':
         return np.where(has_bbox,
-                        compute_bag_prediction_lse_on_segmentation(nn_output=predictions, patch_labels=patch_labels, r=r),
+                        compute_bag_prediction_lse_on_segmentation(nn_output=predictions, patch_labels=patch_labels,
+                                                                   r=r),
                         compute_bag_prediction_lse(predictions, r))
 
 
-def compute_bag_prediction(predictions, has_bbox, patch_labels, pool_method, r, image_prediction_method='as_production'):
+def compute_bag_prediction(predictions, has_bbox, patch_labels, pool_method, r,
+                           image_prediction_method='as_production'):
     '''
     Calculates the bag prediction according to the specified pool method and image prediction method.
     :param predictions:
@@ -460,7 +461,6 @@ def get_mask_img_ind(mask_path1, mask_path2, image_indices):
     return masks, images_ind, indices, parent_paths
 
 
-
 def transform_pixels_to_patches(binary_masked, patch_pixels):
     annotation = np.zeros((16, 16))
     for height in range(0, 16):
@@ -512,7 +512,7 @@ def process_mask_images_pascal(pascal_image_path, classifiers, res_path, predict
     masks_path1 = pascal_dir + "/GTMasks/ETHZ_sideviews_cars"
 
     masks_path_2 = pascal_dir + "/GTMasks/TUGraz_cars"
-    img_ind = np.load(res_path + 'image_indices_' + classifiers+'.npy', allow_pickle=True)
+    img_ind = np.load(res_path + 'image_indices_' + classifiers + '.npy', allow_pickle=True)
     gt_masks, image_name_to_keep, indices_to_keep, parents_folder = get_mask_img_ind(masks_path1,
                                                                                      masks_path_2, img_ind)
 
@@ -543,3 +543,13 @@ def evaluate_instance_performance_pascal(pascal_img_path, file_name, res_path, h
         process_mask_images_pascal(pascal_img_path, file_name, res_path, predictions)
     has_bbox[indices_to_keep] = True
     return has_bbox, accurate_localizations, dice_scores, indices_to_keep
+
+
+def save_results_table(image_prediction_method, image_labels, image_predictions, class_name, predictions_unique_name,
+                       predict_res_path, has_bbox, accurate_localizations, dice_scores):
+    eval_df = pd.DataFrame()
+    eval_df = compute_save_accuracy_results(eval_df, predictions_unique_name, predict_res_path, has_bbox,
+                                            accurate_localizations)
+    eval_df = compute_save_dice_results(eval_df, predictions_unique_name, predict_res_path, dice_scores)
+    compute_save_auc(eval_df, predictions_unique_name, image_prediction_method, predict_res_path, image_labels,
+                     image_predictions, class_name)

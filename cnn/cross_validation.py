@@ -152,14 +152,14 @@ def cross_validation(config, number_splits=5):
                                               'validation loss', 'CV_loss'+str(split), 'loss', results_path)
 
             ############################################    PREDICTIONS      #############################################
-            predict_patch_and_save_results(model, 'test_set_'+ class_name+'_CV'+str(split), df_test, skip_processing,
+            predict_patch_and_save_results(model, 'test_set_CV'+str(split), df_test, skip_processing,
                                            BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                            mura_interpolation, resized_images_before_training)
-            predict_patch_and_save_results(model, 'train_set_' + class_name + '_CV' + str(split), df_train,
+            predict_patch_and_save_results(model, 'train_set_CV' + str(split), df_train,
                                            skip_processing,
                                            BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                            mura_interpolation, resized_images_before_training)
-            predict_patch_and_save_results(model, 'val_set_' + class_name + '_CV' + str(split), df_val,
+            predict_patch_and_save_results(model, 'val_set_CV' + str(split), df_val,
                                            skip_processing,
                                            BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                            mura_interpolation, resized_images_before_training)
