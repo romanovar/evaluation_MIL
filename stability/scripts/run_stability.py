@@ -35,7 +35,7 @@ classifiers = [set_name1, set_name2, set_name3, set_name4, set_name5]
 
 if xray_dataset:
 
-    image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+    instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
     bag_predictions_collection, identifier = load_and_filter_predictions(config, classifiers,
                                                                          only_segmentation_images=False,
                                                                          only_positive_images=False)
@@ -48,7 +48,7 @@ if xray_dataset:
                                       pos_overlap=pos_overlap, corr_pos_overlap=corr_pos_overlap, corr_iou=corr_iou,
                                       pearson_correlation=pearson_correlation,
                                       spearman_rank_correlation=spearman_rank_correlation,
-                                      image_labels_collection=image_labels_collection,
+                                      image_labels_collection=instance_labels_collection,
                                       image_index_collection=image_index_collection,
                                       raw_predictions_collection=raw_predictions_collection,
                                       samples_identifier=identifier)
@@ -59,7 +59,7 @@ if xray_dataset:
                                                                                       classifiers,
                                                                                       only_segmentation_images=True,
                                                                                       only_positive_images=False)
-    filtered_idx_collection = indices_segmentation_images(image_labels_collection)
+    filtered_idx_collection = indices_segmentation_images(instance_labels_collection)
 
     dice_scores = load_filter_dice_scores(classifiers, filtered_idx_collection, res_path)
 
@@ -74,7 +74,7 @@ if xray_dataset:
                                            dice_scores, res_path)
 
 elif use_pascal_dataset:
-    image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+    instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
     bag_predictions_collection, identifier = load_and_filter_predictions(config, classifiers,
                                                                          only_segmentation_images=False,
                                                                          only_positive_images=False)
@@ -87,7 +87,7 @@ elif use_pascal_dataset:
                                       pos_overlap=pos_overlap, corr_pos_overlap=corr_pos_overlap, corr_iou=corr_iou,
                                       pearson_correlation=pearson_correlation,
                                       spearman_rank_correlation=spearman_rank_correlation,
-                                      image_labels_collection=image_labels_collection,
+                                      image_labels_collection=instance_labels_collection,
                                       image_index_collection=image_index_collection,
                                       raw_predictions_collection=raw_predictions_collection,
                                       samples_identifier=identifier)
@@ -97,7 +97,7 @@ elif use_pascal_dataset:
 
     identifier = "_segmented_img"
     image_labels_segm_img, image_index_segm_img, raw_predictions_segm_img, bag_labels_segm_img, \
-    bag_predictions_segm_img = filter_predictions_files_on_indices(image_labels_collection, image_index_collection,
+    bag_predictions_segm_img = filter_predictions_files_on_indices(instance_labels_collection, image_index_collection,
                                                                    raw_predictions_collection,
                                                                    bag_predictions_collection, bag_labels_collection,
                                                                    filtered_idx_collection)
@@ -114,7 +114,7 @@ elif use_pascal_dataset:
                                            image_labels_segm_img, image_index_segm_img,
                                            raw_predictions_segm_img, dice_scores, res_path)
 else:
-    image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+    instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
     bag_predictions_collection, identifier = load_and_filter_predictions(config, classifiers,
                                                                          only_segmentation_images=False,
                                                                          only_positive_images=False)
@@ -127,7 +127,7 @@ else:
                                       pos_overlap=pos_overlap, corr_pos_overlap=corr_pos_overlap, corr_iou=corr_iou,
                                       pearson_correlation=pearson_correlation,
                                       spearman_rank_correlation=spearman_rank_correlation,
-                                      image_labels_collection=image_labels_collection,
+                                      image_labels_collection=instance_labels_collection,
                                       image_index_collection=image_index_collection,
                                       raw_predictions_collection=raw_predictions_collection,
                                       samples_identifier=identifier)

@@ -10,7 +10,7 @@ def compute_image_label_from_localization_NORM(nn_output, y_true, P, clas_nr):
     :param nn_output: List of raw patch predictions
     :param y_true: List of patch labels
     :param P: Patch size
-    :param clas_nr: number of prediciton classes
+    :param clas_nr: number of prediction classes
     :return:  A list of image predictions for each image based on the raw predictions. Aggregation from instance level
     predictions to bag level predictions for images with available segmentation. This is a supervised method only used
     in training, not in testing.
@@ -183,9 +183,8 @@ def compute_loss_v3(nn_output, instance_label_ground_truth, P, class_nr, pool_me
                     binary_crossentropy(class_label_ground_truth, img_label_pred))
     return loss
 
-
-def keras_loss_v3(y_true, y_pred):
-    return compute_loss_v3(y_pred, y_true, 16, 1, 'nor', r=1, bbox_weight=5)
+# def keras_loss_v3(y_true, y_pred):
+#     return compute_loss_v3(y_pred, y_true, 16, 1, 'nor', r=1, bbox_weight=5)
 
 
 def keras_loss_v3_nor(y_true, y_pred):

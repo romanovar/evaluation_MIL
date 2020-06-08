@@ -188,33 +188,33 @@ def load_and_filter_predictions(config, classifiers, only_segmentation_images, o
 
     prediction_results_path = config['prediction_results_path']
 
-    image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+    instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
     bag_predictions_collection, _ = load_predictions(classifiers, prediction_results_path)
 
     if only_segmentation_images:
-        filtered_idx_collection = indices_segmentation_images(image_labels_collection)
+        filtered_idx_collection = indices_segmentation_images(instance_labels_collection)
         identifier = "_segmented_img"
-        image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
-        bag_predictions_collection = filter_predictions_files_on_indices(image_labels_collection, image_index_collection,
+        instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+        bag_predictions_collection = filter_predictions_files_on_indices(instance_labels_collection, image_index_collection,
                                                                          raw_predictions_collection,
                                                                          bag_predictions_collection, bag_labels_collection,
                                                                          filtered_idx_collection)
-        return image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+        return instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
                bag_predictions_collection, identifier
 
     elif only_positive_images:
         filtered_idx_collection = indices_positive_images(bag_labels_collection)
         identifier = "_pos_img"
-        image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
-        bag_predictions_collection = filter_predictions_files_on_indices(image_labels_collection, image_index_collection,
+        instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+        bag_predictions_collection = filter_predictions_files_on_indices(instance_labels_collection, image_index_collection,
                                                                          raw_predictions_collection,
                                                                          bag_predictions_collection, bag_labels_collection,
                                                                          filtered_idx_collection)
-        return image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+        return instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
                bag_predictions_collection, identifier
     else:
         identifier = "_all_img"
-        return image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
+        return instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
                bag_predictions_collection, identifier
 
 
