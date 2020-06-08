@@ -1,4 +1,3 @@
-[This version](https://github.com/romanovar/evaluation_MIL/tree/v1.0) is the state of the code at the time of my defense.
 # Overview
 This repository constitutes my master graduation project. The repository includes Keras/Tensorflow implementation of
 "Thoracic Disease Identification and Localization with Limited Supervision" https://arxiv.org/abs/1711.06373
@@ -70,7 +69,7 @@ The following scripts can be ran:
      </details>
      More on data preparation in [data preparation section](#data-preparation).
 
-  * `run_cross_validation.py` performs cross validation (CV) on a specific architecture. In xray, every split is yields different train/validation/testing set. In Mura, the testing set is fixed, it is equal to the validation set from the author split.
+* `run_cross_validation.py` performs cross validation (CV) on a specific architecture. In xray, every split is yields different train/validation/testing set. In Mura, the testing set is fixed, it is equal to the validation set from the author split.
 
      <details>
       <summary>Click to see output files:</summary> <br>   
@@ -78,7 +77,7 @@ The following scripts can be ran:
       The same as in `train_model.npy`. ``<IDENTIFIER> = <SAMPLE_SET>_CV<CV_fold>``.
       </details>
 
-  * `train_models_on_subset.py` trains several models on similar training subset. Currently it trains 5 models on 95% of the original training set. Initially, the script takes a specific cross validation split of training, validation and testing set, and then drops a portion of the samples from the training set. The validation and testing set are preserved the same among all models. Later in Stability module we test the stability of the performance of these 5 models trained on highly similar data.
+* `train_models_on_subset.py` trains several models on similar training subset. Currently it trains 5 models on 95% of the original training set. Initially, the script takes a specific cross validation split of training, validation and testing set, and then drops a portion of the samples from the training set. The validation and testing set are preserved the same among all models. Later in Stability module we test the stability of the performance of these 5 models trained on highly similar data.
 
     <details>
    <summary>Click to see output files:</summary> <br>    
@@ -87,7 +86,7 @@ The following scripts can be ran:
 
    </details>
 
-  * `evaluate_performance.py` evaluates the performance of a trained model. It calculates AUC for the set. If segmentation labels are available - it is calculated the dice coefficient and accuracy from IOU (with threshold of 0.1).
+* `evaluate_performance.py` evaluates the performance of a trained model. It calculates AUC for the set. If segmentation labels are available - it is calculated the dice coefficient and accuracy from IOU (with threshold of 0.1).
 
       <details>
        <summary>Click to see output files:</summary> <br>    
@@ -106,10 +105,9 @@ The following scripts can be ran:
 
        <details>
         <summary>Click to see input files:</summary> <br>    
-        
         The script expects the output files from any of the training scripts:
-        `predictions_<IDENTIFIER>.npy`, `patch_labels_<IDENTIFIER>.npy` and `image_indices_<IDENTIFIER>.npy`. The user has to specify within the script  the value of ``<IDENTIFIER>``.
-            
+        `predictions_<IDENTIFIER>.npy`, `patch_labels_<IDENTIFIER>.npy` and `image_indices_<IDENTIFIER>.npy`. The user has to specify within the script  the value of `IDENTIFIER>`.
+
         </details>
 
         <details>
@@ -153,15 +151,15 @@ The following scripts can be ran:
     <details>
      <summary>Click to see generated visualizations :</summary>    
 
-     - `correlation_<STABILITY_SCORE>_nan_all_img.jpg` shows a heatmap visualization of the NaN values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models. So the heatmap shows the NaN values from the stability scores between each two pairs of models.    
+     - `correlation_<STABILITY_SCORE>_nan_<IMG_SUBSET>.jpg` shows a heatmap visualization of the NaN values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models. So the heatmap shows the NaN values from the stability scores between each two pairs of models. Depending on the user's choice, the analysis is done on all images (``<IMG_SUBSET>`` = all_img) or only on images with positive label (``<IMG_SUBSET>`` = pos_img).     
 
-     - `correlation_<STABILITY_SCORE>_nan_norm_all_img.jpg` shows a heatmap visualization of the NaN values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models, so the heatmap shows the **ratio of** NaN values from the stability scores between each two pairs of models.    
+     - `correlation_<STABILITY_SCORE>_nan_norm_<IMG_SUBSET>.jpg` shows a heatmap visualization of the NaN values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models, so the heatmap shows the **ratio of** NaN values from the stability scores between each two pairs of models. Depending on the user's choice, the analysis is done on all images (``<IMG_SUBSET>`` = all_img) or only on images with positive label (``<IMG_SUBSET>`` = pos_img).        
 
-     - `correlation_mean_<STABILITY_SCORE>_all_img.jpg` shows a heatmap visualization of the mean values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models, we compare the predictions of all images between two models and aggregate them to a mean value.
+      - `correlation_mean_<STABILITY_SCORE>_<IMG_SUBSET>.jpg` shows a heatmap visualization of the mean values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models, we compare the predictions of all images between two models and aggregate them to a mean value. Depending on the user's choice, the analysis is done on all images (``<IMG_SUBSET>`` = all_img) or only on images with positive label (``<IMG_SUBSET>`` = pos_img).     
 
-     - `scatter_mean_<STABILITY_SCORE>_mean_dice.jpg` These visualizations are generated only for images with available segmentation. It visualizes a scatter plot for each segmentation image - where y-axis is the mean dice score for an image across all models and x-axis is the mean stability score (`<STABILITY_SCORE>`). In this way we can sees some patterns between well segmented images (high avg dice score and low std dev of dice) and the stability score.  
+      - `scatter_mean_<STABILITY_SCORE>_mean_dice.jpg` These visualizations are generated only for images with available segmentation. It visualizes a scatter plot for each segmentation image - where y-axis is the mean dice score for an image across all models and x-axis is the mean stability score (`<STABILITY_SCORE>`). In this way we can sees some patterns between well segmented images (high avg dice score and low std dev of dice) and the stability score.  
 
-   </details>
+     </details>
 
 
 ## Data preparation
@@ -181,13 +179,13 @@ Segmentation annotation are translated as follows: Segmentations are converted t
 
 While some of the parameters are clear in their function and role, others are more obfuscating. Here we describe the
 role and effect of each parameter:
-* `resized_images_before_training`: Currently working only for X-Ray dataset. If true, the parameter triggers preprocessing to start in `preprocess_images.py`, in training scripts (`train_models.py`, `run_cross_validation.py`, `train_models_on_subsets.py`) the parameter indicates that the input images are already preprocessed and can be just loaded without any processing needed. 
+
 * `skip_processing_labels`:
 If false, then the raw data and csv files are read, preprocessed and used. This is computationally heavier. So after reading raw labels, a preprocessed csv is created, which can be used instead for next times. \
 If true, preprocessing is skipped and the generated csv is read directly from the specified path.
-* `train_mode`: The parameter is applicable only in the training scripts (`train_models.py`, `run_cross_validation.py`, `train_models_on_subsets.py`). 
-If true, the parameter triggers training procedure in the training scripts \
-If false, the script loads a preciously trained and saved model and does predictions on the train, validation, and test set.
+* `train_mode`:
+If true, then some scripts train a neural network from the training set \
+If false, same scripts instead save predictions on train, validation, and test set
 
 * `use_xray_dataset`:
 If true, xray dataset is used and paths to xray files \
