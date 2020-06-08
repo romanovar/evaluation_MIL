@@ -72,10 +72,11 @@ The following scripts can be ran:
 * `run_cross_validation.py` performs cross validation (CV) on a specific architecture. In xray, every split is yields different train/validation/testing set. In Mura, the testing set is fixed, it is equal to the validation set from the author split.
 
      <details>
-      <summary>Click to see output files:</summary> <br>   
+      <summary>Click to see output files:</summary>
 
-      The same as in `train_model.npy`. ``<IDENTIFIER> = <SAMPLE_SET>_CV<CV_fold>``.
-      </details>
+      The same as in `train_model.npy`. `<IDENTIFIER> = <SAMPLE_SET>_CV<CV_fold>`.
+
+    </details>
 
 * `train_models_on_subset.py` trains several models on similar training subset. Currently it trains 5 models on 95% of the original training set. Initially, the script takes a specific cross validation split of training, validation and testing set, and then drops a portion of the samples from the training set. The validation and testing set are preserved the same among all models. Later in Stability module we test the stability of the performance of these 5 models trained on highly similar data.
 
@@ -88,44 +89,44 @@ The following scripts can be ran:
 
 * `evaluate_performance.py` evaluates the performance of a trained model. It calculates AUC for the set. If segmentation labels are available - it is calculated the dice coefficient and accuracy from IOU (with threshold of 0.1).
 
-      <details>
-       <summary>Click to see output files:</summary> <br>    
+    <details>
+     <summary>Click to see output files:</summary> <br>    
 
-       * `image_labels_<IDENTIFIER>.npy` contains the ground-truth label of each bag. The file is generated from `patch_labels_<IDENTIFIER>.npy`, where at least one active patch leads to a positive label on bag level, and else the bag is negative.
+     * `image_labels_<IDENTIFIER>.npy` contains the ground-truth label of each bag. The file is generated from `patch_labels_<IDENTIFIER>.npy`, where at least one active patch leads to a positive label on bag level, and else the bag is negative.
 
-       * `image_predictions_<IDENTIFIER>.npy` keeps the image level prediction for each image. The value is aggregated from the raw predictions in `predictions_<IDENTIFIER>.npy`.
+     * `image_predictions_<IDENTIFIER>.npy` keeps the image level prediction for each image. The value is aggregated from the raw predictions in `predictions_<IDENTIFIER>.npy`.
 
-       * `bbox_present_<IDENTIFIER>.npy` keeps memory of the images with present or absent annotation. A list with 0/1 flag for each image.
+     * `bbox_present_<IDENTIFIER>.npy` keeps memory of the images with present or absent annotation. A list with 0/1 flag for each image.
 
-       * `dice_<IDENTIFIER>.npy` saves the dice score for every annotated image. If segmentation is not available, then the image is assigned an invalid dice score of -1.
+     * `dice_<IDENTIFIER>.npy` saves the dice score for every annotated image. If segmentation is not available, then the image is assigned an invalid dice score of -1.
 
-       ``<SAMPLE_SET>`` denotes a specific set - e.g. train, validation or test set <br>
-          ``<CV_fold>`` denotes a specific cross validation fold number
-       </details>
+     ``<SAMPLE_SET>`` denotes a specific set - e.g. train, validation or test set <br>
+        ``<CV_fold>`` denotes a specific cross validation fold number
+     </details>
 
-       <details>
-        <summary>Click to see input files:</summary> <br>    
-        The script expects the output files from any of the training scripts:
-        `predictions_<IDENTIFIER>.npy`, `patch_labels_<IDENTIFIER>.npy` and `image_indices_<IDENTIFIER>.npy`. The user has to specify within the script  the value of `IDENTIFIER>`.
+     <details>
+      <summary>Click to see input files:</summary> <br>    
+      The script expects the output files from any of the training scripts:
+      `predictions_<IDENTIFIER>.npy`, `patch_labels_<IDENTIFIER>.npy` and `image_indices_<IDENTIFIER>.npy`. The user has to specify within the script  the value of `IDENTIFIER>`.
 
-        </details>
+    </details>
 
-        <details>
-         <summary>Click to see additional output files:</summary> <br>    
-         Additional output files are output files that saves the generated results, but are not necessary for any of the following scripts. Here this script generates the following scripts:
+    <details>
+       <summary>Click to see additional output files:</summary> <br>    
+       Additional output files are output files that saves the generated results, but are not necessary for any of the following scripts. Here this script generates the following scripts:
 
-         - `dice_inst_<IDENTIFIER>.csv` - saves the dice score per image for all samples with available annotation
-         - `evaluation_performance_<IDENTIFIER>.csv` saves a .csv file a column for each of the evaluation metrics used.  'accuracy' column saves the average accuracy for all segmentation images in the set. Accuracy is calculated from IOU with threshold 0.1. 'dice' columns saves the average dice score for all segmentation images in the set. AUC column saves the AUC score for the all images in the set.  
+       - `dice_inst_<IDENTIFIER>.csv` - saves the dice score per image for all samples with available annotation
+       - `evaluation_performance_<IDENTIFIER>.csv` saves a .csv file a column for each of the evaluation metrics used.  'accuracy' column saves the average accuracy for all segmentation images in the set. Accuracy is calculated from IOU with threshold 0.1. 'dice' columns saves the average dice score for all segmentation images in the set. AUC column saves the AUC score for the all images in the set.  
 
-         Visualizations generated:
-         - `roc_curve_<IDENTIFIER>.jpg` - ROC curve based on the Area Under the Curve metric
-         - `confusion_matrix_<IDENTIFIER>.jpg` confusion matrix of the predictions (with the actual number of samples per group )
-         - `confusion_matrix_<IDENTIFIER>_norm.jpg`  confusion matrix of the predictions represented as normalized value from the whole true label group
+       Visualizations generated:
+       - `roc_curve_<IDENTIFIER>.jpg` - ROC curve based on the Area Under the Curve metric
+       - `confusion_matrix_<IDENTIFIER>.jpg` confusion matrix of the predictions (with the actual number of samples per group )
+       - `confusion_matrix_<IDENTIFIER>_norm.jpg`  confusion matrix of the predictions represented as normalized value from the whole true label group
 
-         </details>
+   </details><br>
 
-    * `preprocess_images.py` This is an *optional* script. It preprocess the input images to the format required during training. Preprocessed images are saved in a new directory (requiring more memory), and during training the saved preprocessed images are directly fed into the neural network. Thus, the training procedure is quicker. The script does not preprocess all images from a dataset, but only the one that are used and necessary. So changing the prediction class may require running this script again. If the images are not preprocessed in advance, the preprocessing step is incorporated within the training generator. That, however, slows the training procedure.
-      **Currently this script is available only for the Xray dataset.**     
+* `preprocess_images.py` This is an *optional* script. It preprocess the input images to the format required during training. Preprocessed images are saved in a new directory (requiring more memory), and during training the saved preprocessed images are directly fed into the neural network. Thus, the training procedure is quicker. The script does not preprocess all images from a dataset, but only the one that are used and necessary. So changing the prediction class may require running this script again. If the images are not preprocessed in advance, the preprocessing step is incorporated within the training generator. That, however, slows the training procedure.
+    **Currently this script is available only for the Xray dataset.**     
 
 
 
