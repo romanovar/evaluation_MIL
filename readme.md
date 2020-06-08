@@ -1,3 +1,5 @@
+[This version](https://github.com/romanovar/evaluation_MIL/tree/v1.0) is the state of the code at the time of my defense.
+
 # Overview
 This repository constitutes my master graduation project. The repository includes Keras/Tensorflow implementation of
 "Thoracic Disease Identification and Localization with Limited Supervision" https://arxiv.org/abs/1711.06373
@@ -107,7 +109,7 @@ The following scripts can be ran:
      <details>
       <summary>Click to see input files:</summary> <br>    
       The script expects the output files from any of the training scripts:
-      `predictions_<IDENTIFIER>.npy`, `patch_labels_<IDENTIFIER>.npy` and `image_indices_<IDENTIFIER>.npy`. The user has to specify within the script  the value of `IDENTIFIER>`.
+      `predictions_<IDENTIFIER>.npy`, `patch_labels_<IDENTIFIER>.npy` and `image_indices_<IDENTIFIER>.npy`. The user has to specify within the script  the value of `IDENTIFIER`.
 
     </details>
 
@@ -115,13 +117,13 @@ The following scripts can be ran:
        <summary>Click to see additional output files:</summary> <br>    
        Additional output files are output files that saves the generated results, but are not necessary for any of the following scripts. Here this script generates the following scripts:
 
-       - `dice_inst_<IDENTIFIER>.csv` - saves the dice score per image for all samples with available annotation
-       - `evaluation_performance_<IDENTIFIER>.csv` saves a .csv file a column for each of the evaluation metrics used.  'accuracy' column saves the average accuracy for all segmentation images in the set. Accuracy is calculated from IOU with threshold 0.1. 'dice' columns saves the average dice score for all segmentation images in the set. AUC column saves the AUC score for the all images in the set.  
+   * `dice_inst_<IDENTIFIER>.csv` - saves the dice score per image for all samples with available annotation
+   - `evaluation_performance_<IDENTIFIER>.csv` saves a .csv file a column for each of the evaluation metrics used.  'accuracy' column saves the average accuracy for all segmentation images in the set. Accuracy is calculated from IOU with threshold 0.1. 'dice' columns saves the average dice score for all segmentation images in the set. AUC column saves the AUC score for the all images in the set.  
 
-       Visualizations generated:
-       - `roc_curve_<IDENTIFIER>.jpg` - ROC curve based on the Area Under the Curve metric
-       - `confusion_matrix_<IDENTIFIER>.jpg` confusion matrix of the predictions (with the actual number of samples per group )
-       - `confusion_matrix_<IDENTIFIER>_norm.jpg`  confusion matrix of the predictions represented as normalized value from the whole true label group
+   Visualizations generated:
+   - `roc_curve_<IDENTIFIER>.jpg` - ROC curve based on the Area Under the Curve metric
+   - `confusion_matrix_<IDENTIFIER>.jpg` confusion matrix of the predictions (with the actual number of samples per group )
+   - `confusion_matrix_<IDENTIFIER>_norm.jpg`  confusion matrix of the predictions represented as normalized value from the whole true label group
 
    </details><br>
 
@@ -180,13 +182,15 @@ Segmentation annotation are translated as follows: Segmentations are converted t
 
 While some of the parameters are clear in their function and role, others are more obfuscating. Here we describe the
 role and effect of each parameter:
-
+* `resized_images_before_training`: Currently working only for X-Ray dataset. If true, the parameter triggers preprocessing to start in `preprocess_images.py`, in training scripts (`train_models.py`, `run_cross_validation.py`, `train_models_on_subsets.py`) the parameter indicates that the input images are already preprocessed and can be just loaded without any processing needed. 
 * `skip_processing_labels`:
 If false, then the raw data and csv files are read, preprocessed and used. This is computationally heavier. So after reading raw labels, a preprocessed csv is created, which can be used instead for next times. \
 If true, preprocessing is skipped and the generated csv is read directly from the specified path.
 * `train_mode`:
-If true, then some scripts train a neural network from the training set \
-If false, same scripts instead save predictions on train, validation, and test set
+ The parameter is applicable only in the training scripts (`train_models.py`, `run_cross_validation.py`, `train_models_on_subsets.py`). 
+* `train_mode`: The parameter is applicable only in the training scripts (`train_models.py`, `run_cross_validation.py`, `train_models_on_subsets.py`). 
+If true, the parameter triggers training procedure in the training scripts \
+If false, the script loads a preciously trained and saved model and does predictions on the train, validation, and test set.
 
 * `use_xray_dataset`:
 If true, xray dataset is used and paths to xray files \
