@@ -528,64 +528,27 @@ def make_scatterplot_with_errorbar(y_axis_collection, y_axis_title, x_axis_colle
             ax.errorbar(x, y, xerr=x_error_bar, yerr=y_error_bar, color="b")
     ax.set(xlim=(0, 1), ylim=(0, 1))
     if fitting_curve:
-        popt, pcov = curve_fit(exp_fit_func, x_axis_collection, y_axis_collection, maxfev=1000)
-        z = np.polyfit(x_axis_collection, y_axis_collection, 1)
-        f = np.poly1d(z)
+        try:
+            popt, pcov = curve_fit(exp_fit_func, x_axis_collection, y_axis_collection, maxfev=1000)
+            z = np.polyfit(x_axis_collection, y_axis_collection, 1)
+            f = np.poly1d(z)
 
-        z2 = np.polyfit(x_axis_collection, y_axis_collection, 2)
-        f2 = np.poly1d(z2)
+            z2 = np.polyfit(x_axis_collection, y_axis_collection, 2)
+            f2 = np.poly1d(z2)
 
-        print("I am the fitting curve: ")
-        print(popt)
-        plt.plot(np.sort(x_axis_collection), exp_fit_func(np.sort(x_axis_collection), *popt), 'r--',
-                 label='fit: a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt))
+            print("I am the fitting curve: ")
+            print(popt)
+            plt.plot(np.sort(x_axis_collection), exp_fit_func(np.sort(x_axis_collection), *popt), 'r--',
+                     label='fit: a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt))
+        except RuntimeError:
+            print("No best fit curve found")
+
 
     plt.xlabel(x_axis_title)
     plt.ylabel(y_axis_title)
     plt.title('Matplot scatter plot')
     plt.legend(loc=(0.45, 0))
     # plt.legend()
-
-    if bin_threshold_prefix is not None:
-        fig.savefig(
-            res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '_' + str(bin_threshold_prefix) + '.jpg',
-            bbox_inches='tight')
-    else:
-        fig.savefig(res_path + 'scatter_' + x_axis_title + '_' + y_axis_title + '.jpg', bbox_inches='tight')
-
-    plt.close(fig)
-
-
-def make_scatterplot_with_errorbar_v2(y_axis_collection, y_axis_collection2, y_axis_title, x_axis_collection,
-                                      x_axis_title, res_path, y_errors, y_errors2, error_bar=False,
-                                      bin_threshold_prefix=None, x_errors=None):
-    fig = plt.figure(figsize=(15, 10))
-    ax = fig.add_subplot(1, 1, 1)
-    plt.grid("True")
-    colors = cm.rainbow(np.linspace(0, 1, len(y_axis_collection)))
-    if y_errors is None:
-        y_errors = np.zeros(y_axis_collection.shape)
-    if y_errors2 is None:
-        y_errors2 = np.zeros(y_axis_collection.shape)
-
-    if x_errors is None:
-        x_errors = np.zeros(x_axis_collection.shape)
-    for x, y, y2, y_error_bar, y_error_bar2, x_error_bar, color in zip(x_axis_collection, y_axis_collection,
-                                                                       y_axis_collection2, y_errors, y_errors2,
-                                                                       x_errors, colors):
-
-        ax.scatter(x, y, c=color, edgecolors='none', s=150)
-        ax.scatter(x, y2, c=color, edgecolors='none', s=150, marker=">")
-
-        if (error_bar == True) and (y_errors is not None):
-            ax.errorbar(x, y, xerr=x_error_bar, yerr=y_error_bar, ecolor=color)
-            ax.errorbar(x, y2, xerr=x_error_bar, yerr=y_error_bar2, ecolor=color)
-
-    plt.xlabel(x_axis_title)
-    plt.ylabel(y_axis_title)
-    plt.title('Matplot scatter plot')
-    plt.legend(loc=2)
-    # plt.show()
 
     if bin_threshold_prefix is not None:
         fig.savefig(
@@ -830,10 +793,12 @@ def generate_visualizations_stability(config, visualize_per_image,pos_jacc, corr
     visualize_correlation_heatmap(average_iou_inst, stability_res_path,
                                   '_mean_stability_' + str("iou") + '_' + samples_identifier,
                                   xyaxis, dropDuplicates=True)
-
-    save_additional_kappa_scores_forthreshold(0.5, raw_predictions_collection, image_index_collection,
-                                              reshaped_corr_iou,
-                                              reshaped_corr_jacc_coll, stability_res_path)
+    # Additional scores according to the
+    # Feinstein AR, Cicchetti DV. High agreement but low kappa: I. The problems of two paradoxes. J Clin Epidemiol.
+    # 1990;43(6):543‐549. doi:10.1016/0895-4356(90)90158-l
+    # save_additional_kappa_scores_forthreshold(0.5, raw_predictions_collection, image_index_collection,
+    #                                           reshaped_corr_iou,
+    #                                           reshaped_corr_jacc_coll, stability_res_path)
 
     avg_abs_sprearman = np.average(abs(ma_spearman), axis=-1)
     visualize_correlation_heatmap(avg_abs_sprearman, stability_res_path,
@@ -939,10 +904,6 @@ def generate_visualizations_instance_level(config,pos_jacc, corr_pos_jacc, corr_
                                    stability_res_path, fitting_curve=False, y_errors=None,
                                    x_errors=stdev_stability_spear,
                                    error_bar=True, bin_threshold_prefix=0)
-    make_scatterplot_with_errorbar_v2(avg_stability_corr_pos_jacc, avg_stability_spear, 'stability_score', avg_dice,
-                                      "auc", stability_res_path, y_errors=stdev_stability_corr_pos_jacc,
-                                      y_errors2=stdev_stability_spear, error_bar=False,
-                                      bin_threshold_prefix=None, x_errors=None)
 
     mask_repetition = np.ones((reshaped_corr_pos_jacc_coll.shape), dtype=bool)
     for i in range(0, 4):

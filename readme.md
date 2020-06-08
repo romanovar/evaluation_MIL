@@ -54,10 +54,7 @@ The following scripts can be ran:
       In order to train the generator expects values for the input (images) and output (their labels) of the network.
       The input is a list directory paths where an input image resides. The required image shape is (512x512x3).
       The image is read, optionally preprocessed, and passed to the neural network. The labels for an image has a shape of (16, 16, 1). The first two dimensions are the patch sizes an image is divided into, and the third dimension is the number of prediction classes.  
-
-    </details> <br>
-
-    More on data preparation in [data preparation section](#data-preparation).
+    </details>
 
     <details>
     <summary>Click to see output files:</summary> <br>
@@ -69,25 +66,25 @@ The following scripts can be ran:
     * `patch_labels_<IDENTIFIER>.npy` contains the corresponding ground-truth instance labels for each bag. Bags with no segmentation are assigned labels of only 0s or 1s on all their patches, depending on the bag label. For example, a positive bag is assigned have 1 for all its instance labels.
 
     * `image_indices_<IDENTIFIER>.npy` are the sample unique identifiers in a set. It contains the image index(name) of each bag, in the same order as corresponding to each index.  
-     </details> <br>
+     </details>
+     More on data preparation in [data preparation section](#data-preparation).
 
-    * `run_cross_validation.py` performs cross validation (CV) on a specific architecture. In xray, every split is yields different train/validation/testing set. In Mura, the testing set is fixed, it is equal to the validation set from the author split.
+  * `run_cross_validation.py` performs cross validation (CV) on a specific architecture. In xray, every split is yields different train/validation/testing set. In Mura, the testing set is fixed, it is equal to the validation set from the author split.
 
      <details>
-      <summary>Click to see output files:</summary> <br>    
+      <summary>Click to see output files:</summary> <br>   
 
       The same as in `train_model.npy`. ``<IDENTIFIER> = <SAMPLE_SET>_CV<CV_fold>``.
-
       </details>
 
-  * `train_models_on_subset.py` trains several models on similar training subset. Currently it trains 5 models on 95% of the original training set. Initially, the script takes a specific cross validation split of training, validation and testing set, and then drops a portion of the samples from the training set. The validation and testing set are preserved the same among all models. Later in Stability module we test the stability of the performance of these 5 models trained on highly similar data.   
+  * `train_models_on_subset.py` trains several models on similar training subset. Currently it trains 5 models on 95% of the original training set. Initially, the script takes a specific cross validation split of training, validation and testing set, and then drops a portion of the samples from the training set. The validation and testing set are preserved the same among all models. Later in Stability module we test the stability of the performance of these 5 models trained on highly similar data.
 
     <details>
    <summary>Click to see output files:</summary> <br>    
 
       The same as in `train_model.npy`. ``<IDENTIFIER> = <SAMPLE_SET>_CV<CV_fold>``.
 
-   </details> <br>
+   </details>
 
   * `evaluate_performance.py` evaluates the performance of a trained model. It calculates AUC for the set. If segmentation labels are available - it is calculated the dice coefficient and accuracy from IOU (with threshold of 0.1).
 
@@ -104,14 +101,14 @@ The following scripts can be ran:
 
        ``<SAMPLE_SET>`` denotes a specific set - e.g. train, validation or test set <br>
           ``<CV_fold>`` denotes a specific cross validation fold number
-       </details> <br>
+       </details>
 
        <details>
         <summary>Click to see input files:</summary> <br>    
         The script expects the output files from any of the training scripts:
         `predictions_<IDENTIFIER>.npy`, `patch_labels_<IDENTIFIER>.npy` and `image_indices_<IDENTIFIER>.npy`. The user has to specify within the script  the value of `IDENTIFIER>`.
 
-        </details> <br>
+        </details>
 
         <details>
          <summary>Click to see additional output files:</summary> <br>    
@@ -125,7 +122,7 @@ The following scripts can be ran:
          - `confusion_matrix_<IDENTIFIER>.jpg` confusion matrix of the predictions (with the actual number of samples per group )
          - `confusion_matrix_<IDENTIFIER>_norm.jpg`  confusion matrix of the predictions represented as normalized value from the whole true label group
 
-         </details> <br>
+         </details>
 
     * `preprocess_images.py` This is an *optional* script. It preprocess the input images to the format required during training. Preprocessed images are saved in a new directory (requiring more memory), and during training the saved preprocessed images are directly fed into the neural network. Thus, the training procedure is quicker. The script does not preprocess all images from a dataset, but only the one that are used and necessary. So changing the prediction class may require running this script again. If the images are not preprocessed in advance, the preprocessing step is incorporated within the training generator. That, however, slows the training procedure.
       **Currently this script is available only for the Xray dataset.**     
@@ -140,9 +137,29 @@ The following scripts can be ran:
 * `run_stability.npy` runs all the experiments for stability. saves .csv files of stability for each image across classifiers, creates visualizations for each stability score across classifiers and per image, visualizations of nan values of the stability scores. It also investigates the instance performance against the stability.
 
   <details>
-   <summary>Click to see output files:</summary> <br>    
+   <summary>Click to see input files:</summary>     
    All input and output files from `evaluate_performance.py`
-   </details> <br>
+   </details>
+   <details>
+    <summary>Click to see output files:</summary>
+
+    * `mean_stability_bbox.csv` saves the stability score of  all images with available segmentation. The table shows the mean values of several stability scores (mean positive Jaccard, mean corrected positive Jaccard, mean corrected IOU, mean Spearman) for each image, together with the mean dice score. The mean values are calculated by aggregating the stability/dice score across all models for the same image. In this way we can sees some patterns between well segmented images (high avg dice score and low std dev of dice) and the stability score.
+
+    * `mean_stability_all_img.csv` saves the stability score of all images across models. The table shows the mean values of several stability scores (mean positive Jaccard, mean corrected positive Jaccard, mean corrected IOU, mean Spearman) for each image. The stability scores are aggregated across the different models for the same image. This information can be used for further analysis e.g. revealing differences in values of the stability scores for the same image; or analyzing images with highest stability.
+  </details>
+
+    <details>
+     <summary>Click to see generated visualizations :</summary>    
+
+     - `correlation_<STABILITY_SCORE>_nan_all_img.jpg` shows a heatmap visualization of the NaN values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models. So the heatmap shows the NaN values from the stability scores between each two pairs of models.    
+
+     - `correlation_<STABILITY_SCORE>_nan_norm_all_img.jpg` shows a heatmap visualization of the NaN values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models, so the heatmap shows the **ratio of** NaN values from the stability scores between each two pairs of models.    
+
+      - `correlation_mean_<STABILITY_SCORE>_all_img.jpg` shows a heatmap visualization of the mean values of a specific stability score (`<STABILITY_SCORE>`) between 5 classifiers. Since the stability score is a pairwise score between two models, we compare the predictions of all images between two models and aggregate them to a mean value.
+
+      - `scatter_mean_<STABILITY_SCORE>_mean_dice.jpg` These visualizations are generated only for images with available segmentation. It visualizes a scatter plot for each segmentation image - where y-axis is the mean dice score for an image across all models and x-axis is the mean stability score (`<STABILITY_SCORE>`). In this way we can sees some patterns between well segmented images (high avg dice score and low std dev of dice) and the stability score.  
+
+     </details>
 
 
 ## Data preparation
