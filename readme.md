@@ -186,15 +186,13 @@ role and effect of each parameter:
 * `resized_images_before_training`: Currently working only for X-Ray dataset. If true, the parameter triggers preprocessing to start in `preprocess_images.py`, in training scripts (`train_models.py`, `run_cross_validation.py`, `train_models_on_subsets.py`) the parameter indicates that the input images are already preprocessed and can be just loaded without any processing needed. 
 * `skip_processing_labels`:
 If false, then the raw data and csv files are read, preprocessed and used. This is computationally heavier. So after reading raw labels, a preprocessed csv is created, which can be used instead for next times. \
-If true, preprocessing is skipped and the generated csv is read directly from the specified path.
-* `train_mode`:
- The parameter is applicable only in the training scripts (`train_models.py`, `run_cross_validation.py`, `train_models_on_subsets.py`). 
+If true, preprocessing is skipped and the generated csv is read directly from the specified path. 
 * `train_mode`: The parameter is applicable only in the training scripts (`train_models.py`, `run_cross_validation.py`, `train_models_on_subsets.py`). 
 If true, the parameter triggers training procedure in the training scripts \
 If false, the script loads a preciously trained and saved model and does predictions on the train, validation, and test set.
 
 * `use_xray_dataset`:
-If true, xray dataset is used and paths to xray files \
+If true, xray dataset is used and paths to xray files
 * `class_name`: The class used for training and prediction. Xray classes are typed with first capital letter, and MURA classes are typed lowercase.   (ex: "Cardiomegaly", 'shoulder')
 * `mura_interpolation`:
 If true, interpolation method is used for resizing images. If false, padding. For xray, `interpolation=true`, else `interpolation=false`.
