@@ -1,11 +1,13 @@
 from pathlib import Path
 
 import numpy as np
-from keras.callbacks import LearningRateScheduler
-from keras.callbacks import ModelCheckpoint
-from keras.engine.saving import load_model
+import tensorflow as tf
+from tensorflow.keras.callbacks import LearningRateScheduler
+from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.python.keras.engine.saving import load_model
 
 import cnn.nn_architecture.keras_generators as gen
+from cnn.keras_utils import set_dataset_flag, build_path_results, make_directory
 from cnn.nn_architecture import keras_model
 from cnn import keras_utils
 import cnn.preprocessor.load_data as ld
@@ -16,7 +18,6 @@ from cnn.preprocessor.load_data_datasets import load_process_xray14
 from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, filter_rows_and_columns
 from cnn.preprocessor.load_data_pascal import load_pascal, construct_train_test_cv
 from cnn.preprocessor.process_input import fetch_preprocessed_images_csv
-import tensorflow as tf
 from tensorflow.keras import backend as K
 
 
@@ -39,11 +40,8 @@ def cross_validation(config, number_splits=5):
     classication_labels_path = config['classication_labels_path']
     localization_labels_path = config['localization_labels_path']
     results_path = config['results_path']
-    processed_labels_path = config['processed_labels_path']
-    prediction_results_path = config['prediction_results_path']
     train_mode = config['train_mode']
-    trained_models_path = config['trained_models_path']
-    use_xray_dataset = config['use_xray_dataset']
+    dataset_name = config['dataset_name']
     class_name = config['class_name']
     mura_test_img_path = config['mura_test_img_path']
     mura_train_labels_path = config['mura_train_labels_path']
@@ -52,7 +50,6 @@ def cross_validation(config, number_splits=5):
     mura_processed_train_labels_path = config['mura_processed_train_labels_path']
     mura_processed_test_labels_path = config['mura_processed_test_labels_path']
     mura_interpolation = config['mura_interpolation']
-    use_pascal_dataset = config['use_pascal_dataset']
     pascal_image_path = config['pascal_image_path']
     resized_images_before_training=config['resized_images_before_training']
 
@@ -61,14 +58,25 @@ def cross_validation(config, number_splits=5):
     reg_weight = config['reg_weight']
     pooling_operator = config['pooling_operator']
 
-    if use_xray_dataset:
+    use_xray, use_pascal = set_dataset_flag(dataset_name)
+
+    script_suffix = 'CV'
+    trained_models_path = build_path_results(results_path, dataset_name, pooling_operator, script_suffix=script_suffix,
+                                             result_suffix='trained_models')
+    prediction_results_path = build_path_results(results_path, dataset_name, pooling_operator,
+                                                 script_suffix=script_suffix,
+                                                 result_suffix='predictions')
+    make_directory(trained_models_path)
+    make_directory(prediction_results_path)
+
+    if use_xray:
         if resized_images_before_training:
             xray_df = fetch_preprocessed_images_csv(image_path, 'processed_imgs')
             #todo: delete - just for testing
             # xray_df = xray_df[-50:]
         else:
             xray_df = load_process_xray14(config)
-    elif use_pascal_dataset:
+    elif use_pascal:
         pascal_df = load_pascal(pascal_image_path)
 
     else:
@@ -78,11 +86,11 @@ def cross_validation(config, number_splits=5):
 
     for split in range(0, number_splits):
 
-        if use_xray_dataset:
+        if use_xray:
             df_train, df_val, df_test, _, _,_ = ld.split_xray_cv(xray_df, number_splits,
                                                                  split, class_name)
 
-        elif use_pascal_dataset:
+        elif use_pascal:
             df_train, df_val, df_test = construct_train_test_cv(pascal_df, number_splits, split)
 
         else:
@@ -124,8 +132,9 @@ def cross_validation(config, number_splits=5):
             model = keras_model.compile_model_accuracy(model, lr, pool_op=pooling_operator)
 
             #   checkpoint on every epoch is not really needed here, not used, CALLBACK REMOVED from the generator
-            filepath = trained_models_path + "CV_patient_split_"+str(split)+"_-{epoch:02d}-{val_loss:.2f}.hdf5"
-            checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
+            filepath = trained_models_path + "CV_"+str(split)+"_epoch-{epoch:02d}-{val_loss:.2f}.hdf5"
+            checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False,
+                                                      mode='min')
 
             lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
             print("df train STEPS")
@@ -138,18 +147,19 @@ def cross_validation(config, number_splits=5):
                 epochs=nr_epochs,
                 validation_data=valid_generator,
                 validation_steps=valid_generator.__len__(),
-                verbose=1
+                verbose=1,
+                callbacks=[checkpoint_on_epoch_end]
             )
 
             print("history")
             print(history.history)
             print(history.history['keras_accuracy'])
-            np.save(results_path + 'train_info_'+str(split)+'.npy', history.history)
+            np.save(trained_models_path + 'train_info_'+str(split)+'.npy', history.history)
 
             settings = np.array({'lr: ': lr, 'reg_weight: ': reg_weight, 'pooling_operator: ': pooling_operator})
-            np.save(results_path + 'train_settings.npy', settings)
+            np.save(trained_models_path + 'train_settings.npy', settings)
             keras_utils.plot_train_validation(history.history['loss'], history.history['val_loss'], 'train loss',
-                                              'validation loss', 'CV_loss'+str(split), 'loss', results_path)
+                                              'validation loss', 'CV_loss'+str(split), 'loss', trained_models_path)
 
             ############################################    PREDICTIONS      #############################################
             predict_patch_and_save_results(model, 'test_set_CV'+str(split), df_test, skip_processing,
@@ -200,7 +210,7 @@ def cross_validation(config, number_splits=5):
         else:
             files_found = 0
             print(trained_models_path)
-            for file_path in Path(trained_models_path).glob("CV_patient_split_0"+str(split) + "*.hdf5"):
+            for file_path in Path(trained_models_path).glob("CV_patient_split_"+str(split) + "*.hdf5"):
                 print(file_path)
                 files_found += 1
 

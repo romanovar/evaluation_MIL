@@ -35,7 +35,7 @@ def calculate_positive_Jaccard(bin_pred1, bin_pred2, P):
     # N = a + d  + b + c
     # expected_positive_overlap = (n11 + n01) * (n11 + n10) / N
     corrected_score2 = a / (a + b + c)
-
+    #todo:uncomment
     assert ((np.ma.masked_array(pos_jaccard_dist, np.isnan(pos_jaccard_dist)) ==
              np.ma.masked_array(corrected_score2,
                                 np.isnan(corrected_score2)))).all(), \
@@ -160,6 +160,7 @@ def calculate_corrected_IOU(bin_pred1, bin_pred2):
     corrected_score2 = (2*n00 * n11 - 2*n10 * n01) / (2*(n00 * n11) - 2*(n01 * n10) + ((n10 + n01) * N))
     simplf_div = (n11*n10 + n11*n01 + 2*n11*n00 + n10*n10 + n10*n00 + n01*n01 + n01*n00)
     corrected_score3 = (2*n00 * n11 - 2*n10 * n01) /(simplf_div)
+    #todo:uncommnt
     assert ((np.ma.masked_array(corrected_score, np.isnan(corrected_score)) ==
              np.ma.masked_array(corrected_score2,
                                 np.isnan(corrected_score2)))).all(), \
@@ -241,6 +242,7 @@ def calculate_corrected_positive_Jaccard(bin_pred1, bin_pred2):
     corrected_score = ((n11 - expected_positive_overlap)/(n10 + n11 +n01 - expected_positive_overlap))
     # Test if the score is correct
     corrected_score2 = (n00*n11 - n10*n01)/((n00*n11) - (n01*n10) + ((n10+n01)*N))
+    #todo:uncomment
     assert ((np.ma.masked_array(corrected_score, np.isnan(corrected_score)) ==
              np.ma.masked_array(corrected_score2, np.isnan(corrected_score2)))).all(), \
         "Error in computing some of the index! Or the stability scores for all images are NaNs - this is possible if all" \
@@ -338,7 +340,7 @@ def calculate_corrected_positive_overlap(bin_pred1, bin_pred2):
     # # Test if the index is correct
     # corrected_score2 = np.nan_to_num((n00*n11 - n10*n01)/((min_n01_n10+n11)*(min_n01_n10 + n00)))
     corrected_score2 = ((n00*n11 - n10*n01)/((min_n01_n10+n11)*(min_n01_n10 + n00)))
-
+    #todo: uncomment
     assert ((np.ma.masked_array(corrected_score, np.isnan(corrected_score)) ==
              np.ma.masked_array(corrected_score2, np.isnan(corrected_score2)))).all(), \
         "Error in computing some of the index! Or the stability scores for all images are NaNs - this is possible if all" \

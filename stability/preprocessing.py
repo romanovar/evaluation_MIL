@@ -173,7 +173,7 @@ def filter_predictions_files_on_indices(all_labels_coll, all_image_ind_coll, all
            bbox_img_bag_labels, bbox_img_bag_predictions
 
 
-def load_and_filter_predictions(config, classifiers, only_segmentation_images, only_positive_images):
+def load_and_filter_predictions(classifiers, only_segmentation_images, only_positive_images, predictions_path):
     '''
     Loads prediction files and filters on specific samples, which are used to compute stability
     :param config: config file
@@ -186,10 +186,8 @@ def load_and_filter_predictions(config, classifiers, only_segmentation_images, o
     :return: Returns the suitable rows of the subset desired
     '''
 
-    prediction_results_path = config['prediction_results_path']
-
     instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
-    bag_predictions_collection, _ = load_predictions(classifiers, prediction_results_path)
+    bag_predictions_collection, _ = load_predictions(classifiers, predictions_path)
 
     if only_segmentation_images:
         filtered_idx_collection = indices_segmentation_images(instance_labels_collection)

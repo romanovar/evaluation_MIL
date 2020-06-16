@@ -1,11 +1,10 @@
 resized_images_before_training: true/false - specifying if images should be resized and saved before training
 skip_processing_labels: true/false - using a preprossed csv file to  start loading data
 train_mode: true/false - whether to train models or to load a saved model and predict
-use_xray_dataset: true/false - if true Xray used
+dataset_name: 'xray'/ 'mura' / 'pascal'
 class_name: 'shoulder' /"Cardiomegaly" Class which will be predicted
 mura_interpolation: true/false - if Xray used - true, else false
 pascal_image_path: path to images
-use_pascal_dataset: true/false - If false and use_xray_dataset=false, then MURA is used
 
 nr_epochs: nr of epochs to train
 lr: learning rate

@@ -5,15 +5,16 @@ import random as rn
 import numpy as np
 import tensorflow as tf
 import yaml
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.callbacks import LearningRateScheduler
-from keras.engine.saving import load_model
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.callbacks import LearningRateScheduler
+from tensorflow.python.keras.engine.saving import load_model
 from numpy.random import seed
 
 import cnn.nn_architecture.keras_generators as gen
 import cnn.preprocessor.load_data_datasets as ldd
 from cnn import keras_utils
 from cnn.keras_preds import predict_patch_and_save_results
+from cnn.keras_utils import set_dataset_flag, build_path_results, make_directory
 from cnn.nn_architecture import keras_model
 from cnn.nn_architecture.custom_loss import keras_loss_v3_nor
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss
@@ -47,35 +48,39 @@ resized_images_before_training = config['resized_images_before_training']
 skip_processing = config['skip_processing_labels']
 image_path = config['image_path']
 results_path = config['results_path']
-prediction_results_path = config['prediction_results_path']
 train_mode = config['train_mode']
-trained_models_path = config['trained_models_path']
-use_xray_dataset = config['use_xray_dataset']
+dataset_name = config['dataset_name']
 mura_interpolation = config['mura_interpolation']
-use_pascal_dataset = config['use_pascal_dataset']
 nr_epochs = config['nr_epochs']
-lr = config[ 'lr']
+lr = config['lr']
 reg_weight = config['reg_weight']
 pooling_operator = config['pooling_operator']
 class_name = config['class_name']
-
 
 IMAGE_SIZE = 512
 BATCH_SIZE = 10
 BATCH_SIZE_TEST = 1
 BOX_SIZE = 16
 
+use_xray, use_pascal = set_dataset_flag(dataset_name)
+script_suffix = 'exploratory_exp'
+trained_models_path = build_path_results(results_path, dataset_name, pooling_operator, script_suffix= script_suffix,
+                                         result_suffix='trained_models')
+prediction_results_path = build_path_results(results_path, dataset_name, pooling_operator, script_suffix= script_suffix,
+                                         result_suffix='predictions')
+make_directory(trained_models_path)
+make_directory(prediction_results_path)
 
-if use_xray_dataset:
+if use_xray:
     if resized_images_before_training:
         xray_df = fetch_preprocessed_images_csv(image_path, 'processed_imgs')
         #todo: delete after testing
-        #xray_df = xray_df[-50:]
+        # xray_df = xray_df[-50:]
     else:
         xray_df = ldd.load_process_xray14(config)
     df_train, df_val, df_test = ldd.split_filter_data(config, xray_df)
 
-elif use_pascal_dataset:
+elif use_pascal:
     df_train, df_val, df_test = ldd.load_preprocess_pascal(config)
 else:
     df_train, df_val, df_test = ldd.load_preprocess_mura(config)
@@ -117,12 +122,11 @@ if train_mode:
                                patience=60,
                                mode='min',
                                verbose=1)
-    model_identifier = "_shoulder_001"
 
     # checkpoint - saving a model for minimal validation loss reached
     # check if it is active in the callbacks of the fit() method
     checkpoint = ModelCheckpoint(
-        filepath=trained_models_path + 'best_model' + model_identifier + "-{epoch:02d}-{val_loss:.2f}.hdf5",
+        filepath=trained_models_path + 'best_model' + class_name +"-{epoch:02d}-{val_loss:.2f}.hdf5",
         monitor='val_loss',
         verbose=2,
         save_best_only=True,
@@ -130,7 +134,7 @@ if train_mode:
         period=1
     )
     # checkpoint - saving a model at the end of the epoch
-    filepath = trained_models_path + model_identifier + "-{epoch:02d}-{val_loss:.2f}.hdf5"
+    filepath = trained_models_path + class_name + "-{epoch:02d}-{val_loss:.2f}.hdf5"
     checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='min')
 
     lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
@@ -146,23 +150,22 @@ if train_mode:
         epochs=nr_epochs,
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
-        verbose=1
+        verbose=1,
+        callbacks=[checkpoint_on_epoch_end]
     )
     print(model.get_weights()[2])
     print("history")
     print(history.history)
     print(history.history['keras_accuracy'])
-    np.save(results_path + 'train_info' + model_identifier + '.npy', history.history)
+    np.save(trained_models_path + 'train_info' + class_name + '.npy', history.history)
 
     keras_utils.plot_train_validation(history.history['loss'],
                                       history.history['val_loss'],
-                                      'train loss', 'validation loss', 'loss' + model_identifier,
-                                      'loss' + model_identifier, results_path)
-    
-    import numpy as np
+                                      'train loss', 'validation loss', 'loss',
+                                      'loss', trained_models_path)
 
     settings = np.array({'lr: ': lr, 'reg_weight: ': reg_weight, 'pooling_operator: ':pooling_operator})
-    np.save(results_path + 'train_settings.npy', settings)
+    np.save(trained_models_path + 'train_settings.npy', settings)
 
     ##### EVALUATE function
 
@@ -215,7 +218,7 @@ if train_mode:
 else:
     ######################################################################################
     # deserealize a model and do predictions with it
-    model = load_model(trained_models_path + '_xray_0003-30-0.38.hdf5', custom_objects={
+    model = load_model(trained_models_path + 'Cardiomegaly-01-14.67.hdf5', compile=True, custom_objects={
         'keras_loss_v3_nor': keras_loss_v3_nor,  'keras_accuracy': keras_accuracy,
         'accuracy_asloss': accuracy_asloss})
 

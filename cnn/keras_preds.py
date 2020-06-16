@@ -1,9 +1,11 @@
+import os
+
 import numpy as np
 from sklearn.metrics import confusion_matrix, roc_auc_score
 from cnn.nn_architecture.custom_performance_metrics import combine_predictions_each_batch
 import cnn.nn_architecture.keras_generators as gen
 from cnn.keras_utils import normalize, save_evaluation_results, plot_roc_curve, plot_confusion_matrix, \
-    image_larger_input, calculate_scale_ratio
+    image_larger_input, calculate_scale_ratio, set_dataset_flag, build_path_results
 from pathlib import Path
 from keras_preprocessing.image import load_img, img_to_array
 from sklearn.metrics import roc_auc_score, roc_curve, auc
@@ -149,7 +151,7 @@ def save_dice(img_ind, dice, res_path, file_identifier):
 
     df['Image_ind'] = img_ind
     df['DICE'] = dice
-    df.to_csv(res_path + 'dice_inst_' + file_identifier + '.csv')
+    df.to_csv(os.path.join(res_path, 'dice_inst_' + file_identifier + '.csv'))
 
 
 def compute_auc_roc_curve(labels, predictions):
@@ -192,7 +194,7 @@ def process_prediction(config, file_unique_name, res_path, pool_method, img_pred
     :return:
     '''
 
-    use_pascal = config['use_pascal_dataset']
+    use_xray, use_pascal = set_dataset_flag(config['dataset_name'])
     pascal_img_path = config['pascal_image_path']
 
     predictions, image_indices, patch_labels = get_index_label_prediction(file_unique_name, res_path)
@@ -218,7 +220,8 @@ def process_prediction(config, file_unique_name, res_path, pool_method, img_pred
     image_indices_bbox = np.where(dice_scores > -1)[0]
 
     if len(image_indices_bbox) > 0:
-        save_dice(image_indices[image_indices_bbox], dice_scores[image_indices_bbox], res_path, file_unique_name)
+        performance_path = os.path.join(os.path.abspath(os.path.join(res_path, os.pardir)), 'performance')
+        save_dice(image_indices[image_indices_bbox], dice_scores[image_indices_bbox], performance_path, file_unique_name)
     return image_labels, image_predictions, has_bbox, accurate_localization, dice_scores
 
 

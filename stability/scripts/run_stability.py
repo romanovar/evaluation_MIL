@@ -2,6 +2,7 @@ import argparse
 
 import yaml
 
+from cnn.keras_utils import set_dataset_flag, build_path_results, make_directory
 from stability.preprocessing import load_filter_dice_scores, indices_segmentation_images, \
     filter_predictions_files_on_indices, load_and_filter_predictions, filter_segmentation_images_bbox_file
 from stability.stability_scores import compute_stability_scores
@@ -20,25 +21,36 @@ parser.add_argument('-c', '--config_path', type=str,
 
 args = parser.parse_args()
 config = load_config(args.config_path)
-xray_dataset = config['use_xray_dataset']
-use_pascal_dataset = config['use_pascal_dataset']
+dataset_name = config['dataset_name']
 res_path = config['results_path']
+pooling_operator = config['pooling_operator']
 
-set_name1 ='Cardiomegaly_test_set_CV0_0Cardiomegaly_0.95'
-set_name2 = 'Cardiomegaly_test_set_CV0_1Cardiomegaly_0.95'
-set_name3 ='Cardiomegaly_test_set_CV0_2Cardiomegaly_0.95'
-set_name4 = 'Cardiomegaly_test_set_CV0_3Cardiomegaly_0.95'
-set_name5 ='Cardiomegaly_test_set_CV0_4Cardiomegaly_0.95'
+set_name1 ='test_set_CV1_0'
+set_name2 = 'test_set_CV1_1'
+set_name3 ='test_set_CV1_2'
+set_name4 = 'test_set_CV1_3'
+set_name5 ='test_set_CV1_4'
 
-
+use_xray, use_pascal = set_dataset_flag(dataset_name)
 classifiers = [set_name1, set_name2, set_name3, set_name4, set_name5]
+parent_folder_predictions = 'subsets'
+predictions_path = build_path_results(res_path, dataset_name, pooling_operator,
+                                             script_suffix=parent_folder_predictions,
+                                             result_suffix='predictions')
+performance_path = build_path_results(res_path, dataset_name, pooling_operator,
+                                             script_suffix=parent_folder_predictions,
+                                             result_suffix='performance')
+stability_path = build_path_results(res_path, dataset_name, pooling_operator,
+                                             script_suffix=parent_folder_predictions,
+                                             result_suffix='stability')
+make_directory(stability_path)
 
-if xray_dataset:
-
+if use_xray:
     instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
-    bag_predictions_collection, identifier = load_and_filter_predictions(config, classifiers,
+    bag_predictions_collection, identifier = load_and_filter_predictions(classifiers,
                                                                          only_segmentation_images=False,
-                                                                         only_positive_images=False)
+                                                                         only_positive_images=False,
+                                                                         predictions_path=predictions_path)
 
     pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou, \
     pearson_correlation, spearman_rank_correlation = compute_stability_scores(raw_predictions_collection)
@@ -51,14 +63,14 @@ if xray_dataset:
                                       image_labels_collection=instance_labels_collection,
                                       image_index_collection=image_index_collection,
                                       raw_predictions_collection=raw_predictions_collection,
-                                      samples_identifier=identifier)
+                                      samples_identifier=identifier, stability_path=stability_path)
 
     ### Stability on instance level
     image_labels_segm_images, image_index_segm_images, raw_predictions_segm_images, bag_labels_segm_images, \
-    bag_predictions_segm_images, identifier_segm_images = load_and_filter_predictions(config,
-                                                                                      classifiers,
+    bag_predictions_segm_images, identifier_segm_images = load_and_filter_predictions(classifiers,
                                                                                       only_segmentation_images=True,
-                                                                                      only_positive_images=False)
+                                                                                      only_positive_images=False,
+                                                                                      predictions_path=predictions_path)
     filtered_idx_collection = indices_segmentation_images(instance_labels_collection)
 
     dice_scores = load_filter_dice_scores(classifiers, filtered_idx_collection, res_path)
@@ -73,7 +85,7 @@ if xray_dataset:
                                            image_labels_segm_images, image_index_segm_images, raw_predictions_segm_images,
                                            dice_scores, res_path)
 
-elif use_pascal_dataset:
+elif use_pascal:
     instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
     bag_predictions_collection, identifier = load_and_filter_predictions(config, classifiers,
                                                                          only_segmentation_images=False,
@@ -90,7 +102,7 @@ elif use_pascal_dataset:
                                       image_labels_collection=instance_labels_collection,
                                       image_index_collection=image_index_collection,
                                       raw_predictions_collection=raw_predictions_collection,
-                                      samples_identifier=identifier)
+                                      samples_identifier=identifier, stability_path=stability_path)
 
     ### Stability on instance level
     filtered_idx_collection = filter_segmentation_images_bbox_file(config, classifiers)
@@ -130,5 +142,5 @@ else:
                                       image_labels_collection=instance_labels_collection,
                                       image_index_collection=image_index_collection,
                                       raw_predictions_collection=raw_predictions_collection,
-                                      samples_identifier=identifier)
+                                      samples_identifier=identifier, stability_path=stability_path)
 

@@ -3,7 +3,7 @@ from pathlib import Path
 import matplotlib
 from scipy.optimize import curve_fit
 
-from cnn.keras_utils import image_larger_input, calculate_scale_ratio
+from cnn.keras_utils import image_larger_input, calculate_scale_ratio, set_dataset_flag
 from cnn.preprocessor.load_data_mura import padding_needed, pad_image
 from stability.utils import get_image_index, save_additional_kappa_scores_forthreshold, save_mean_stability, \
     get_nonduplicate_scores, compute_ap, get_matrix_total_nans_stability_score
@@ -684,7 +684,7 @@ def generate_visualizations_stability(config, visualize_per_image,pos_jacc, corr
                                       pos_overlap, corr_pos_overlap, corr_iou, pearson_correlation,
                                       spearman_rank_correlation, image_labels_collection,
                                       image_index_collection, raw_predictions_collection,
-                                      samples_identifier):
+                                      samples_identifier, stability_path):
     """
     Generates following visualizations:
                 1. Optionally a visualization where predictions of each model are shown next to each other for each image.
@@ -717,14 +717,13 @@ def generate_visualizations_stability(config, visualize_per_image,pos_jacc, corr
     :return:
     """
     image_path = config['image_path']
-    stability_res_path = config['stability_results']
-    xray_dataset = config['use_xray_dataset']
-    use_pascal_dataset = config['use_pascal_dataset']
+    dataset_name = config['dataset_name']
     class_name = config['class_name']
+    use_xray, use_pascal = set_dataset_flag(dataset_name)
 
-    if xray_dataset:
+    if use_xray:
         dataset_identifier = 'xray'
-    elif use_pascal_dataset:
+    elif use_pascal:
         dataset_identifier = 'pascal'
     else:
         dataset_identifier = 'mura'
@@ -747,8 +746,8 @@ def generate_visualizations_stability(config, visualize_per_image,pos_jacc, corr
 
     xyaxis = ['classifier1', 'classifier2', 'classifier3', 'classifier4', 'classifier5']
     if visualize_per_image:
-        visualize_5_classifiers(xray_dataset, use_pascal_dataset, image_index_collection, image_labels_collection,
-                                raw_predictions_collection, image_path, stability_res_path, class_name, '_test_5_class')
+        visualize_5_classifiers(use_xray, use_pascal, image_index_collection, image_labels_collection,
+                                raw_predictions_collection, image_path, stability_path, class_name, '_test_5_class')
     ## ADD inst AUC vs score
     ma_corr_jaccard_images = np.ma.masked_array(reshaped_corr_jacc_coll, np.isnan(reshaped_corr_jacc_coll))
     ma_jaccard_images = np.ma.masked_array(reshaped_jacc_coll, np.isnan(reshaped_jacc_coll))
@@ -757,40 +756,40 @@ def generate_visualizations_stability(config, visualize_per_image,pos_jacc, corr
 
     ############ visualizing NANs of corrected jaccard ###################
     nan_matrix_norm = get_matrix_total_nans_stability_score(corr_pos_jacc, image_index_collection, normalize=True)
-    visualize_correlation_heatmap(nan_matrix_norm, stability_res_path, '_corr_pos_jacc_nan_norm' + samples_identifier, xyaxis,
+    visualize_correlation_heatmap(nan_matrix_norm, stability_path, '_corr_pos_jacc_nan_norm' + samples_identifier, xyaxis,
                                   dropDuplicates=True)
     nan_matrix = get_matrix_total_nans_stability_score(corr_pos_jacc, image_index_collection, normalize=False)
-    visualize_correlation_heatmap(nan_matrix, stability_res_path, '_corr_pos_jacc_nan' + samples_identifier, xyaxis,
+    visualize_correlation_heatmap(nan_matrix, stability_path, '_corr_pos_jacc_nan' + samples_identifier, xyaxis,
                                   dropDuplicates=True)
 
     nan_matrix_jacc_norm = get_matrix_total_nans_stability_score(pos_jacc, image_index_collection, normalize=True)
-    visualize_correlation_heatmap(nan_matrix_jacc_norm, stability_res_path, '_pos_jacc_nan_norm' + samples_identifier, xyaxis,
+    visualize_correlation_heatmap(nan_matrix_jacc_norm, stability_path, '_pos_jacc_nan_norm' + samples_identifier, xyaxis,
                                   dropDuplicates=True)
     nan_matrix_jacc = get_matrix_total_nans_stability_score(pos_jacc, image_index_collection, normalize=False)
-    visualize_correlation_heatmap(nan_matrix_jacc, stability_res_path, '_pos_jacc_nan' + samples_identifier, xyaxis,
+    visualize_correlation_heatmap(nan_matrix_jacc, stability_path, '_pos_jacc_nan' + samples_identifier, xyaxis,
                                   dropDuplicates=True)
     nan_matrix_spearman = get_matrix_total_nans_stability_score(spearman_rank_correlation,
                                                                 image_index_collection, normalize=False)
-    visualize_correlation_heatmap(nan_matrix_spearman, stability_res_path, '_spearman_nan' + samples_identifier, xyaxis,
+    visualize_correlation_heatmap(nan_matrix_spearman, stability_path, '_spearman_nan' + samples_identifier, xyaxis,
                                   dropDuplicates=True)
     nan_matrix_spearman_norm = get_matrix_total_nans_stability_score(spearman_rank_correlation,
                                                                      image_index_collection, normalize=True)
-    visualize_correlation_heatmap(nan_matrix_spearman_norm, stability_res_path, '_spearman_nan_norm' + samples_identifier,
+    visualize_correlation_heatmap(nan_matrix_spearman_norm, stability_path, '_spearman_nan_norm' + samples_identifier,
                                   xyaxis,
                                   dropDuplicates=True)
 
     ##### AVERAGE STABILITY ACROSS ALL IMAGES ##############
     average_corr_jacc_index_inst = np.average(ma_corr_jaccard_images, axis=-1)
-    visualize_correlation_heatmap(average_corr_jacc_index_inst, stability_res_path,
+    visualize_correlation_heatmap(average_corr_jacc_index_inst, stability_path,
                                   '_mean_stability_' + str("corr_jaccard") + '_' + samples_identifier,
                                   xyaxis, dropDuplicates=True)
     average_jacc_inst = np.average(ma_jaccard_images, axis=-1)
-    visualize_correlation_heatmap(average_jacc_inst, stability_res_path,
+    visualize_correlation_heatmap(average_jacc_inst, stability_path,
                                   '_mean_stability_' + str("jaccard") + '_' + samples_identifier,
                                   xyaxis, dropDuplicates=True)
 
     average_iou_inst = np.average(ma_corr_iou, axis=-1)
-    visualize_correlation_heatmap(average_iou_inst, stability_res_path,
+    visualize_correlation_heatmap(average_iou_inst, stability_path,
                                   '_mean_stability_' + str("iou") + '_' + samples_identifier,
                                   xyaxis, dropDuplicates=True)
     # Additional scores according to the
@@ -801,11 +800,11 @@ def generate_visualizations_stability(config, visualize_per_image,pos_jacc, corr
     #                                           reshaped_corr_jacc_coll, stability_res_path)
 
     avg_abs_sprearman = np.average(abs(ma_spearman), axis=-1)
-    visualize_correlation_heatmap(avg_abs_sprearman, stability_res_path,
+    visualize_correlation_heatmap(avg_abs_sprearman, stability_path,
                                   '_mean_stability_' + str("abs_spearman") + '_' + samples_identifier,
                                   xyaxis, dropDuplicates=True)
     avg_spearman = np.average(ma_spearman, axis=-1)
-    visualize_correlation_heatmap(avg_spearman, stability_res_path,
+    visualize_correlation_heatmap(avg_spearman, stability_path,
                                   '_mean_stability_' + str("spearman") + '_' + samples_identifier,
                                   xyaxis, dropDuplicates=True)
 
@@ -822,7 +821,7 @@ def generate_visualizations_stability(config, visualize_per_image,pos_jacc, corr
     mean_all_classifiers_spearman = np.mean(np.ma.masked_array(ma_spearman, mask=mask_repetition), axis=(0, 1))
 
     save_mean_stability(image_index_collection[0], mean_all_classifiers_jacc, mean_all_classifiers_corr_jacc,
-                        mean_all_classifiers_iou, mean_all_classifiers_spearman, stability_res_path, dataset_identifier)
+                        mean_all_classifiers_iou, mean_all_classifiers_spearman, stability_path, dataset_identifier)
 
 
 def generate_visualizations_instance_level(config,pos_jacc, corr_pos_jacc, corr_pos_jacc_heur,

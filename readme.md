@@ -110,9 +110,11 @@ The following scripts can be ran:
      <details>
       <summary>Click to see input files:</summary> <br>    
       The script expects the output files from any of the training scripts:
-      `predictions_<IDENTIFIER>.npy`, `patch_labels_<IDENTIFIER>.npy` and `image_indices_<IDENTIFIER>.npy`. The user has to specify within the script  the value of `IDENTIFIER`.
+      `predictions_IDENTIFIER.npy`,
+       `patch_labels_IDENTIFIER.npy` and 
+       `image_indices_IDENTIFIER.npy`. The user has to specify within the script  the value of `IDENTIFIER`.
 
-    </details>
+   </details>
 
     <details>
        <summary>Click to see additional output files:</summary> <br>    
@@ -217,3 +219,11 @@ All of the next paths are locations for saving results.
 * `prediction_results_path`: path to save .npy files of the predictions generated
 * `trained_models_path`: path to save trained models
 * `stability_results`: path to results from stability experiments
+
+
+## Example Usage
+In order to run a script all you need to invoke is thw following python command:
+
+    `<script_name.py> -c path/to/private_config.yml`
+    
+  where `<script_name>` can be any of the scripts. 

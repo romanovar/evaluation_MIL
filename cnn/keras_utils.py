@@ -6,6 +6,7 @@ from sklearn.utils import resample
 import tensorflow as tf
 import pandas as pd
 import matplotlib
+import os
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from cnn.nn_architecture.custom_loss import compute_ground_truth
@@ -26,6 +27,51 @@ def calculate_scale_ratio(image_width, image_height, input_width, input_height):
 
 def normalize(im):
     return 2*(im/255) -1
+
+
+def make_directory(dir_path):
+    if not os.path.isdir(dir_path):
+        os.makedirs(dir_path)
+    else:
+        print("Directory already existing")
+
+
+def build_path_results(main_directory, dataset, pooling, script_suffix, result_suffix):
+    """
+    It builds a path with the specified string. The function is used to build different paths for each type of output
+    files - e.g. trained models, predictions, performance evaluation, stability from one main directory in the config
+    file.
+    :param main_directory: main directory from yml config
+    :param dataset: dataset name
+    :param pooling: pooling used
+    :param script_suffix: script choice is exploratory_experiments/CV/subsets/
+        Predictions, saved models, etc are output files always saved no matter if exploratory experiments,
+        doing cross validations, or final subset training. So the name of the subdirectory differentiates
+        between the initiating training script
+    :param result_suffix: choice between trained_models/predictions/performance/stability
+    :return: returns a string path
+    """
+    return main_directory + dataset + '/' + pooling + '/' + script_suffix + '/' + result_suffix + '/'
+
+
+def set_dataset_flag(dataset_name, allowed_names=['xray', 'pascal', 'mura']):
+    """
+    Checks if the dataset name in config is allowed, and if so it sets a flag to use the previous implementation
+    :param dataset_name: dataset name in the config
+    :param allowed_names: list with allowed values
+    :return: returns a flag for the used dataset
+    """
+    xray_flag, pascal_flag = False, False
+
+    if dataset_name.lower() not in allowed_names:
+        raise Exception("Sorry, unknown dataset specified")
+
+    elif dataset_name.lower() == 'xray':
+        xray_flag=True
+    elif dataset_name.lower()== 'pascal':
+        pascal_flag = True
+
+    return xray_flag, pascal_flag
 
 
 def process_loaded_labels(label_col):

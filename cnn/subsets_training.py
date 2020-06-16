@@ -3,12 +3,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from keras.engine.saving import load_model
+from tensorflow.python.keras.engine.saving import load_model
 from tensorflow.keras import backend as K
 from tensorflow.keras.callbacks import LearningRateScheduler, ModelCheckpoint
 
 from cnn import keras_utils
 from cnn.keras_preds import predict_patch_and_save_results
+from cnn.keras_utils import set_dataset_flag, build_path_results, make_directory
 from cnn.nn_architecture import keras_generators as gen
 from cnn.nn_architecture import keras_model
 from cnn.nn_architecture.custom_loss import keras_loss_v3_nor
@@ -44,10 +45,8 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
     localization_labels_path = config['localization_labels_path']
     results_path = config['results_path']
     processed_labels_path = config['processed_labels_path']
-    prediction_results_path = config['prediction_results_path']
     train_mode = config['train_mode']
-    trained_models_path = config['trained_models_path']
-    use_xray_dataset = config['use_xray_dataset']
+    dataset_name = config['dataset_name']
     class_name = config['class_name']
     mura_test_img_path = config['mura_test_img_path']
     mura_train_labels_path = config['mura_train_labels_path']
@@ -57,9 +56,7 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
     mura_processed_test_labels_path = config['mura_processed_test_labels_path']
     mura_interpolation = config['mura_interpolation']
     pascal_image_path = config['pascal_image_path']
-    use_pascal_dataset = config['use_pascal_dataset']
     resized_images_before_training = config['resized_images_before_training']
-
 
     nr_epochs = config['nr_epochs']
     lr = config['lr']
@@ -71,31 +68,40 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
     BATCH_SIZE_TEST = 1
     BOX_SIZE = 16
 
+    use_xray, use_pascal = set_dataset_flag(dataset_name)
+    script_suffix = 'subsets'
+    trained_models_path = build_path_results(results_path, dataset_name, pooling_operator, script_suffix=script_suffix,
+                                             result_suffix='trained_models')
+    prediction_results_path = build_path_results(results_path, dataset_name, pooling_operator,
+                                                 script_suffix=script_suffix,
+                                                 result_suffix='predictions')
+    make_directory(trained_models_path)
+    make_directory(prediction_results_path)
 
-    if use_xray_dataset:
+    if use_xray:
         if resized_images_before_training:
-            # xray_df = ld.load_csv(image_path+'processed_imgs')
             xray_df = fetch_preprocessed_images_csv(image_path, 'processed_imgs')
+            # todo: delete - just for testing
+            # xray_df = xray_df[-50:]
 
         else:
             xray_df = load_xray(skip_processing, processed_labels_path, classication_labels_path, image_path,
                             localization_labels_path, results_path)
         xray_df = ld.filter_observations(xray_df, class_name, 'No Finding')
 
-    elif use_pascal_dataset:
+    elif use_pascal:
         pascal_df = load_pascal(pascal_image_path)
     else:
         df_train_val, test_df_all_classes = load_mura(skip_processing, mura_processed_train_labels_path,
                                                       mura_processed_test_labels_path, mura_train_img_path,
                                                       mura_train_labels_path, mura_test_labels_path, mura_test_img_path)
 
-
     for split in range(0, number_splits):
-        if use_xray_dataset:
+        if use_xray:
             df_train, df_val, df_test, df_bbox_train, \
             df_bbox_test, train_only_class = split_xray_cv(xray_df, number_splits,
                                                            split, class_name)
-        elif use_pascal_dataset:
+        elif use_pascal:
             df_train, df_val, df_test = construct_train_test_cv(pascal_df, number_splits, split)
         else:
             df_train, df_val = split_data_cv(df_train_val, number_splits, split, random_seed=1, diagnose_col=class_name,
@@ -107,7 +113,7 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
                 print("#####################################################")
                 print("SPLIT :" + str(split))
                 print("classifier #: " + str(curr_classifier))
-                if use_xray_dataset:
+                if use_xray:
                     class_train_subset = ld.get_train_subset_xray(train_only_class, df_bbox_train.shape[0],
                                                                   random_seed=subset_seeds[curr_classifier],
                                                                   ratio_to_keep=overlap_ratio)
@@ -115,7 +121,7 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
                     df_train_subset = pd.concat([df_bbox_train, class_train_subset])
                     print(df_bbox_train.shape)
                     print(class_train_subset.shape)
-                elif use_pascal_dataset:
+                elif use_pascal:
                     df_train_subset = get_train_subset_mura(df_train, random_seed=subset_seeds[curr_classifier],
                                                             ratio_to_keep=overlap_ratio)
                 else:
@@ -154,7 +160,7 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
                 model = keras_model.compile_model_accuracy(model, lr, pooling_operator)
                 lrate = LearningRateScheduler(keras_model.step_decay, verbose=1)
 
-                filepath = trained_models_path + "CV_patient_split_" + str(split) + "_-{epoch:02d}-{val_loss:.2f}.hdf5"
+                filepath = trained_models_path + "CV_" + str(split)  + '_' + str(curr_classifier) + "_-{epoch:02d}-{val_loss:.2f}.hdf5"
                 checkpoint_on_epoch_end = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False,
                                                           mode='min')
 
@@ -177,37 +183,38 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
                 print("history")
                 print(history.history)
                 print(history.history['keras_accuracy'])
-                np.save(results_path + 'train_info_' + str(split) + '_' + str(curr_classifier) + '_' +
+                np.save(trained_models_path + 'train_info_' + str(split) + '_' + str(curr_classifier) + '_' +
                         str(overlap_ratio) + '.npy', history.history)
 
                 settings = np.array({'lr: ': lr, 'reg_weight: ': reg_weight, 'pooling_operator: ': pooling_operator})
-                np.save(results_path + 'train_settings.npy', settings)
+                np.save(trained_models_path + 'train_settings.npy', settings)
 
                 keras_utils.plot_train_validation(history.history['loss'], history.history['val_loss'], 'train loss',
-                                                  'validation loss', 'CV_loss' + str(split)+ str(curr_classifier), 'loss', results_path)
+                                                  'validation loss', 'CV_loss' + str(split)+ str(curr_classifier), 'loss',
+                                                  trained_models_path)
 
                 ############################################    PREDICTIONS      #############################################
                 ########################################### TRAINING SET########################################################
-                predict_patch_and_save_results(model, '_train_set_CV' + str(split)+'_'+ str(curr_classifier),
+                predict_patch_and_save_results(model, 'train_set_CV' + str(split)+'_'+ str(curr_classifier),
                                                df_train, skip_processing,
                                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                                mura_interpolation, resized_images_before_training)
 
                 ########################################## VALIDATION SET######################################################
-                predict_patch_and_save_results(model, '_val_set_CV' + str(split)+'_'+ str(curr_classifier),
+                predict_patch_and_save_results(model, 'val_set_CV' + str(split)+'_'+ str(curr_classifier),
                                                df_val, skip_processing,
                                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                                mura_interpolation, resized_images_before_training)
 
                 ########################################### TESTING SET########################################################
-                predict_patch_and_save_results(model, '_test_set_CV' + str(split) + '_' + str(curr_classifier), df_test,
+                predict_patch_and_save_results(model, 'test_set_CV' + str(split) + '_' + str(curr_classifier), df_test,
                                                skip_processing, BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE,
                                                prediction_results_path, mura_interpolation, resized_images_before_training)
             elif not train_mode:
                 files_found = 0
                 print(trained_models_path)
                 for file_path in Path(trained_models_path).glob(
-                        "CV_patient_split_" + str(curr_classifier) + "_-04" + "*.hdf5"):
+                        "subset_Cardiomegaly_CV1_" + str(curr_classifier) + "*.hdf5"):
                     print(file_path)
                     files_found += 1
 
@@ -222,12 +229,12 @@ def train_on_subsets(config, number_splits, CV_split_to_use, number_classifiers,
 
                 model = keras_model.compile_model_accuracy(model, lr, pooling_operator)
 
-                predict_patch_and_save_results(model, "train_set_CV" + (str(split)), df_train, skip_processing,
+                predict_patch_and_save_results(model, "train_set_CV" + str(split) + str(curr_classifier), df_train, skip_processing,
                                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                                mura_interpolation, resized_images_before_training)
-                predict_patch_and_save_results(model, "val_set_CV" + (str(split)), df_val, skip_processing,
+                predict_patch_and_save_results(model, "val_set_CV" + str(split)+ str(curr_classifier), df_val, skip_processing,
                                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                                mura_interpolation, resized_images_before_training)
-                predict_patch_and_save_results(model, "test_set_CV" + (str(split)), df_test, skip_processing,
+                predict_patch_and_save_results(model, "test_set_CV" + str(split)+ str(curr_classifier), df_test, skip_processing,
                                                BATCH_SIZE_TEST, BOX_SIZE, IMAGE_SIZE, prediction_results_path,
                                                mura_interpolation,resized_images_before_training)
