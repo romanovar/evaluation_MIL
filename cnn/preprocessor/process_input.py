@@ -1,4 +1,4 @@
-from keras.preprocessing.image import load_img, img_to_array, save_img
+from tensorflow.keras.preprocessing.image import load_img, img_to_array, save_img
 from cnn.preprocessor.load_data_mura import padding_needed, pad_image
 from cnn.keras_utils import image_larger_input, calculate_scale_ratio
 import os

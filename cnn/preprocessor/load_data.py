@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
-from keras.preprocessing import image
+from tensorflow.keras.preprocessing import image
 import os
 from pathlib import Path
-from keras.applications.resnet50 import preprocess_input
+from tensorflow.keras.applications.resnet50 import preprocess_input
 from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.model_selection import GroupShuffleSplit
 import imagesize

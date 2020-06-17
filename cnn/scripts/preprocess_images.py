@@ -26,8 +26,8 @@ resized_images_before_training = config['resized_images_before_training']
 processed_labels_path=config['processed_labels_path']
 
 IMAGE_SIZE = 512
-
 use_xray, _ = set_dataset_flag(dataset_name)
+
 
 if use_xray:
     df_xray = ldd.load_process_xray14(config)
