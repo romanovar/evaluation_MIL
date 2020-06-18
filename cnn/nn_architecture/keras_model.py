@@ -52,7 +52,7 @@ def step_decay(epoch, lr, decay=None):
 
 
 def dynamic_lr(epoch):
-    return 1e-5 * 10 **(epoch/20)
+    return 1e-6 * 10 **(epoch/20)
 
 
 def compile_model_accuracy(model, lr, pool_op):

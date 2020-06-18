@@ -125,7 +125,7 @@ if train_mode:
 
     # checkpoint - saving a model for minimal validation loss reached
     # check if it is active in the callbacks of the fit() method
-    checkpoint = ModelCheckpoint(
+    best_model_checkpoint = ModelCheckpoint(
         filepath=trained_models_path + 'best_model' + class_name +"-{epoch:02d}-{val_loss:.2f}.hdf5",
         monitor='val_loss',
         verbose=2,
@@ -151,7 +151,7 @@ if train_mode:
         validation_data=valid_generator,
         validation_steps=valid_generator.__len__(),
         verbose=1,
-        callbacks=[checkpoint_on_epoch_end]
+        callbacks=[best_model_checkpoint, dynamic_lrate]
     )
     print(model.get_weights()[2])
     print("history")
