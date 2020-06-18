@@ -73,7 +73,7 @@ if use_xray:
                                                                                       predictions_path=predictions_path)
     filtered_idx_collection = indices_segmentation_images(instance_labels_collection)
 
-    dice_scores = load_filter_dice_scores(classifiers, filtered_idx_collection, res_path)
+    dice_scores = load_filter_dice_scores(classifiers, filtered_idx_collection, predictions_path)
 
     pos_jacc_segm_img, corr_pos_jacc_segm_img, corr_pos_jacc_heur_segm_img, pos_overlap_segm_img, \
     corr_pos_overlap_segm_img, corr_iou_segm_img, pearson_correlation_segm_img, \
@@ -113,7 +113,7 @@ elif use_pascal:
                                                                    raw_predictions_collection,
                                                                    bag_predictions_collection, bag_labels_collection,
                                                                    filtered_idx_collection)
-    dice_scores = load_filter_dice_scores(classifiers, filtered_idx_collection, res_path)
+    dice_scores = load_filter_dice_scores(classifiers, filtered_idx_collection, predictions_path)
 
     pos_jacc_segm_img, corr_pos_jacc_segm_img, corr_pos_jacc_heur_segm_img, pos_overlap_segm_img, \
     corr_pos_overlap_segm_img, corr_iou_segm_img, pearson_correlation_segm_img, \
