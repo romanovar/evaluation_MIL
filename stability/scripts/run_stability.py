@@ -83,7 +83,7 @@ if use_xray:
                                            pos_overlap_segm_img, corr_pos_overlap_segm_img, corr_iou_segm_img,
                                            pearson_correlation_segm_img, spearman_rank_correlation_segm_img,
                                            image_labels_segm_images, image_index_segm_images, raw_predictions_segm_images,
-                                           dice_scores, res_path)
+                                           dice_scores, predictions_path)
 
 elif use_pascal:
     instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
@@ -124,7 +124,7 @@ elif use_pascal:
                                            pos_overlap_segm_img, corr_pos_overlap_segm_img, corr_iou_segm_img,
                                            pearson_correlation_segm_img, spearman_rank_correlation_segm_img,
                                            image_labels_segm_img, image_index_segm_img,
-                                           raw_predictions_segm_img, dice_scores, res_path)
+                                           raw_predictions_segm_img, dice_scores, predictions_path)
 else:
     instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
     bag_predictions_collection, identifier = load_and_filter_predictions(config, classifiers,
