@@ -37,12 +37,14 @@ make_directory(performance_path)
 pool_dict = {'nor': "nor",
              "lse": "lse",
              "lse01": "lse",
-             "max": "max"
+             "max": "max",
+             "mean": "mean"
              }
 r = {'nor': 0,
     "lse": 1.0,
     "lse01": 0.1,
-     "max": 0
+     "max": 0,
+     "mean":0
      }
 
 image_labels, image_predictions, \
