@@ -105,7 +105,7 @@ def mean_pooling_bag_level(nn_output):
 
 def lse_pooling_bag_level(nn_output, r =1):
     mean = tf.reduce_mean(tf.exp(r*nn_output), axis=[1,2])
-    return (1/r)*(tf.log(mean))
+    return (1/r)*(tf.math.log(mean))
 
 
 def max_pooling_bag_level(nn_output):
@@ -128,8 +128,8 @@ def lse_pooling_segmentation_images(nn_output, y_true, P, clas_nr, r =1):
 
     mean3 = tf.reduce_mean(pos_neg_combined, axis=[1,2])
     mean2 = tf.reduce_sum((1 / (P*P))* pos_neg_combined, axis=[1,2])
-    result2 = (1 / r) * tf.log(mean2)
-    result3 = tf.log(mean3)/r
+    result2 = (1 / r) * tf.math.log(mean2)
+    result3 = tf.math.log(mean3)/r
     return result2
 
 
