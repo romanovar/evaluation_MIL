@@ -12,7 +12,8 @@ from cnn.nn_architecture import keras_model
 from cnn import keras_utils
 import cnn.preprocessor.load_data as ld
 from cnn.nn_architecture.custom_performance_metrics import keras_accuracy, accuracy_asloss
-from cnn.nn_architecture.custom_loss import keras_loss_v3_nor
+from cnn.nn_architecture.custom_loss import keras_loss_v3_nor, keras_loss_v3_lse, keras_loss_v3_lse01, \
+    keras_loss_v3_mean, keras_loss_v3_max
 from cnn.keras_preds import predict_patch_and_save_results
 from cnn.preprocessor.load_data_datasets import load_process_xray14
 from cnn.preprocessor.load_data_mura import load_mura, split_data_cv, filter_rows_on_class, filter_rows_and_columns
@@ -210,15 +211,25 @@ def cross_validation(config, number_splits=5):
         else:
             files_found = 0
             print(trained_models_path)
-            for file_path in Path(trained_models_path).glob("CV_patient_split_"+str(split) + "*.hdf5"):
+            trained_models_name = "CV_" + str(split) + "_epoch-" + str(nr_epochs)
+            if nr_epochs < 10:
+                trained_models_name = "CV_" + str(split) + "_epoch-0" + str(nr_epochs)
+            for file_path in Path(trained_models_path).glob(trained_models_name + "*.hdf5"):
                 print(file_path)
                 files_found += 1
 
             assert files_found == 1, "No model found/ Multiple models found, not clear which to use "
             print(str(files_found))
+            loss_function_dict = {'nor': keras_loss_v3_nor,
+                                  "lse": keras_loss_v3_lse,
+                                  "lse01": keras_loss_v3_lse01,
+                                  "max": keras_loss_v3_max,
+                                  "mean": keras_loss_v3_mean
+                                  }
             model = load_model(str(file_path),
                                custom_objects={
-                                   'keras_loss_v3_nor': keras_loss_v3_nor, 'keras_accuracy': keras_accuracy,
+                                   loss_function_dict[pooling_operator].__name__: loss_function_dict[pooling_operator],
+                                   'keras_accuracy': keras_accuracy,
                                    'accuracy_asloss': accuracy_asloss})
             model = keras_model.compile_model_accuracy(model, lr, pooling_operator)
 
