@@ -442,17 +442,33 @@ def visualize_5_classifiers(xray_dataset, pascal_dataset, img_ind_coll, labels_c
                                      threshold_transparency=0.5)
 
 
+def return_heatmap_notation(df):
+    '''
+    Returns the suitable notation for the heatmap based on the data that should be represented
+    :param df:
+    :return: If data has only decimal number, then scientific notation is suitable,
+    if data is whole integers, then the whole numbers should be written on the heatmap.
+    fmt = 'g' is the parameter value for representing the number as is, else '.2g' means annotation up to 2 decimal points
+    '''
+    if (df <= 1.0).all():
+        return '.2g'
+    else:
+        return 'g'
+
+
 def draw_heatmap(df, labels, ax, font_size_annotations, drop_duplicates):
     cmap = sns.cubehelix_palette(8, as_cmap=True)
+    number_annotation = return_heatmap_notation(df)
+
     if drop_duplicates:
         mask = np.zeros_like(df, dtype=np.bool)
         mask[np.triu_indices_from(mask)] = True
 
-        htmp = sns.heatmap(df, cmap=cmap, mask=mask, square=True, annot=True,
+        htmp = sns.heatmap(df, cmap=cmap, mask=mask, square=True, annot=True, fmt=number_annotation,
                            annot_kws={"size": font_size_annotations}, xticklabels=labels, yticklabels=labels,
                            linewidth=.5, cbar_kws={"shrink": .5}, ax=ax, vmin=0, vmax=1)
     else:
-        htmp = sns.heatmap(df, cmap=cmap, square=True, annot=True,
+        htmp = sns.heatmap(df, cmap=cmap, square=True, annot=True, fmt=number_annotation,
                            annot_kws={"size": font_size_annotations}, xticklabels=labels, yticklabels=labels,
                            linewidth=.5, cbar_kws={"shrink": .5}, ax=ax, vmin=0, vmax=1)
     return htmp
