@@ -6,23 +6,6 @@ This repository constitutes my master graduation project. The repository include
 for a single class (in cnn module)
 and further experiments on evaluating stability of MIL algorithms (in stability module).
 
-<!-- # Reproducibility
-[More on reproducibility and project structure](reproducibility_project.md)
-
-This is a short introduction into the project structure and reproducibility.
-
-**Contents**
-* Getting started
-* Project structure
-
-Introduction structure
- To reproduce the results of the project 3 important aspects are important:
-  * virtual environment
-  * script parameters
-  * project modules
-
-We will look into each one of them in details.
--->
 ## Getting started - Requirements
 Requirements for this projects are:
 - [x] Python version 3.7.x
@@ -59,8 +42,9 @@ The following scripts can be ran:
     </details>
 
     <details>
-    <summary>Click to see output files:</summary> <br>
 
+    <summary>Click to see output files:</summary> <br>
+ 
     * `train_info_<IDENTIFIER>.npy` keeps loss and other settings during training for each epoch
 
     * `predictions_<IDENTIFIER>.npy` are the raw predictions for a set. It is a list for all bags with their instance predictions. Instance predictions are multi dimensional array of 16x16x1 (3rd dimension is the class dimension, but we predict 1 class).
@@ -138,7 +122,7 @@ The following scripts can be ran:
 #### Stability
 `stability` module is comprised also of several sub-modules. `script` modules contains all scripts, which perform experiments with the stability and the proposed score.
 
-* `simulate_stability_score.npy` This is an *optional* runs experiments of how the proposed scores behave with various proportions of agreeing and disagreeing predictions. This script is used to show certain behavior of several viable alternatives for stability score. It is not needed for the computation of stability.
+* `simulate_stability_score.npy` This is an *optional* script. It runs experiments of how the proposed scores behave with various proportions of agreeing and disagreeing predictions. This script is used to show certain behavior of several viable alternatives for stability score. It is not needed for the computation of stability.
 
 * `run_stability.npy` runs all the experiments for stability. saves .csv files of stability for each image across classifiers, creates visualizations for each stability score across classifiers and per image, visualizations of nan values of the stability scores. It also investigates the instance performance against the stability.
 
@@ -193,19 +177,25 @@ If true, preprocessing is skipped and the generated csv is read directly from th
 If true, the parameter triggers training procedure in the training scripts \
 If false, the script loads a preciously trained and saved model and does predictions on the train, validation, and test set.
 
-* `use_xray_dataset`:
-If true, xray dataset is used and paths to xray files
+* `dataset_name`: possible values are `'xray'`, `'mura'`, or `'pascal'`
 * `class_name`: The class used for training and prediction. Xray classes are typed with first capital letter, and MURA classes are typed lowercase.   (ex: "Cardiomegaly", 'shoulder')
 * `mura_interpolation`:
 If true, interpolation method is used for resizing images. If false, padding. For xray, `interpolation=true`, else `interpolation=false`.
 * `pascal_image_path`: path to pascal images
-* `use_pascal_dataset`: true/false - **If false and `use_xray_dataset`=false, then MURA is used**
+
+* `nr_epochs`: number of training epochs
+* `learning rate`: learning rate. This is **not** used in `train_model.py` as we do explorative training with 
+learning rate = 1e-6 * 10 **(epoch/20)  - from the results we choose the learning rate for the next experiments. 
+* `reg_weight`:  regularization weight. 0 means no regularization. 
+* `pooling_operator`:  pooling operator to convert instance to bag label. Accepted values are `'nor'`, `'mean'`, `'lse'`, `'lse_01'`, `'max'`. 
+`lse` is the log-sum-exp, approximation to the maximum function, and `lse_01` is a log-sum-exp with hyperparameter of 0.1, which is an approximation to the mean function.   
 
 * `image_path`: path to xray images
 * `classication_labels_path`: path to chest XRay Data_Entry_2017.csv
 * `localization_labels_path`: path to chest XRay Bbox_List_2017.csv
-* `results_path`: folder where general results are stored
 * `processed_labels_path`: path to preprocessed csv of xray dataset
+* `results_path`: parent folder where results are stored
+
 
 * `mura_train_img_path`: path to MURA training images (as defined according to the authors)   
 * `mura_train_labels_path`: path to labels of training images
@@ -214,16 +204,34 @@ If true, interpolation method is used for resizing images. If false, padding. Fo
 * `mura_processed_train_labels_path`: path to preprocessed train csv of mura dataset
 * `mura_processed_test_labels_path`: path to preprocessed test csv of mura dataset
 
-All of the next paths are locations for saving results.
-* `results_path`: path to save general results, e.g. statistics during training process
-* `prediction_results_path`: path to save .npy files of the predictions generated
-* `trained_models_path`: path to save trained models
-* `stability_results`: path to results from stability experiments
-
 
 ## Example Usage
-In order to run a script all you need to invoke is thw following python command:
+In order to run a script all you need to invoke is the following python command:
 
     `<script_name.py> -c path/to/private_config.yml`
     
   where `<script_name>` can be any of the scripts. 
+
+
+### Results tree 
+Based on the `results_path` from the configuration file, all results are saved in this specified parent folder. The 
+directory of results has the following structure: 
+ ````
+- __<results_path>__
+   - __<dataset_name>__
+     - __<pooling_operator>__
+
+       - __exploratory\_exp__   (This folder contains the results generated from train_model.py.) 
+         - __predictions__ (Contains output files from train_model.py )
+         - __trained\_models__ (Contains saved trained models from train_model.py)
+
+       - __CV__    (This folder contains the results from and related to run_cross_validation.py)
+         - __performance__  (Contains files from evaluate_performance.py based on __predictions__ subfolder.) 
+         - __predictions__ (Contains output files from run_cross_validation.py)
+         - __trained\_models__ (Contains saved trained models from run_cross_validation.py)
+ 
+       - __subsets__ (This folder contains the results generated from train_models_on_subsets.py.) 
+         - __performance__  (Contains files from evaluate_performance.py based on __predictions__ subfolder)  
+         - __predictions__ (Contains output files from run_cross_validation.py)
+         - __stability__ (Contains results from run_stability.py based on the __predictions__)
+         - __trained\_models__ (Contains saved trained models from train_models_on_subsets.py)
