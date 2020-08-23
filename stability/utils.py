@@ -71,8 +71,8 @@ def save_mean_stability(img_ind, jacc, corr_jacc, iou, spearman, res_path, file_
     for column, column_values in zip(column_names, values):
         df[column] = column_values
 
-    df2 = calculate_aggregated_performance(column_names, 'mean', values)
-    df3 = calculate_aggregated_performance(column_names, 'stand dev', values)
+    df2 = calculate_aggregated_performance(column_names, 'mean', values[1:])
+    df3 = calculate_aggregated_performance(column_names, 'stand dev', values[1:])
 
     df = df.append(df2)
     df = df.append(df3)
@@ -100,7 +100,7 @@ def save_additional_kappa_scores_forthreshold(thres, raw_pred_coll, img_ind, cor
 def calculate_aggregated_performance(columns, operation, stability_values):
     operation_dict = {'mean': np.mean,
                       'stand dev':np.std}
-    aggregated_values = operation_dict[operation](stability_values[1:], axis=1)
+    aggregated_values = operation_dict[operation](stability_values, axis=1)
     values = [operation]
     values.extend(aggregated_values)
 
