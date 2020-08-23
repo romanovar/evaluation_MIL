@@ -837,7 +837,7 @@ def generate_visualizations_stability(config, visualize_per_image,pos_jacc, corr
     mean_all_classifiers_spearman = np.mean(np.ma.masked_array(ma_spearman, mask=mask_repetition), axis=(0, 1))
 
     save_mean_stability(image_index_collection[0], mean_all_classifiers_jacc, mean_all_classifiers_corr_jacc,
-                        mean_all_classifiers_iou, mean_all_classifiers_spearman, stability_path, dataset_identifier)
+                        mean_all_classifiers_iou, mean_all_classifiers_spearman, stability_path, samples_identifier)
 
 
 def generate_visualizations_instance_level(config,pos_jacc, corr_pos_jacc, corr_pos_jacc_heur,
@@ -935,4 +935,4 @@ def generate_visualizations_instance_level(config,pos_jacc, corr_pos_jacc, corr_
     assert mean_spearman.all() == avg_stability_spear.all(), "error"
 
     save_mean_stability(image_index_collection[0], avg_stability_pos_jacc, avg_stability_corr_pos_jacc,
-                        avg_stability_corr_iou, avg_stability_spear, stability_res_path, "_bbox", avg_dice)
+                        avg_stability_corr_iou, avg_stability_spear, stability_res_path, "bbox", avg_dice)

@@ -58,6 +58,27 @@ def save_kappa_scores_csv(img_ind, po, aiou, apj,  p_pos, p_neg, diff_p_pos_p_ne
     df.to_csv(res_path+'additional_scores_kappa'+unique_file_identifier+'.csv')
 
 
+def save_mean_stability(img_ind, jacc, corr_jacc, iou, spearman, res_path, file_identifier, dice=None):
+    df = pd.DataFrame()
+    column_names = ['Image_ind', 'Mean positive Jaccard', 'Mean corrected positive Jaccard',
+                    'Mean corrected IoU', 'Mean Spearman']
+
+    values = [img_ind,  jacc, corr_jacc, iou, spearman]
+    if dice is not None:
+        column_names.extend(['Mean dice'])
+        values.extend([dice])
+
+    for column, column_values in zip(column_names, values):
+        df[column] = column_values
+
+    df2 = calculate_aggregated_performance(column_names, 'mean', values)
+    df3 = calculate_aggregated_performance(column_names, 'stand dev', values)
+
+    df = df.append(df2)
+    df = df.append(df3)
+    df.to_csv(res_path+'mean_stability_'+file_identifier+'.csv')
+
+
 def save_additional_kappa_scores_forthreshold(thres, raw_pred_coll, img_ind, corr_iou_coll,
                                               corr_pos_jacc_coll, res_path):
     binary_predictions_coll = []
@@ -76,23 +97,15 @@ def save_additional_kappa_scores_forthreshold(thres, raw_pred_coll, img_ind, cor
                                   diff_f1_f2, diff_g1_g2, str(bin_pred_ind) + '_'+str(bin_pred_ind2), res_path)
 
 
-def save_mean_stability(img_ind, jacc, corr_jacc, iou, spearman, res_path, file_identifier, dice=None):
-    df = pd.DataFrame()
-    df['Image_ind'] = 0
-    df['Mean positive Jaccard'] = -100
-    df['Mean corrected positive Jaccard'] = -100
-    df['Mean corrected IoU'] = -100
-    df['Mean Spearman'] = -100
+def calculate_aggregated_performance(columns, operation, stability_values):
+    operation_dict = {'mean': np.mean,
+                      'stand dev':np.std}
+    aggregated_values = operation_dict[operation](stability_values[1:], axis=1)
+    values = [operation]
+    values.extend(aggregated_values)
 
-    df['Image_ind'] = img_ind
-    df['Mean positive Jaccard'] = jacc
-    df['Mean corrected positive Jaccard'] = corr_jacc
-    df['Mean corrected IoU'] = iou
-    df['Mean Spearman'] = spearman
-
-    if dice is not None:
-        df['Mean dice'] = dice
-    df.to_csv(res_path+'mean_stability_'+file_identifier+'.csv')
+    df2 = pd.DataFrame([values], columns=columns)
+    return df2
 
 
 def get_matrix_total_nans_stability_score(stab_index_collection, total_images_collection, normalize):
