@@ -183,6 +183,7 @@ def load_and_filter_predictions(classifiers, only_segmentation_images, only_posi
     :param only_positive_images: this parameter is considered only if only_segmentation_images is FALSE
                 True: analysis done on image with positive label
                 False: analysis is done on all images
+    :param predictions_path: path to prediction files needed to evaluate stability
     :return: Returns the suitable rows of the subset desired
     '''
 

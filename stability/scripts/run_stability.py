@@ -127,9 +127,10 @@ elif use_pascal:
                                            raw_predictions_segm_img, dice_scores, stability_path)
 else:
     instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
-    bag_predictions_collection, identifier = load_and_filter_predictions(config, classifiers,
+    bag_predictions_collection, identifier = load_and_filter_predictions(classifiers,
                                                                          only_segmentation_images=False,
-                                                                         only_positive_images=False)
+                                                                         only_positive_images=False,
+                                                                         predictions_path=predictions_path)
 
     pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou, \
     pearson_correlation, spearman_rank_correlation = compute_stability_scores(raw_predictions_collection)
