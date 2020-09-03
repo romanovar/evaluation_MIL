@@ -49,7 +49,7 @@ if use_xray:
     instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
     bag_predictions_collection, identifier = load_and_filter_predictions(classifiers,
                                                                          only_segmentation_images=False,
-                                                                         only_positive_images=False,
+                                                                         only_positive_images=True,
                                                                          predictions_path=predictions_path)
 
     pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou, \
@@ -87,9 +87,10 @@ if use_xray:
 
 elif use_pascal:
     instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
-    bag_predictions_collection, identifier = load_and_filter_predictions(config, classifiers,
+    bag_predictions_collection, identifier = load_and_filter_predictions(classifiers,
                                                                          only_segmentation_images=False,
-                                                                         only_positive_images=False)
+                                                                         only_positive_images=True,
+                                                                         predictions_path=predictions_path)
 
     pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou, \
     pearson_correlation, spearman_rank_correlation = compute_stability_scores(raw_predictions_collection)
@@ -129,7 +130,7 @@ else:
     instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
     bag_predictions_collection, identifier = load_and_filter_predictions(classifiers,
                                                                          only_segmentation_images=False,
-                                                                         only_positive_images=False,
+                                                                         only_positive_images=True,
                                                                          predictions_path=predictions_path)
 
     pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou, \
