@@ -106,7 +106,7 @@ elif use_pascal:
                                       samples_identifier=identifier, stability_path=stability_path)
 
     ### Stability on instance level
-    filtered_idx_collection = filter_segmentation_images_bbox_file(config, classifiers)
+    filtered_idx_collection = filter_segmentation_images_bbox_file(config, classifiers, predictions_path)
 
     identifier = "_segmented_img"
     image_labels_segm_img, image_index_segm_img, raw_predictions_segm_img, bag_labels_segm_img, \
