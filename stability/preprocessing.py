@@ -217,11 +217,11 @@ def load_and_filter_predictions(classifiers, only_segmentation_images, only_posi
                bag_predictions_collection, identifier
 
 
-def filter_segmentation_images_bbox_file(config, classifiers):
-    prediction_results_path = config['prediction_results_path']
+def filter_segmentation_images_bbox_file(config, classifiers, predictions_path):
+    # prediction_results_path = config['prediction_results_path']
 
     image_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
-    bag_predictions_collection, bbox_collection = load_predictions(classifiers, prediction_results_path)
+    bag_predictions_collection, bbox_collection = load_predictions(classifiers, predictions_path)
 
     for model_idx in range(1, len(bbox_collection)):
         assert (bbox_collection[model_idx] == bbox_collection[model_idx-1]).all(), "bbox files are not equal!"
