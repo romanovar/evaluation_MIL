@@ -55,7 +55,7 @@ if use_xray:
     pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou, \
     pearson_correlation, spearman_rank_correlation = compute_stability_scores(raw_predictions_collection)
 
-    generate_visualizations_stability(config, visualize_per_image=False, pos_jacc=pos_jacc, corr_pos_jacc=corr_pos_jacc,
+    generate_visualizations_stability(config, visualize_per_image=True, pos_jacc=pos_jacc, corr_pos_jacc=corr_pos_jacc,
                                       corr_pos_jacc_heur=corr_pos_jacc_heur,
                                       pos_overlap=pos_overlap, corr_pos_overlap=corr_pos_overlap, corr_iou=corr_iou,
                                       pearson_correlation=pearson_correlation,

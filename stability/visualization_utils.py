@@ -190,7 +190,11 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
             img_dir = img_ind
         else:
             img_dir = Path(other_img_path + get_image_index_from_pathstring(img_ind) + '.png').__str__()
-
+            img_ind = get_image_index_from_pathstring(img_ind)
+            for path in Path(other_img_path).rglob(img_ind+".png"):
+                print(path)
+                img_dir = path
+                print("file found")
         img = plt.imread(img_dir)
 
         scale_width = int(img.shape[1] / 16)
@@ -433,7 +437,7 @@ def visualize_5_classifiers(xray_dataset, pascal_dataset, img_ind_coll, labels_c
         visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll,
                                                    results_path,
                                                    class_name,
-                                                   image_title_suffix, histogram=False,
+                                                   image_title_suffix, other_img_path=img_path, histogram=False,
                                                    threshold_transparency=0.5)
     else:
         visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,
