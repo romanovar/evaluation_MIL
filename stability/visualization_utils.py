@@ -185,12 +185,14 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
         raw_prediction = raw_predictions_coll[0][ind, :, :, 0]
 
         raw_prediction2 = raw_predictions_coll[1][ind, :, :, 0]
-
+        print("image index")
+        print(img_ind)
         if other_img_path is None:
             img_dir = img_ind
         else:
             img_dir = Path(other_img_path + get_image_index_from_pathstring(img_ind) + '.png').__str__()
             img_ind = get_image_index_from_pathstring(img_ind)
+            print(img_ind)
             for path in Path(other_img_path).rglob(img_ind+".png"):
                 print(path)
                 img_dir = path
@@ -211,7 +213,7 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
         upper_left_y = np.amin(y)
 
         # OPENCV
-        img_bbox = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        img_bbox = cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
         cv2.rectangle(img_bbox, (upper_left_x * scale_width, upper_left_y * scale_height),
                       ((np.amax(x) + 1) * scale_width, (np.amax(y) + 1) * scale_height), (125, 0, 0), 5)
 
@@ -283,8 +285,7 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
             fig.colorbar(img6, ax=ax6, fraction=0.05)
 
         plt.tight_layout()
-        fig.savefig(results_path + get_image_index_from_pathstring(
-            img_ind) + '_' + class_name + image_title_suffix + '.jpg',
+        fig.savefig(results_path + img_ind + '_' + class_name + image_title_suffix + '.jpg',
                     bbox_inches='tight')
         plt.close(fig)
 
@@ -304,7 +305,6 @@ def visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_pat
         predictions_to_image_scale = int(512 / 16)
 
         img_ind = get_image_index(False, img_ind_coll[0], ind)
-        # img_path = "C:/Users/s161590/Downloads/voc2005_1.tar/voc2005_1/PNGImages/TUGraz_cars/carsgraz_234.png"
         img = plt.imread(img_path)
         img_height = img.shape[0]
         img_width = img.shape[1]
