@@ -92,6 +92,12 @@ elif use_pascal:
                                                                          only_positive_images=True,
                                                                          predictions_path=predictions_path)
 
+    all_instance_labels_collection, all_image_index_collection, all_raw_predictions_collection, \
+    all_bag_labels_collection, all_bag_predictions_collection, all_identifier = load_and_filter_predictions(classifiers,
+                                                                         only_segmentation_images=False,
+                                                                         only_positive_images=False,
+                                                                         predictions_path=predictions_path)
+
     pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou, \
     pearson_correlation, spearman_rank_correlation = compute_stability_scores(raw_predictions_collection)
 
@@ -110,9 +116,9 @@ elif use_pascal:
 
     identifier = "_segmented_img"
     image_labels_segm_img, image_index_segm_img, raw_predictions_segm_img, bag_labels_segm_img, \
-    bag_predictions_segm_img = filter_predictions_files_on_indices(instance_labels_collection, image_index_collection,
-                                                                   raw_predictions_collection,
-                                                                   bag_predictions_collection, bag_labels_collection,
+    bag_predictions_segm_img = filter_predictions_files_on_indices(all_instance_labels_collection, all_image_index_collection,
+                                                                   all_raw_predictions_collection,
+                                                                   all_bag_predictions_collection, all_bag_labels_collection,
                                                                    filtered_idx_collection)
     dice_scores = load_filter_dice_scores(classifiers, filtered_idx_collection, predictions_path)
 
