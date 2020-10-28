@@ -148,7 +148,7 @@ def filter_predictions_files_on_indices(all_labels_coll, all_image_ind_coll, all
     bbox_img_ind_coll = []
     bbox_img_raw_predictions = []
     bbox_img_bag_predictions = []
-    bbox_img_bag_labels = []
+    bbox_img_bag_labels = []        
     assert len(bbox_ind_coll) == len(all_labels_coll) == len(all_image_ind_coll) == len(all_raw_predictions_coll), \
         "The lists do not have the same length"
 
@@ -199,7 +199,7 @@ def load_and_filter_predictions(classifiers, only_segmentation_images, only_posi
                                                                          bag_predictions_collection, bag_labels_collection,
                                                                          filtered_idx_collection)
         return instance_labels_collection, image_index_collection, raw_predictions_collection, bag_labels_collection, \
-               bag_predictions_collection, identifier
+               bag_predictions_collection, identifier, filtered_idx_collection
 
     elif only_positive_images:
         filtered_idx_collection = indices_positive_images(bag_labels_collection)

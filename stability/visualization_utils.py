@@ -192,7 +192,7 @@ def visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_pr
             img_ind = get_image_index_from_pathstring(img_ind)
             for path in Path(other_img_path).rglob(img_ind+".png"):
                 img_dir = path
-        img = plt.imread(img_dir)
+        img = plt.imread(str(img_dir))
 
         scale_width = int(img.shape[1] / 16)
         scale_height = int(img.shape[0] / 16)

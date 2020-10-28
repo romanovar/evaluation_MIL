@@ -55,7 +55,7 @@ if use_xray:
     pos_jacc, corr_pos_jacc, corr_pos_jacc_heur, pos_overlap, corr_pos_overlap, corr_iou, \
     pearson_correlation, spearman_rank_correlation = compute_stability_scores(raw_predictions_collection)
 
-    generate_visualizations_stability(config, visualize_per_image=True, pos_jacc=pos_jacc, corr_pos_jacc=corr_pos_jacc,
+    generate_visualizations_stability(config, visualize_per_image=False, pos_jacc=pos_jacc, corr_pos_jacc=corr_pos_jacc,
                                       corr_pos_jacc_heur=corr_pos_jacc_heur,
                                       pos_overlap=pos_overlap, corr_pos_overlap=corr_pos_overlap, corr_iou=corr_iou,
                                       pearson_correlation=pearson_correlation,
@@ -67,13 +67,12 @@ if use_xray:
 
     ### Stability on instance level
     image_labels_segm_images, image_index_segm_images, raw_predictions_segm_images, bag_labels_segm_images, \
-    bag_predictions_segm_images, identifier_segm_images = load_and_filter_predictions(classifiers,
+    bag_predictions_segm_images, identifier_segm_images, ind_segm_images_coll = load_and_filter_predictions(classifiers,
                                                                                       only_segmentation_images=True,
                                                                                       only_positive_images=False,
                                                                                       predictions_path=predictions_path)
-    filtered_idx_collection = indices_segmentation_images(instance_labels_collection)
 
-    dice_scores = load_filter_dice_scores(classifiers, filtered_idx_collection, predictions_path)
+    dice_scores = load_filter_dice_scores(classifiers, ind_segm_images_coll, predictions_path)
 
     pos_jacc_segm_img, corr_pos_jacc_segm_img, corr_pos_jacc_heur_segm_img, pos_overlap_segm_img, \
     corr_pos_overlap_segm_img, corr_iou_segm_img, pearson_correlation_segm_img, \
