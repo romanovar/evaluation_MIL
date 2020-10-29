@@ -527,7 +527,7 @@ def load_xray(skip_processing, processed_labels_path, classication_labels_path, 
     else:
         label_df = get_classification_labels(classication_labels_path, False)
         processed_df = preprocess_labels(label_df, image_path)
-        xray_df = couple_location_labels(localization_labels_path, processed_df, PATCH_SIZE, results_path)
+        xray_df = couple_location_labels(localization_labels_path, processed_df, PATCH_SIZE, processed_labels_path)
     return xray_df
 
 

@@ -432,7 +432,7 @@ def visualize_5_classifiers(xray_dataset, pascal_dataset, img_ind_coll, labels_c
         visualize_single_image_1class_5classifiers(img_ind_coll, labels_coll, raw_predictions_coll,
                                                    results_path,
                                                    class_name,
-                                                   image_title_suffix, other_img_path=img_path, histogram=False,
+                                                   image_title_suffix, other_img_path=img_path, histogram=True,
                                                    threshold_transparency=0.5)
     else:
         visualize_5_classifiers_mura(img_ind_coll, raw_predictions_coll, results_path,
