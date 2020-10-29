@@ -934,4 +934,4 @@ def generate_visualizations_instance_level(config,pos_jacc, corr_pos_jacc, corr_
     assert mean_spearman.all() == avg_stability_spear.all(), "error"
 
     save_mean_stability(image_index_collection[0], avg_stability_pos_jacc, avg_stability_corr_pos_jacc,
-                        avg_stability_corr_iou, avg_stability_spear, stability_res_path, "bbox", avg_dice)
+                        avg_stability_corr_iou, avg_stability_spear, stability_res_path, "bbox", avg_dice, std_dev_dice)

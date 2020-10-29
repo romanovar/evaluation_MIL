@@ -58,15 +58,17 @@ def save_kappa_scores_csv(img_ind, po, aiou, apj,  p_pos, p_neg, diff_p_pos_p_ne
     df.to_csv(res_path+'additional_scores_kappa'+unique_file_identifier+'.csv')
 
 
-def save_mean_stability(img_ind, jacc, corr_jacc, iou, spearman, res_path, file_identifier, dice=None):
+def save_mean_stability(img_ind, jacc, corr_jacc, iou, spearman, res_path, file_identifier, dice=None, std_dice=None):
     df = pd.DataFrame()
     column_names = ['Image_ind', 'Mean positive Jaccard', 'Mean corrected positive Jaccard',
                     'Mean corrected IoU', 'Mean Spearman']
 
     values = [img_ind,  jacc, corr_jacc, iou, spearman]
-    if dice is not None:
+    if dice is not None and std_dice is not None:
         column_names.extend(['Mean dice'])
         values.extend([dice])
+        column_names.extend(['St dev dice'])
+        values.extend([std_dice])
 
     for column, column_values in zip(column_names, values):
         df[column] = column_values
