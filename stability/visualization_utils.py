@@ -866,8 +866,7 @@ def generate_visualizations_instance_level(config,pos_jacc, corr_pos_jacc, corr_
 
     #### Reshape, drop duplicates, calculate mean and st dev
     nonduplicate_corr_pos_jacc = get_nonduplicate_scores(len(image_index_collection[0]), 5, reshaped_corr_pos_jacc_coll)
-    avg_stability_corr_pos_jacc = np.mean(np.ma.masked_array(nonduplicate_corr_pos_jacc, np.isnan(nonduplicate_corr_pos_jacc)),
-                                 axis=1)
+    avg_stability_corr_pos_jacc = np.mean(np.ma.masked_array(nonduplicate_corr_pos_jacc, np.isnan(nonduplicate_corr_pos_jacc)), axis=1)
     stdev_stability_corr_pos_jacc = np.std(np.ma.masked_array(nonduplicate_corr_pos_jacc,
                                                          np.isnan(nonduplicate_corr_pos_jacc)), axis=1)
 
@@ -899,7 +898,7 @@ def generate_visualizations_instance_level(config,pos_jacc, corr_pos_jacc, corr_
                                    x_errors=stdev_stability_corr_pos_jacc,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar(avg_dice, 'mean dice', avg_stability_corr_pos_jacc, 'mean adjusted positive Jaccard',
-                                   stability_res_path, fitting_curve=True, y_errors=std_dev_dice, x_errors=None,
+                                   stability_res_path, fitting_curve=False, y_errors=std_dev_dice, x_errors=None,
                                    error_bar=True, bin_threshold_prefix=0)
     make_scatterplot_with_errorbar(avg_dice, 'mean dice', avg_stability_corr_pos_jacc, 'mean Aajusted Positive1 Jaccard',
                                    stability_res_path, fitting_curve=False, y_errors=None,

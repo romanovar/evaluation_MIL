@@ -5,6 +5,7 @@ This repository constitutes my master graduation project. The repository include
 "Thoracic Disease Identification and Localization with Limited Supervision" https://arxiv.org/abs/1711.06373
 for a single class (in cnn module)
 and further experiments on evaluating stability of MIL algorithms (in stability module).
+The final report on the stability of MIL algorithms can be found [here](Stability_final.pdf) . 
 
 ## Getting started - Requirements
 Requirements for this projects are:
