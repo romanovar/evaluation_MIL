@@ -10,8 +10,10 @@ The final report on the stability of MIL algorithms can be found [here](Stabilit
 ## Getting started - Requirements
 Requirements for this projects are:
 - [x] Python version 3.7.x
-- [x] Requirements.txt lists all the necessary libraries needed for the project and their versions.
+- [x] Requirements_local.txt lists all the necessary libraries needed for the project and their versions (used on the local machine).
 [More about virtual environments and how to install packages from requirements.txt](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/).
+`environment_server.yml` lists exact conda environment state on the server. Alternatively, cross platform version of the server environment is
+ available in `environment_cross_platfrom.yml`   
 - [x] CUDA version 10.2.89
 - [x] Ubuntu 18.04.4
 - [x] Nvidia driver version 440.82

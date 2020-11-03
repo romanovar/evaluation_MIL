@@ -1,0 +1,17 @@
+name: evaluation_mil
+channels:
+  - defaults
+dependencies:
+  - pandas
+  - opencv
+  - tqdm
+  - imagesize
+  - matplotlib
+  - pillow
+  - tensorflow-gpu
+  - python=3.6
+  - yaml
+  - pyyaml
+  - seaborn==0.8.1
+prefix: /home/watze/anaconda3/envs/evaluation_mil
+
